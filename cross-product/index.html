@@ -1,0 +1,1059 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cross Product Practice</title>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']],
+           macros: { xh: '\\hat{x}', yh: '\\hat{y}', zh: '\\hat{z}' } },
+    startup: { typeset: false }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js" async></script>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<style>
+  :root {
+    --bg: #f6f6f3; --panel: #ffffff; --ink: #1d1d1f; --muted: #66666c;
+    --grid: #ececE6; --grid-major: #d6d6cf; --axis: #8f8f88; --border: #dcdcd4;
+    --pos: #d1344b; --neg: #2a68d6; --ok: #22915a; --bad: #d23c3c;
+    --accent: #6a46d4; --neutral: #4d4d52;
+    --va: #d9731a; --vb: #2a68d6; --vc: #7a3fb8;
+    --d1: #e0731a; --d2: #138a9a;
+    --hl: rgba(106, 70, 212, .12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151619; --panel: #1e1f23; --ink: #ececef; --muted: #9b9ba4;
+      --grid: #26272c; --grid-major: #34353b; --axis: #75767e; --border: #33343a;
+      --pos: #ff6b7e; --neg: #6ea5ff; --ok: #4cc98b; --bad: #ff6d6d;
+      --accent: #a68cff; --neutral: #c4c4cb;
+      --va: #ffa04d; --vb: #6ea5ff; --vc: #c99bff;
+      --d1: #ffa04d; --d2: #4fd0e0;
+      --hl: rgba(166, 140, 255, .16);
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { max-width: 1500px; margin: 0 auto; padding: 18px 20px 0;
+           display: flex; flex-wrap: wrap; align-items: end; gap: 10px 28px; }
+  h1 { font-size: 21px; margin: 0; }
+  .sub { color: var(--muted); margin: 2px 0 0; font-size: 13.5px; }
+  nav { display: flex; gap: 4px; flex-wrap: wrap; }
+  .tab { border: 1px solid var(--border); background: var(--panel); color: var(--muted);
+         padding: 7px 14px; border-radius: 8px 8px 0 0; font: inherit; font-size: 14px; cursor: pointer; }
+  .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--panel);
+                               box-shadow: inset 0 2px 0 var(--accent); font-weight: 600; }
+  main { max-width: 1500px; margin: 0 auto; padding: 0 20px 24px; }
+  .pane { border-top: 1px solid var(--border); padding-top: 18px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  h2 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em;
+       color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  p { margin: 0 0 10px; }
+  .muted { color: var(--muted); font-size: 13.5px; }
+  button.btn { font: inherit; font-size: 14px; padding: 7px 14px; border-radius: 8px; cursor: pointer;
+               border: 1px solid var(--border); background: var(--panel); color: var(--ink); }
+  button.btn:hover:not(:disabled) { border-color: var(--accent); }
+  button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.btn:disabled { opacity: .45; cursor: default; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+  .math { overflow-x: auto; overflow-y: hidden; }
+
+  /* ---------- 3D stages ---------- */
+  .stage { position: relative; overflow: hidden; border-radius: 12px; }
+  .stage canvas { display: block; }
+  .stage .labels { position: absolute; top: 0; left: 0; pointer-events: none; }
+  .lbl { font: italic 600 17px/1 "Times New Roman", Times, serif; white-space: nowrap;
+         padding: 2px 4px; border-radius: 4px; user-select: none; }
+  .lbl.ax { color: var(--muted); font-size: 16px; }
+  .lbl.va { color: var(--va); } .lbl.vb { color: var(--vb); } .lbl.vc { color: var(--vc); }
+  .lbl.note { font: 600 12.5px/1.3 system-ui, sans-serif; color: var(--vc);
+              background: color-mix(in srgb, var(--panel) 85%, transparent); }
+
+  /* ---------- Part 1 ---------- */
+  .p1 { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; }
+  #p1-stage { height: calc(100vh - 150px); min-height: 440px; background: var(--panel);
+              border: 1px solid var(--border); }
+  .p1 .card section + section { margin-top: 18px; }
+  .vec-a { color: var(--va); } .vec-b { color: var(--vb); } .vec-c { color: var(--vc); }
+  .hint-drag { position: absolute; right: 12px; bottom: 10px; font-size: 12px; color: var(--muted); pointer-events: none; }
+
+  /* ---------- Part 2 ---------- */
+  .p2 { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
+  .terms { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 6px; margin: 14px 0 6px; }
+  .op { font-size: 22px; padding-top: 10px; min-width: 14px; text-align: center; }
+  .tw { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .tl { display: flex; align-items: center; gap: 4px; font-size: 17px; }
+  .term { font: inherit; font-size: 17px; padding: 8px 12px; border-radius: 10px; cursor: pointer;
+          border: 1.5px dashed var(--accent); background: var(--hl); color: var(--ink); }
+  .term.open { border-style: solid; }
+  .term.good { border: 1.5px solid var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); cursor: default; }
+  .term.bad { border-color: var(--bad); animation: shake .4s; }
+  @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+  .res { min-height: 26px; color: var(--ok); font-size: 16px; }
+  .res.pending { color: var(--muted); font-size: 13px; }
+  .chooser { position: absolute; top: calc(100% + 4px); left: 0; z-index: 20;
+             background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px;
+             box-shadow: 0 8px 24px rgba(0,0,0,.18); width: max-content; }
+  .chooser .opts { display: flex; gap: 6px; margin-bottom: 8px; }
+  .chooser .opts:last-child { margin-bottom: 0; }
+  .chooser button { font: inherit; font-size: 16px; min-width: 40px; height: 36px; border-radius: 8px; cursor: pointer;
+                    border: 1px solid var(--border); background: var(--panel); color: var(--ink); }
+  .collect { margin-top: 12px; }
+  .help { position: sticky; top: 12px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+  .seg button { font: inherit; font-size: 13.5px; padding: 6px 12px; border: 0; background: var(--panel); color: var(--muted); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  #help3d { height: 300px; background: var(--bg); }
+  .axbtn { pointer-events: auto; cursor: pointer; font: italic 700 19px/1 "Times New Roman", Times, serif;
+           color: var(--ink); background: var(--panel); border: 1.5px solid var(--border); border-radius: 50%;
+           width: 34px; height: 34px; padding: 0; }
+  .axbtn.on { border-color: var(--accent); color: var(--accent); }
+  #helpcyc { width: 100%; height: 300px; display: block; background: var(--bg); border-radius: 12px; }
+  #helpcyc .node { cursor: pointer; }
+  #helpcyc .node circle { fill: var(--panel); stroke: var(--border); stroke-width: 2; }
+  #helpcyc .node.on circle { stroke: var(--accent); stroke-width: 3; }
+  #helpcyc .node.res circle { stroke: var(--vc); stroke-width: 3; fill: color-mix(in srgb, var(--vc) 14%, var(--panel)); }
+  #helpcyc .node text { font: italic 700 22px "Times New Roman", serif; fill: var(--ink); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  #helpcyc .badge { font: 700 18px system-ui, sans-serif; fill: var(--vc); text-anchor: middle; dominant-baseline: central; }
+  .readout { min-height: 48px; margin-top: 10px; font-size: 14px; }
+
+  /* ---------- Part 3 ---------- */
+  .p3 { max-width: 860px; }
+  .vt { display: inline-block; padding: 0 2px; }
+  .vname { margin-right: 4px; }
+  .detwrap { display: flex; justify-content: center; margin: 18px 0 8px; }
+  .det { position: relative; display: inline-grid; grid-template-columns: repeat(4, 66px);
+         grid-template-rows: repeat(3, 54px); font-size: 20px; }
+  .det .bars { grid-column: 1 / 4; grid-row: 1 / 4; border-left: 2px solid var(--ink); border-right: 2px solid var(--ink);
+               border-radius: 3px; margin: 2px 4px; pointer-events: none; }
+  .cell { display: flex; align-items: center; justify-content: center; border-radius: 8px; z-index: 1;
+          transition: opacity .3s, background .3s, transform .35s; font-variant-numeric: tabular-nums; margin: 3px; }
+  .cell.num { font-weight: 600; }
+  .cell.ghost { border: 1.5px dashed transparent; }
+  .det:not(.wrap) .cell.ghost { opacity: 0; transform: translateX(-40px); }
+  .det.wrap .cell.ghost { opacity: .7; transform: none; border-color: var(--border); }
+  .det.stepping .cell.dim { opacity: .3; }
+  .det.wrap .cell.ghost.blk { opacity: 1; }
+  .cell.unit { background: var(--hl); outline: 2px solid var(--accent); }
+  .cell.blk { background: var(--hl); }
+  svg.diag { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: visible; }
+  svg.diag line { stroke-width: 4; stroke-linecap: round; opacity: 0; transition: opacity .3s .3s; }
+  svg.diag.show line { opacity: .85; }
+  .flyer { position: fixed; z-index: 50; font-size: 20px; font-weight: 600; pointer-events: none; color: var(--accent); }
+  .ansline { font-size: 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; justify-content: center; margin: 14px 0; }
+  .slot { display: inline-flex; align-items: center; gap: 4px; min-width: 40px; justify-content: center;
+          padding: 2px 6px; border-radius: 8px; border: 1px dashed var(--border); font-weight: 600; }
+  .slot.cur { border: 1.5px solid var(--accent); }
+  .slot input { width: 64px; font: inherit; font-size: 17px; padding: 3px 6px; border-radius: 6px; text-align: center;
+                border: 1px solid var(--border); background: var(--bg); color: var(--ink); }
+  .mark { font-weight: 700; } .mark.ok { color: var(--ok); } .mark.no { color: var(--bad); }
+  .stepbar { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px 16px; min-height: 30px; }
+  .hint { position: relative; font-size: 13px; color: var(--muted); border-bottom: 1px dotted var(--muted); cursor: help; }
+  .hint .tip { display: none; position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%); width: 300px;
+               background: var(--panel); color: var(--ink); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+               box-shadow: 0 8px 24px rgba(0,0,0,.18); z-index: 30; line-height: 1.45; }
+  .hint:hover .tip, .hint:focus .tip { display: block; }
+  .sw { display: inline-block; width: 22px; height: 4px; border-radius: 2px; vertical-align: middle; margin: 0 3px; }
+  table.sum { border-collapse: collapse; margin: 8px auto; font-size: 15px; }
+  table.sum th, table.sum td { padding: 5px 14px; border-bottom: 1px solid var(--border); text-align: center; }
+  table.sum th { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+
+  @media (max-width: 900px) {
+    header, main { padding-left: 16px; padding-right: 16px; }
+    .p1, .p2 { grid-template-columns: 1fr; }
+    #p1-stage { height: 60vh; min-height: 340px; }
+    .help { position: static; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Cross Product Practice</h1>
+    <p class="sub">Right-hand rule, basis vectors, and the determinant method</p>
+  </div>
+  <nav role="tablist">
+    <button class="tab" role="tab" aria-selected="true">1 · Right-Hand Rule</button>
+    <button class="tab" role="tab" aria-selected="false">2 · Basis Vectors</button>
+    <button class="tab" role="tab" aria-selected="false">3 · Determinant</button>
+  </nav>
+</header>
+<main>
+  <!-- ================= Part 1 ================= -->
+  <section class="pane" id="pane1">
+    <div class="p1">
+      <div class="card">
+        <section>
+          <h2>Vectors</h2>
+          <div id="p1-vecs" class="math"></div>
+        </section>
+        <section>
+          <h2>Your turn</h2>
+          <p class="muted">Point your right-hand fingers along <b class="vec-a">a</b>, curl them toward <b class="vec-b">b</b>.
+            Your thumb points along <b class="vec-c">a × b</b>. Orbit the view, predict where it points, then check.</p>
+          <div class="row">
+            <button class="btn primary" id="p1-show">Show result</button>
+            <button class="btn" id="p1-replay" disabled>Replay</button>
+            <button class="btn" id="p1-new">New problem</button>
+          </div>
+        </section>
+        <section id="p1-result" hidden>
+          <h2>Result</h2>
+          <div id="p1-res-math" class="math"></div>
+          <p class="muted">Placing <b class="vec-b">b</b> at the tip of <b class="vec-a">a</b> and walking
+            <b class="vec-a">a</b> → <b class="vec-b">b</b> → −<b class="vec-a">a</b> → −<b class="vec-b">b</b> traces the parallelogram.
+            Seen from the tip of <b class="vec-c">a × b</b>, that loop runs <b>counterclockwise</b>.
+            Orbit around behind the face: from there the same loop looks clockwise.</p>
+        </section>
+      </div>
+      <div class="stage" id="p1-stage"><span class="hint-drag">Drag to orbit · scroll to zoom</span></div>
+    </div>
+  </section>
+
+  <!-- ================= Part 2 ================= -->
+  <section class="pane" id="pane2" hidden>
+    <div class="p2">
+      <div class="card">
+        <h2>Problem</h2>
+        <div id="p2-prob" class="math"></div>
+        <div class="row">
+          <button class="btn primary" id="p2-dist">Distribute</button>
+          <button class="btn" id="p2-new">New problem</button>
+        </div>
+        <p class="muted" id="p2-instr" hidden>Click each term and choose what its basis-vector product equals.</p>
+        <div class="terms" id="p2-terms"></div>
+        <div class="collect math" id="p2-collect"></div>
+      </div>
+      <aside class="card help">
+        <h2>Help</h2>
+        <div class="seg" role="group">
+          <button id="hm-axes" aria-pressed="true">Axes</button>
+          <button id="hm-cyc" aria-pressed="false">Cycle</button>
+        </div>
+        <div class="stage" id="help3d"></div>
+        <svg id="helpcyc" viewBox="0 0 320 300" hidden></svg>
+        <p class="muted" id="help-tip">Click two axes, first then second.</p>
+        <div class="readout" id="help-read"></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ================= Part 3 ================= -->
+  <section class="pane" id="pane3" hidden>
+    <div class="card p3">
+      <h2>Problem</h2>
+      <div id="p3-vecs" class="math"></div>
+      <div class="detwrap"><div class="det" id="det"></div></div>
+      <div class="stepbar">
+        <span id="p3-step" class="muted"></span>
+        <span class="hint" tabindex="0" id="p3-hint" hidden>How to read the diagonals
+          <span class="tip" id="p3-tip"></span></span>
+      </div>
+      <div class="ansline" id="p3-ans"></div>
+      <div class="row" style="justify-content:center">
+        <button class="btn primary" id="p3-fill">Fill in the rows</button>
+        <button class="btn primary" id="p3-check" hidden>Check</button>
+        <button class="btn" id="p3-new">New problem</button>
+      </div>
+      <div id="p3-sum" class="math"></div>
+    </div>
+  </section>
+</main>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+/* ================= utilities ================= */
+const $ = s => document.querySelector(s);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const randInt = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
+const randNZ = m => (Math.random() < .5 ? -1 : 1) * randInt(1, m);
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const norm = a => Math.sqrt(dot(a, a));
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const V3 = a => new THREE.Vector3(a[0], a[1], a[2]);
+const MINUS = '\u2212';
+const fmt = n => (n < 0 ? MINUS + Math.abs(n) : String(n));
+const AX = ['x', 'y', 'z'];
+const hatTex = i => '\\' + AX[i] + 'h';
+const hatTxt = i => AX[i] + '\u0302';
+const smooth = x => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+
+// x̂_i × x̂_j  ->  {sign, axis}, or null when parallel
+function basisCross(i, j) {
+  if (i === j) return null;
+  return { sign: (j - i + 3) % 3 === 1 ? 1 : -1, axis: 3 - i - j };
+}
+
+function vecTex(v) {
+  let s = '';
+  v.forEach((c, i) => {
+    if (!c) return;
+    const t = (Math.abs(c) === 1 ? '' : Math.abs(c)) + hatTex(i);
+    s += s ? (c < 0 ? ' - ' : ' + ') + t : (c < 0 ? '-' : '') + t;
+  });
+  return s || '\\vec{0}';
+}
+
+const mjReady = new Promise(res => {
+  const t = setInterval(() => {
+    if (window.MathJax && MathJax.startup && MathJax.startup.promise) {
+      clearInterval(t); MathJax.startup.promise.then(res);
+    }
+  }, 40);
+});
+function typeset(...els) {
+  return mjReady.then(() => { MathJax.typesetClear(els); return MathJax.typesetPromise(els); });
+}
+
+/* ================= three.js helpers ================= */
+const themed = [];  // materials whose color follows a CSS token
+function tmat(Kind, token, opts = {}) {
+  const m = new Kind({ color: css(token), ...opts });
+  themed.push({ m, token });
+  return m;
+}
+const UP_Y = new THREE.Vector3(0, 1, 0);
+const SHAFT = new THREE.CylinderGeometry(1, 1, 1, 18);
+const HEAD = new THREE.ConeGeometry(1, 1, 24);
+
+function makeArrow(token, { radius = 0.055, opacity = 1 } = {}) {
+  const mat = tmat(THREE.MeshLambertMaterial, token,
+    opacity < 1 ? { transparent: true, opacity, depthWrite: false } : {});
+  const shaft = new THREE.Mesh(SHAFT, mat), head = new THREE.Mesh(HEAD, mat);
+  const group = new THREE.Group();
+  group.add(shaft, head);
+  const ar = {
+    group, mat, k: 1,
+    set(origin, vec) {
+      const len = vec.length();
+      group.visible = len > 1e-4;
+      if (!group.visible) return ar;
+      const r = radius * ar.k, hl = Math.min(r * 6.5, len * 0.4), hr = r * 2.5;
+      shaft.scale.set(r, len - hl, r); shaft.position.set(0, (len - hl) / 2, 0);
+      head.scale.set(hr, hl, hr); head.position.set(0, len - hl / 2, 0);
+      group.position.copy(origin);
+      group.quaternion.setFromUnitVectors(UP_Y, vec.clone().normalize());
+      return ar;
+    }
+  };
+  return ar;
+}
+
+function label(html, cls, pos) {
+  const d = document.createElement('div');
+  d.className = 'lbl ' + cls;
+  d.innerHTML = html;
+  const o = new CSS2DObject(d);
+  if (pos) o.position.copy(pos);
+  return o;
+}
+
+function disposeGroup(g) {
+  if (!g) return;
+  g.traverse(o => {
+    if (o.isCSS2DObject) o.element.remove();
+    if (o.geometry && o.geometry !== SHAFT && o.geometry !== HEAD) o.geometry.dispose();
+  });
+  if (g.parent) g.parent.remove(g);
+}
+
+// Circular "circulation" arrow lying in the plane spanned by unit vectors u, w,
+// turning from u toward w (counterclockwise when viewed from the u × w side).
+function makeCirc(center, u, w, r, tube, mat, th0 = 0.3 * Math.PI) {
+  const N = 60, span = 1.55 * Math.PI, pts = [];
+  const at = th => center.clone().addScaledVector(u, r * Math.cos(th)).addScaledVector(w, r * Math.sin(th));
+  for (let i = 0; i <= N; i++) pts.push(at(th0 + span * i / N));
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 80, tube, 8, false), mat));
+  const thE = th0 + span;
+  const tan = u.clone().multiplyScalar(-Math.sin(thE)).addScaledVector(w, Math.cos(thE)).normalize();
+  const h = tube * 9;
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(tube * 3.2, h, 20), mat);
+  cone.position.copy(pts[N]).addScaledVector(tan, h / 2);
+  cone.quaternion.setFromUnitVectors(UP_Y, tan);
+  g.add(cone);
+  return g;
+}
+
+function makeView(container, { ortho = false, half = 2 } = {}) {
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  container.prepend(renderer.domElement);
+  const labels = new CSS2DRenderer();
+  labels.domElement.className = 'labels';
+  container.appendChild(labels.domElement);
+  const scene = new THREE.Scene();
+  scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+  const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+  sun.position.set(4, -2, 9);
+  scene.add(sun);
+  const camera = ortho ? new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200)
+                       : new THREE.PerspectiveCamera(38, 1, 0.1, 3000);
+  camera.up.set(0, 0, 1);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  const view = { container, renderer, labels, scene, camera, controls, half, fit: null };
+  view.resize = () => {
+    const w = container.clientWidth, h = container.clientHeight;
+    if (!w || !h) return;
+    renderer.setSize(w, h); labels.setSize(w, h);
+    const asp = w / h;
+    if (ortho) Object.assign(camera, { left: -half * asp, right: half * asp, top: half, bottom: -half });
+    else camera.aspect = asp;
+    camera.updateProjectionMatrix();
+    if (!ortho && view.fitPts && !view.fit) fitTo(view, view.fitPts, 0);
+  };
+  view.render = now => {
+    if (view.fit) stepFit(view, now);
+    controls.update();
+    renderer.render(scene, camera);
+    labels.render(scene, camera);
+  };
+  new ResizeObserver(view.resize).observe(container);
+  view.resize();
+  return view;
+}
+
+// Smoothly move a perspective camera so all points fit, keeping the user's viewing direction.
+function fitTo(view, pts, dur = 900) {
+  const sph = new THREE.Box3().setFromPoints(pts).getBoundingSphere(new THREE.Sphere());
+  const cam = view.camera;
+  view.fitPts = pts;
+  const vf = THREE.MathUtils.degToRad(cam.fov) / 2;
+  const hf = Math.atan(Math.tan(vf) * cam.aspect);
+  const d = sph.radius / Math.sin(Math.min(vf, hf)) * 1.02;
+  view.fit = { t0: performance.now(), dur, fromT: view.controls.target.clone(),
+               fromD: cam.position.distanceTo(view.controls.target), toT: sph.center, toD: d };
+  if (dur === 0) stepFit(view, Infinity);
+}
+function stepFit(view, now) {
+  const f = view.fit, s = f.dur ? smooth((now - f.t0) / f.dur) : 1;
+  const dir = view.camera.position.clone().sub(view.controls.target).normalize();
+  view.controls.target.lerpVectors(f.fromT, f.toT, s);
+  view.camera.position.copy(view.controls.target).addScaledVector(dir, f.fromD + (f.toD - f.fromD) * s);
+  if (s >= 1) view.fit = null;
+}
+
+const axisLineMat = tmat(THREE.LineBasicMaterial, '--axis');
+const axisDashMat = tmat(THREE.LineDashedMaterial, '--axis', { dashSize: .18, gapSize: .14 });
+function buildAxes(L, { grid = true } = {}) {
+  const g = new THREE.Group();
+  for (let i = 0; i < 3; i++) {
+    const e = new THREE.Vector3().setComponent(i, 1);
+    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), e.clone().multiplyScalar(L)]), axisLineMat));
+    const neg = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), e.clone().multiplyScalar(-L)]), axisDashMat);
+    neg.computeLineDistances();
+    g.add(neg);
+    g.add(label(AX[i], 'ax', e.clone().multiplyScalar(L + 0.45)));
+  }
+  if (grid) {
+    const gh = new THREE.GridHelper(2 * L, 2 * L, css('--grid-major'), css('--grid'));
+    gh.rotation.x = Math.PI / 2;
+    gh.position.z = -0.002;
+    g.add(gh);
+  }
+  return g;
+}
+
+/* ================= tabs + render loop ================= */
+let active = 0;
+const tabs = [...document.querySelectorAll('.tab')];
+const panes = [$('#pane1'), $('#pane2'), $('#pane3')];
+const HASH = ['#rhr', '#basis', '#det'];
+function showTab(i) {
+  active = i;
+  tabs.forEach((t, k) => t.setAttribute('aria-selected', String(k === i)));
+  panes.forEach((p, k) => (p.hidden = k !== i));
+  history.replaceState(null, '', HASH[i]);
+  v1.resize(); vh.resize();
+  if (i === 2) requestAnimationFrame(() => p3.redraw && p3.redraw());
+}
+tabs.forEach((t, i) => t.addEventListener('click', () => showTab(i)));
+
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (active === 0) { p1Tick(now); v1.render(now); }
+  else if (active === 1 && helpMode === 'axes') vh.render(now);
+}
+
+/* ================= Part 1: right-hand rule ================= */
+const v1 = makeView($('#p1-stage'));
+v1.camera.position.set(1, 0.42, 0.55).multiplyScalar(20);
+const p1 = { axes: null, t0: null, shown: false };
+const A1 = {
+  a: makeArrow('--va'), b: makeArrow('--vb'), bGhost: makeArrow('--vb', { opacity: .22 }),
+  na: makeArrow('--va', { opacity: .7 }), nb: makeArrow('--vb', { opacity: .7 }), c: makeArrow('--vc')
+};
+Object.values(A1).forEach(ar => v1.scene.add(ar.group));
+const L1 = {
+  a: label('a', 'va'), b: label('b', 'vb'), na: label('−a', 'va'), nb: label('−b', 'vb'),
+  c: label('a × b', 'vc'), circ: label('counterclockwise<br>seen from tip of a × b', 'note')
+};
+Object.values(L1).forEach(l => v1.scene.add(l));
+const faceMat = tmat(THREE.MeshBasicMaterial, '--vc', { transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false });
+const face = new THREE.Mesh(new THREE.BufferGeometry(), faceMat);
+v1.scene.add(face);
+const circMat = tmat(THREE.MeshLambertMaterial, '--vc', { transparent: true, opacity: 0 });
+let circ = null;
+
+function genP1() {
+  for (;;) {
+    const a = [0, 0, 0].map(() => randInt(-4, 4)), b = [0, 0, 0].map(() => randInt(-4, 4));
+    const na = norm(a), nb = norm(b);
+    if (!na || !nb) continue;
+    const ang = Math.acos(Math.max(-1, Math.min(1, dot(a, b) / (na * nb)))) * 180 / Math.PI;
+    if (ang >= 30 && ang <= 150) return { a, b };
+  }
+}
+
+function labelAt(l, origin, vec, f = 0.55) {
+  l.position.copy(origin).addScaledVector(vec, f).add(new THREE.Vector3(0, 0, 0.28));
+}
+
+function newP1() {
+  const { a, b } = genP1();
+  const c = cross(a, b);
+  const A = V3(a), B = V3(b), C = V3(c), AB = A.clone().add(B), M = AB.clone().multiplyScalar(.5);
+  Object.assign(p1, { a, b, c, A, B, C, AB, M });
+  const L = Math.max(5, Math.max(...[...a, ...b, ...AB.toArray()].map(Math.abs)) + 1);
+  p1.L = L;
+  disposeGroup(p1.axes);
+  p1.axes = buildAxes(L);
+  v1.scene.add(p1.axes);
+
+  p1.basePts = [new THREE.Vector3(L, 0, 0), new THREE.Vector3(-L, 0, 0), new THREE.Vector3(0, L, 0),
+                new THREE.Vector3(0, -L, 0), new THREE.Vector3(0, 0, L), new THREE.Vector3(0, 0, -L * .4), A, B];
+  p1.allPts = [...p1.basePts, AB, M.clone().add(C), new THREE.Vector3(0, 0, -L)];
+  const R = new THREE.Box3().setFromPoints(p1.allPts).getBoundingSphere(new THREE.Sphere()).radius;
+  const k = Math.max(1, Math.sqrt(R / 8));
+  Object.values(A1).forEach(ar => (ar.k = k));
+
+  face.geometry.dispose();
+  face.geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), A, AB, B]);
+  face.geometry.setIndex([0, 1, 2, 0, 2, 3]);
+
+  // circulation arrow, sized to sit inside the parallelogram
+  disposeGroup(circ);
+  const area = C.length(), n = C.clone().normalize(), u = A.clone().normalize();
+  const w = n.clone().cross(u);
+  const r = 0.36 * Math.min(area / A.length(), area / B.length());
+  circ = makeCirc(M, u, w, r, Math.max(0.025, r * 0.06) * Math.min(k, 1.6), circMat);
+  v1.scene.add(circ);
+  L1.circ.position.copy(M).addScaledVector(w, -(r + 0.55 * k)).addScaledVector(u, -0.2);
+
+  resetP1();
+  $('#p1-vecs').innerHTML =
+    `<p class="vec-a">\\(\\vec a = ${vecTex(a)}\\)</p><p class="vec-b">\\(\\vec b = ${vecTex(b)}\\)</p>`;
+  typeset($('#p1-vecs'));
+  fitTo(v1, p1.basePts, p1.first ? 700 : 0);
+  p1.first = true;
+}
+
+function resetP1() {
+  const O = new THREE.Vector3();
+  p1.t0 = null; p1.shown = false;
+  A1.a.set(O, p1.A); A1.b.set(O, p1.B);
+  ['bGhost', 'na', 'nb', 'c'].forEach(k => (A1[k].group.visible = false));
+  labelAt(L1.a, O, p1.A); labelAt(L1.b, O, p1.B);
+  L1.na.visible = L1.nb.visible = L1.c.visible = L1.circ.visible = false;
+  faceMat.opacity = 0; circMat.opacity = 0; circ.visible = false;
+  $('#p1-result').hidden = true;
+  $('#p1-show').disabled = false; $('#p1-replay').disabled = true;
+}
+
+function p1Tick(now) {
+  if (p1.t0 == null || p1.shown && now - p1.t0 > 7000) return;
+  const t = (now - p1.t0) / 1000;
+  const { A, B, C, AB, M } = p1, O = new THREE.Vector3();
+  const s1 = smooth(t / 1.3), s2 = smooth((t - 1.5) / .8), s3 = smooth((t - 2.5) / .8),
+        s4 = smooth((t - 3.5) / .8), s5 = smooth((t - 4.5) / 1.3);
+  const bo = A.clone().multiplyScalar(s1);
+  A1.b.set(bo, B); labelAt(L1.b, bo, B);
+  A1.bGhost.set(O, B); A1.bGhost.group.visible = t > 0;
+  A1.na.set(AB, A.clone().multiplyScalar(-s2)); A1.na.group.visible = s2 > 0;
+  labelAt(L1.na, AB, A.clone().negate()); L1.na.visible = s2 > .9;
+  A1.nb.set(B, B.clone().multiplyScalar(-s3)); A1.nb.group.visible = s3 > 0;
+  labelAt(L1.nb, B, B.clone().negate()); L1.nb.visible = s3 > .9;
+  faceMat.opacity = 0.22 * s4; circMat.opacity = s4; circ.visible = s4 > 0;
+  L1.circ.visible = s4 > .7;
+  A1.c.set(M, C.clone().multiplyScalar(s5)); A1.c.group.visible = s5 > 0;
+  L1.c.position.copy(M).addScaledVector(C, s5).addScaledVector(C.clone().normalize(), 0.5 * A1.c.k);
+  L1.c.visible = s5 > .9;
+  if (t > 4.5 && !p1.fitting) { p1.fitting = true; fitTo(v1, p1.allPts, 1300); }
+  if (t > 5.9 && !p1.shown) {
+    p1.shown = true;
+    const c = p1.c, m2 = dot(c, c);
+    const mag = Number.isInteger(Math.sqrt(m2)) ? `${Math.sqrt(m2)}` : `\\sqrt{${m2}} \\approx ${Math.sqrt(m2).toFixed(2)}`;
+    $('#p1-res-math').innerHTML = `<p class="vec-c">\\(\\vec a\\times\\vec b = ${vecTex(c)}\\)</p>
+      <p>\\(|\\vec a\\times\\vec b| = ${mag}\\) = area of the parallelogram</p>`;
+    $('#p1-result').hidden = false;
+    typeset($('#p1-res-math'));
+    $('#p1-replay').disabled = false;
+  }
+}
+
+function playP1() {
+  resetP1();
+  $('#p1-show').disabled = true;
+  p1.fitting = false;
+  p1.t0 = performance.now();
+}
+$('#p1-show').onclick = playP1;
+$('#p1-replay').onclick = () => { fitTo(v1, p1.basePts, 500); playP1(); };
+$('#p1-new').onclick = newP1;
+
+/* ================= Part 2: basis vectors ================= */
+const p2 = {};
+function genP2vec() {
+  const v = [0, 0, 0], skip = randInt(0, 2);
+  for (let i = 0; i < 3; i++) if (i !== skip) v[i] = randNZ(9);
+  return v;
+}
+function newP2() {
+  let a, b;
+  do { a = genP2vec(); b = genP2vec(); } while (norm(cross(a, b)) === 0);
+  Object.assign(p2, { a, b, terms: [], open: -1 });
+  for (let i = 0; i < 3; i++) if (a[i]) for (let j = 0; j < 3; j++) if (b[j])
+    p2.terms.push({ i, j, coef: a[i] * b[j], ans: basisCross(i, j), done: false });
+  $('#p2-prob').innerHTML = `\\[\\vec a = ${vecTex(a)}, \\qquad \\vec b = ${vecTex(b)}\\]
+    \\[\\vec a\\times\\vec b = \\left(${vecTex(a)}\\right)\\times\\left(${vecTex(b)}\\right)\\]`;
+  $('#p2-terms').innerHTML = ''; $('#p2-collect').innerHTML = '';
+  $('#p2-dist').hidden = false; $('#p2-instr').hidden = true;
+  typeset($('#p2-prob'));
+}
+
+function distribute() {
+  const box = $('#p2-terms');
+  box.innerHTML = '';
+  p2.terms.forEach((t, k) => {
+    const op = document.createElement('span');
+    op.className = 'op';
+    op.textContent = k === 0 ? (t.coef < 0 ? MINUS : '') : (t.coef < 0 ? MINUS : '+');
+    if (op.textContent) box.appendChild(op);
+    const tw = document.createElement('div');
+    tw.className = 'tw';
+    const m = Math.abs(t.coef);
+    tw.innerHTML = `<div class="tl">${m === 1 ? '' : `<span class="coef">\\(${m}\\)</span>`}
+                      <button class="term">\\(${hatTex(t.i)}\\times${hatTex(t.j)}\\)</button></div>
+                    <div class="res pending">click to choose</div>`;
+    tw.querySelector('.term').onclick = e => { e.stopPropagation(); openChooser(k); };
+    t.el = tw;
+    box.appendChild(tw);
+  });
+  $('#p2-dist').hidden = true; $('#p2-instr').hidden = false;
+  typeset(box);
+}
+
+const chooser = document.createElement('div');
+chooser.className = 'chooser';
+chooser.innerHTML = [1, -1].map(s => `<div class="opts">` + [0, 1, 2].map(i =>
+    `<button data-s="${s}" data-a="${i}">\\(${s > 0 ? '+' : '-'}${hatTex(i)}\\)</button>`).join('') + `</div>`).join('') +
+  `<div class="opts"><button data-a="zero">0</button></div>`;
+chooser.onclick = e => {
+  e.stopPropagation();
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const a = btn.dataset.a;
+  judge(a === 'zero' ? null : +btn.dataset.s, a === 'zero' ? 'zero' : +a);
+};
+typeset(chooser);
+
+function openChooser(k) {
+  const t = p2.terms[k];
+  if (t.done) return;
+  closeChooser();
+  p2.open = k;
+  t.el.appendChild(chooser);
+  t.el.querySelector('.term').classList.add('open');
+}
+function closeChooser() {
+  if (p2.open >= 0) p2.terms[p2.open].el.querySelector('.term').classList.remove('open');
+  chooser.remove();
+  p2.open = -1;
+}
+document.addEventListener('click', closeChooser);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeChooser(); });
+
+function judge(sign, dir) {
+  const t = p2.terms[p2.open];
+  const right = t.ans ? dir === t.ans.axis && sign === t.ans.sign : dir === 'zero';
+  const btn = t.el.querySelector('.term');
+  if (!right) {
+    btn.classList.remove('bad'); void btn.offsetWidth; btn.classList.add('bad');
+    setTimeout(() => btn.classList.remove('bad'), 450);
+    return;
+  }
+  t.done = true;
+  closeChooser();
+  btn.classList.add('good');
+  const res = t.el.querySelector('.res');
+  res.className = 'res';
+  res.innerHTML = t.ans ? `\\(= ${t.ans.sign > 0 ? '+' : '-'}${hatTex(t.ans.axis)}\\)` : '\\(= 0\\)';
+  typeset(res);
+  if (p2.terms.every(x => x.done)) collect();
+}
+
+function collect() {
+  const parts = p2.terms.map(t =>
+    `(${t.coef})\\,${t.ans ? `(${t.ans.sign > 0 ? '+' : '-'}${hatTex(t.ans.axis)})` : '(0)'}`);
+  const c = cross(p2.a, p2.b);
+  $('#p2-collect').innerHTML = `<h2>Collect like terms</h2>\\[\\begin{aligned}\\vec a\\times\\vec b
+    &= ${parts.join(' + ')} \\\\ &= ${vecTex(c)}\\end{aligned}\\]`;
+  typeset($('#p2-collect'));
+}
+$('#p2-dist').onclick = distribute;
+$('#p2-new').onclick = newP2;
+
+/* ---- Part 2 help: isometric axes ---- */
+let helpMode = 'axes';
+const vh = makeView($('#help3d'), { ortho: true, half: 1.55 });
+vh.controls.enabled = false;  // fixed isometric view so cw/ccw stays true
+vh.controls.target.set(.42, .42, .32);
+vh.camera.position.set(.42, .42, .32).add(new THREE.Vector3(10, 10, 10));
+const HL = 1.3;
+const hAx = [0, 1, 2].map(i => {
+  const ar = makeArrow('--neutral', { radius: 0.022 });
+  const e = new THREE.Vector3().setComponent(i, 1);
+  ar.set(new THREE.Vector3(), e.clone().multiplyScalar(HL));
+  vh.scene.add(ar.group);
+  const btn = document.createElement('button');
+  btn.className = 'axbtn';
+  btn.textContent = hatTxt(i);
+  btn.setAttribute('aria-label', AX[i] + ' axis');
+  btn.onclick = () => pickAxis(i);
+  const o = new CSS2DObject(btn);
+  o.position.copy(e).multiplyScalar(HL + 0.28);
+  vh.scene.add(o);
+  return { ar, btn };
+});
+let hSel = [], hDraw = null;
+// counterclockwise pairs in --d1, clockwise pairs in --d2
+const SENSE = { ccw: '--d1', cw: '--d2' };
+const planeMat = {}, hArcMat = {};
+for (const s in SENSE) {
+  planeMat[s] = tmat(THREE.MeshBasicMaterial, SENSE[s], { transparent: true, opacity: .2, side: THREE.DoubleSide, depthWrite: false });
+  hArcMat[s] = tmat(THREE.MeshLambertMaterial, SENSE[s]);
+}
+
+function pickAxis(i) {
+  if (hSel.length >= 2) clearAxes();
+  hSel.push(i);
+  hAx[i].btn.classList.add('on');
+  hAx[i].ar.mat.color.set(css('--accent'));
+  if (hSel.length === 2) drawPair(...hSel);
+}
+function clearAxes() {
+  hSel = [];
+  hAx.forEach(h => { h.btn.classList.remove('on'); h.ar.mat.color.set(css('--neutral')); });
+  disposeGroup(hDraw); hDraw = null;
+  $('#help-read').innerHTML = '';
+}
+function drawPair(i, j) {
+  const read = $('#help-read');
+  const r = basisCross(i, j);
+  if (!r) {
+    read.innerHTML = `\\(${hatTex(i)}\\times${hatTex(i)} = 0\\): parallel, so there is no plane.`;
+    typeset(read); return;
+  }
+  const ei = new THREE.Vector3().setComponent(i, 1), ej = new THREE.Vector3().setComponent(j, 1);
+  const s = HL * 0.85;
+  hDraw = new THREE.Group();
+  const quad = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), ei.clone().multiplyScalar(s),
+    ei.clone().add(ej).multiplyScalar(s), ej.clone().multiplyScalar(s)]);
+  quad.setIndex([0, 1, 2, 0, 2, 3]);
+  const sense = r.sign > 0 ? 'ccw' : 'cw';
+  hDraw.add(new THREE.Mesh(quad, planeMat[sense]));
+  hDraw.add(makeCirc(ei.clone().add(ej).multiplyScalar(s / 2), ei, ej, s * 0.27, 0.022, hArcMat[sense], 1.25 * Math.PI));
+  vh.scene.add(hDraw);
+  read.innerHTML = `Turning \\(${hatTex(i)}\\to${hatTex(j)}\\) is
+    <b style="color:var(${SENSE[sense]})">${sense === 'ccw' ? 'counterclockwise' : 'clockwise'}</b>
+    in this view. Use your right hand to find \\(${hatTex(i)}\\times${hatTex(j)}\\).`;
+  typeset(read);
+}
+
+/* ---- Part 2 help: x → y → z cycle ---- */
+const svg = $('#helpcyc'), NS = 'http://www.w3.org/2000/svg';
+const CX = 160, CY = 158, CR = 92, ANG = [-90, 30, 150];
+const P = (deg, r = CR) => [CX + r * Math.cos(deg * Math.PI / 180), CY + r * Math.sin(deg * Math.PI / 180)];
+function arcPath(d1, d2, r, sweep) {
+  const [x1, y1] = P(d1, r), [x2, y2] = P(d2, r);
+  return `M${x1.toFixed(1)} ${y1.toFixed(1)} A${r} ${r} 0 0 ${sweep} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+}
+function el(tag, attrs, parent = svg) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function buildCycle() {
+  svg.innerHTML = '';
+  const defs = el('defs', {});
+  [['mk-faint', css('--axis')], ['mk-pos', css('--ok')], ['mk-neg', css('--bad')]].forEach(([id, c]) => {
+    const m = el('marker', { id, viewBox: '0 0 10 10', refX: 7, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto-start-reverse' }, defs);
+    el('path', { d: 'M0 0 L10 5 L0 10 z', fill: c }, m);
+  });
+  for (let k = 0; k < 3; k++)
+    el('path', { d: arcPath(ANG[k] + 19, ANG[k] + 101, CR, 1), fill: 'none', stroke: css('--axis'),
+                 'stroke-width': 2.5, 'marker-end': 'url(#mk-faint)' });
+  svg.sel = el('path', { fill: 'none', 'stroke-width': 4.5, d: '' });
+  svg.nodes = [0, 1, 2].map(i => {
+    const g = el('g', { class: 'node', tabindex: 0, role: 'button', 'aria-label': AX[i] });
+    const [x, y] = P(ANG[i]);
+    el('circle', { cx: x, cy: y, r: 22 }, g);
+    el('text', { x, y }, g).textContent = hatTxt(i);
+    g.onclick = () => pickCyc(i);
+    g.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') pickCyc(i); };
+    return g;
+  });
+  svg.badge = el('text', { class: 'badge' });
+}
+let cSel = [];
+function pickCyc(i) {
+  if (cSel.length >= 2) clearCyc();
+  cSel.push(i);
+  svg.nodes[i].classList.add('on');
+  if (cSel.length < 2) return;
+  const [a, b] = cSel, r = basisCross(a, b), read = $('#help-read');
+  if (!r) {
+    read.innerHTML = `\\(${hatTex(a)}\\times${hatTex(a)} = 0\\): parallel, so the product is zero.`;
+    typeset(read); return;
+  }
+  const fwd = r.sign > 0;
+  const R2 = CR + 26;
+  svg.sel.setAttribute('d', fwd ? arcPath(ANG[a] + 14, ANG[a] + 106, R2, 1) : arcPath(ANG[a] - 14, ANG[a] - 106, R2, 0));
+  svg.sel.setAttribute('stroke', css(fwd ? '--ok' : '--bad'));
+  svg.sel.setAttribute('marker-end', `url(#${fwd ? 'mk-pos' : 'mk-neg'})`);
+  svg.nodes[r.axis].classList.add('res');
+  const [bx, by] = P(ANG[r.axis], CR - 46);
+  svg.badge.setAttribute('x', bx); svg.badge.setAttribute('y', by);
+  svg.badge.textContent = (fwd ? '+' : MINUS) + hatTxt(r.axis);
+  read.innerHTML = `\\(${hatTex(a)}\\to${hatTex(b)}\\) goes <b>${fwd ? 'with' : 'against'}</b> the cycle,
+    so \\(${hatTex(a)}\\times${hatTex(b)} = ${fwd ? '+' : '-'}${hatTex(r.axis)}\\).`;
+  typeset(read);
+}
+function clearCyc() {
+  cSel = [];
+  svg.nodes.forEach(n => n.classList.remove('on', 'res'));
+  svg.sel.setAttribute('d', '');
+  svg.badge.textContent = '';
+  $('#help-read').innerHTML = '';
+}
+function setHelpMode(m) {
+  helpMode = m;
+  $('#hm-axes').setAttribute('aria-pressed', String(m === 'axes'));
+  $('#hm-cyc').setAttribute('aria-pressed', String(m === 'cycle'));
+  $('#help3d').hidden = m !== 'axes';
+  svg.toggleAttribute('hidden', m !== 'cycle');
+  $('#help-tip').textContent = m === 'axes'
+    ? 'Click two axes, first then second.'
+    : 'Click two letters, first then second.';
+  clearAxes(); clearCyc();
+  if (m === 'axes') vh.resize();
+}
+$('#hm-axes').onclick = () => setHelpMode('axes');
+$('#hm-cyc').onclick = () => setHelpMode('cycle');
+
+/* ================= Part 3: determinant ================= */
+const p3 = {};
+const STEPS = [{ k: 0, cols: [1, 2] }, { k: 1, cols: [2, 3] }, { k: 2, cols: [0, 1] }];
+const det = $('#det');
+function cell(r, c) { return det.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`); }
+
+function buildDet() {
+  det.className = 'det';
+  det.innerHTML = '<div class="bars"></div><svg class="diag"><line id="dg1"/><line id="dg2"/></svg>';
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
+    const d = document.createElement('div');
+    d.className = 'cell' + (c === 3 ? ' ghost' : '') + (r ? ' num' : '');
+    d.dataset.r = r; d.dataset.c = c;
+    d.style.gridRow = r + 1; d.style.gridColumn = c + 1;
+    if (r === 0) d.innerHTML = `\\(${hatTex(c % 3)}\\)`;
+    det.appendChild(d);
+  }
+  $('#dg1').setAttribute('stroke', css('--d1'));
+  $('#dg2').setAttribute('stroke', css('--d2'));
+  typeset(det);
+}
+
+function vecTerms(v, name) {
+  return `<span class="vname">\\(\\vec ${name} =\\)</span>` + v.map((c, i) => {
+    const op = i === 0 ? (c < 0 ? '-' : '') : (c < 0 ? '-\\,' : '+\\,');
+    return `<span class="vt" data-v="${name}${i}">\\(${op}${Math.abs(c) === 1 ? '' : Math.abs(c)}${hatTex(i)}\\)</span>`;
+  }).join('');
+}
+
+function newP3() {
+  const a = [0, 0, 0].map(() => randNZ(9)), b = [0, 0, 0].map(() => randNZ(9));
+  Object.assign(p3, { a, b, c: cross(a, b), step: -1, answers: [], busy: false });
+  $('#p3-vecs').innerHTML = `<p>${vecTerms(a, 'a')}</p><p>${vecTerms(b, 'b')}</p>`;
+  typeset($('#p3-vecs'));
+  buildDet();
+  $('#p3-ans').innerHTML = '';
+  $('#p3-sum').innerHTML = '';
+  $('#p3-step').textContent = 'Click “Fill in the rows” to load the vectors into the determinant.';
+  $('#p3-hint').hidden = true;
+  $('#p3-fill').hidden = false; $('#p3-check').hidden = true;
+}
+
+function fly(from, to, text, delay) {
+  return new Promise(res => {
+    const f = from.getBoundingClientRect(), t = to.getBoundingClientRect();
+    const d = document.createElement('div');
+    d.className = 'flyer'; d.textContent = text;
+    d.style.left = f.left + f.width / 2 + 'px'; d.style.top = f.top + f.height / 2 + 'px';
+    document.body.appendChild(d);
+    const dx = t.left + t.width / 2 - (f.left + f.width / 2), dy = t.top + t.height / 2 - (f.top + f.height / 2);
+    const anim = d.animate([
+      { transform: 'translate(-50%,-50%)', opacity: 0 },
+      { transform: 'translate(-50%,-50%) scale(1.15)', opacity: 1, offset: .15 },
+      { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`, opacity: 1 }
+    ], { duration: 700, delay, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'both' });
+    let done = false;
+    const finish = () => { if (done) return; done = true; d.remove(); to.textContent = text; res(); };
+    anim.onfinish = finish;
+    setTimeout(finish, delay + 900);  // in case the page isn't painting (background tab)
+  });
+}
+
+async function fillRows() {
+  if (p3.busy) return;
+  p3.busy = true;
+  $('#p3-fill').hidden = true;
+  const jobs = [];
+  [['a', 1], ['b', 2]].forEach(([name, r], vi) => {
+    for (let i = 0; i < 3; i++) {
+      const src = document.querySelector(`.vt[data-v="${name}${i}"]`);
+      jobs.push(fly(src, cell(r, i), fmt(p3[name][i]), (vi * 3 + i) * 160));
+    }
+  });
+  await Promise.all(jobs);
+  for (let r = 1; r < 3; r++) cell(r, 3).textContent = cell(r, 0).textContent;
+  p3.busy = false;
+  buildAnswerLine();
+  showStep(0);
+}
+
+function buildAnswerLine() {
+  const box = $('#p3-ans');
+  box.innerHTML = `<span>\\(\\vec a\\times\\vec b =\\)</span>` + [0, 1, 2].map(k =>
+    `<span class="slot" data-k="${k}">?</span><span>\\(${hatTex(k)}${k < 2 ? '\\;+' : ''}\\)</span>`).join('');
+  typeset(box);
+}
+
+function showStep(s) {
+  p3.step = s;
+  const { k, cols } = STEPS[s];
+  det.classList.add('stepping');
+  det.classList.toggle('wrap', s === 1);
+  det.querySelectorAll('.cell').forEach(c => {
+    const r = +c.dataset.r, cc = +c.dataset.c;
+    const unit = r === 0 && cc === k, blk = r > 0 && cols.includes(cc);
+    c.classList.toggle('unit', unit); c.classList.toggle('blk', blk);
+    c.classList.toggle('dim', !unit && !blk);
+  });
+  drawDiags();
+  const names = ['x', 'y', 'z'];
+  $('#p3-step').innerHTML = `Step ${s + 1} of 3: the <b>${names[k]}</b> component`;
+  typeset($('#p3-step'));
+  $('#p3-tip').innerHTML = `Multiply along the <span class="sw" style="background:var(--d1)"></span> diagonal,
+    then subtract the product along the <span class="sw" style="background:var(--d2)"></span> diagonal.` +
+    (s === 1 ? `<br><br>The \\(\\xh\\) column is copied to the right of \\(\\zh\\) so the block stays together.
+    Reading the \\(z\\) and \\(x\\) columns in this cyclic order means no extra minus sign is needed.` : '');
+  typeset($('#p3-tip'));
+  $('#p3-hint').hidden = false;
+  document.querySelectorAll('.slot').forEach(x => x.classList.remove('cur'));
+  const slot = document.querySelector(`.slot[data-k="${k}"]`);
+  slot.classList.add('cur');
+  slot.innerHTML = '<input inputmode="numeric" autocomplete="off" aria-label="component">';
+  const inp = slot.querySelector('input');
+  inp.onkeydown = e => { if (e.key === 'Enter') check(); };
+  $('#p3-check').hidden = false;
+  setTimeout(() => inp.focus(), 50);
+}
+
+function drawDiags() {
+  const svgD = det.querySelector('svg.diag');
+  svgD.classList.remove('show');
+  if (p3.step < 0 || p3.step > 2) return;
+  const [c0, c1] = STEPS[p3.step].cols;
+  const ctr = e => [e.offsetLeft + e.offsetWidth / 2, e.offsetTop + e.offsetHeight / 2];
+  const set = (id, p, q) => {
+    const dx = q[0] - p[0], dy = q[1] - p[1], len = Math.hypot(dx, dy), s = 17 / len;
+    const ln = $('#' + id);
+    ln.setAttribute('x1', p[0] + dx * s); ln.setAttribute('y1', p[1] + dy * s);
+    ln.setAttribute('x2', q[0] - dx * s); ln.setAttribute('y2', q[1] - dy * s);
+  };
+  set('dg1', ctr(cell(1, c0)), ctr(cell(2, c1)));
+  set('dg2', ctr(cell(1, c1)), ctr(cell(2, c0)));
+  requestAnimationFrame(() => svgD.classList.add('show'));
+}
+p3.redraw = drawDiags;
+new ResizeObserver(() => drawDiags()).observe(det);
+
+function check() {
+  const s = p3.step;
+  if (s < 0 || s > 2 || p3.busy) return;
+  const { k } = STEPS[s];
+  const slot = document.querySelector(`.slot[data-k="${k}"]`);
+  const raw = slot.querySelector('input').value.trim().replace(MINUS, '-');
+  if (!/^-?\d+$/.test(raw)) { slot.querySelector('input').focus(); return; }
+  const v = parseInt(raw, 10), ok = v === p3.c[k];
+  p3.answers[k] = v;
+  slot.classList.remove('cur');
+  slot.innerHTML = `${fmt(v)} <span class="mark ${ok ? 'ok' : 'no'}">${ok ? '✓' : '✗'}</span>`;
+  p3.busy = true;
+  $('#p3-check').hidden = true;
+  setTimeout(() => { p3.busy = false; s < 2 ? showStep(s + 1) : finishP3(); }, 900);
+}
+
+function finishP3() {
+  p3.step = 3;
+  det.className = 'det';
+  det.querySelectorAll('.cell').forEach(c => c.classList.remove('unit', 'blk', 'dim'));
+  drawDiags();
+  $('#p3-hint').hidden = true;
+  const right = p3.answers.filter((v, k) => v === p3.c[k]).length;
+  $('#p3-step').textContent = `Done: ${right} of 3 components correct.`;
+  const rows = [0, 1, 2].map(k => {
+    const ok = p3.answers[k] === p3.c[k];
+    return `<tr><td>\\(${hatTex(k)}\\)</td><td>${fmt(p3.answers[k])}</td><td>${fmt(p3.c[k])}</td>
+      <td class="mark ${ok ? 'ok' : 'no'}">${ok ? '✓' : '✗'}</td></tr>`;
+  }).join('');
+  $('#p3-sum').innerHTML = `<table class="sum"><tr><th>Component</th><th>Your answer</th><th>Correct</th><th></th></tr>${rows}</table>
+    \\[\\vec a\\times\\vec b = ${vecTex(p3.c)}\\]`;
+  typeset($('#p3-sum'));
+}
+$('#p3-fill').onclick = fillRows;
+$('#p3-check').onclick = check;
+$('#p3-new').onclick = newP3;
+
+/* ================= theme + start ================= */
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  themed.forEach(({ m, token }) => m.color.set(css(token)));
+  disposeGroup(p1.axes); p1.axes = buildAxes(p1.L); v1.scene.add(p1.axes);
+  hAx.forEach((h, i) => h.ar.mat.color.set(css(hSel.includes(i) ? '--accent' : '--neutral')));
+  buildCycle(); clearCyc();
+  $('#dg1').setAttribute('stroke', css('--d1')); $('#dg2').setAttribute('stroke', css('--d2'));
+});
+
+buildCycle();
+newP1(); newP2(); newP3();
+setHelpMode('axes');
+const startTab = HASH.indexOf(location.hash);
+showTab(startTab < 0 ? 0 : startTab);
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
