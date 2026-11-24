@@ -115,13 +115,16 @@ export function mountReportViewer(root) {
   return { open };
 }
 
-// Columns of the class table. Flags are filled in by the flag checks (ticket 11).
+// Columns of the class table. Flags come from the core's flag checks (flags.js);
+// a warning (name mismatch) is styled apart from a flag, and each shows its reason on hover.
 const CLASS_COLUMNS = [
   ['Student', (row, onOpen) => h('button', { class: 'fw-class-name', type: 'button', onclick: () => onOpen(row) }, row.name)],
   ['Tasks passed', (row) => `${row.tasksPassed} / ${row.taskCount}`],
   ['Attempts', (row) => String(row.attemptCount)],
   ['Points', (row) => `${row.earned} / ${row.possible}`],
-  ['Flags', (row) => row.flags.map((f) => h('span', { class: 'fw-class-flag', title: f.message ?? '' }, f.label ?? String(f.kind ?? f)))],
+  ['Flags', (row) => row.flags.map((f) => h('span', {
+    class: f.severity === 'warning' ? 'fw-class-flag fw-class-warning' : 'fw-class-flag', title: f.message ?? '',
+  }, f.label ?? String(f.kind ?? f)))],
 ];
 
 function classView(cls, onOpen) {

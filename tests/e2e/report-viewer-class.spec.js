@@ -29,7 +29,7 @@ test('a Brightspace bulk-download zip opens as a class table, read in the browse
   await expect(table.getByRole('columnheader')).toHaveText(['Student', 'Tasks passed', 'Attempts', 'Points', 'Flags']);
   const rows = table.getByRole('row');
   await expect(rows).toHaveCount(3);
-  await expect(rows.nth(1).getByRole('cell')).toHaveText(['Ada Lovelace', '2 / 3', '3', '4 / 8', '']);
+  await expect(rows.nth(1).getByRole('cell')).toHaveText(['Ada Lovelace', '2 / 3', '3', '4 / 8', 'Tampered']); // edited, not resealed
   await expect(rows.nth(2).getByRole('cell')).toHaveText(['Grace Hopper', '0 / 1', '2', '4 / 5', '']);
   expect(requests.filter((r) => r.method() !== 'GET')).toEqual([]);
 });
@@ -52,6 +52,28 @@ test("clicking a student opens their full detail, and Back returns to the class"
 
   await page.getByRole('button', { name: 'Back to class' }).click();
   await expect(page.getByRole('table', { name: 'Class' })).toBeVisible();
+});
+
+test('the Flags column shows flags and name-mismatch warnings, each with its reason', async ({ page }) => {
+  const edited = await sampleReport('Ada Lovelace');
+  edited.parts[0].tasks[0].attempts[0].state.x = 1; // hand-edited
+  await page.goto(VIEWER);
+  await page.getByLabel('Open a Report').setInputFiles({
+    name: 'Lab 3 Download.zip', mimeType: 'application/zip', buffer: Buffer.from(makeZip([
+      { name: '143560-1 - Ada Lovelace - Nov 24, 2026 1027 AM - demo_Ada.json', data: JSON.stringify(edited) },
+      { name: '143560-2 - Grace Hopper - Nov 24, 2026 1030 AM - quiz_Bo.json',
+        data: JSON.stringify(await quizReport('Bo Diddley')) },
+    ])),
+  });
+  const rows = page.getByRole('table', { name: 'Class' }).getByRole('row');
+  const tampered = rows.nth(1).locator('.fw-class-flag');
+  await expect(tampered).toHaveText('Tampered');
+  await expect(tampered).toHaveAttribute('title', /fails its checksum/);
+  const mismatch = rows.nth(2).locator('.fw-class-flag');
+  await expect(mismatch).toHaveText('Name mismatch');
+  await expect(mismatch).toHaveClass(/fw-class-warning/);
+  await expect(mismatch).toHaveAttribute('title', /Bo Diddley.*Grace Hopper/);
+  await expect(rows.nth(2).getByRole('cell').nth(3)).toHaveText('4 / 5'); // still scored
 });
 
 test('many Reports dropped together also open as a class table', async ({ page }) => {
