@@ -10,7 +10,8 @@ Static ES modules and CSS, served as-is (no build, no install). Breaking changes
 | `theme.css` | The v1 cream-and-serif theme and layout classes (`.fw-*`). |
 | `tool-host.js` | `mountStandalone(tool, root)`: Standalone mode, one tab per Mode, every Control unlocked, State autosaved per Tool and Mode, `#s=` share link. Also exports `createFrame`/`createTabs` for the Activity runner UI. |
 | `persistence.js` | Autosave (`createStore(key, storage)`, `standaloneKey(toolId, modeId)`) and `#s=` share links (`shareHash`/`readShareHash`). No DOM. |
-| `runner/` | Activity runner core (pure logic, no DOM). |
+| `runner/` | Activity runner core (pure logic, no DOM). `runner/keys.js`: encoded answer keys (`encodeKey`/`decodeKey`); the runner and scoring decode them. |
+| `authoring/encode-keys.html` | Authoring helper: paste a Condition or Question key (JS expression), copy the `enc1:` string into the Activity in its place. Also exposes `encodeKey()`/`decodeKey()` in the console. Deters casual cheating only (ADR 0001). |
 | `activity-ui.js` | Activity runner UI: `mountActivity(tool, activity, root)`, a thin DOM layer over the core (name gate, Part tabs each with its own Tool instance, Task cards with Submit/feedback/Hint, per-Part progress). |
 | `vendor.js` | Loaders for the vendored, pinned libraries in `vendor/` (`loadPlotly()`, `loadMathJax()`, `typeset(elements)`). |
 

@@ -14,6 +14,7 @@
 //   - a free-text Question's own points are earned once any Attempt gave a non-empty answer.
 import { evaluateCondition, createConditionRegistry } from './conditions.js';
 import { evaluateQuestions, isGraded } from './questions.js';
+import { decodeActivity } from './keys.js';
 
 // Judge one Submit of a Task: the Condition (if any) and its Questions.
 export function judgeTask(task, state, answers = {}, { info = {}, registry } = {}) {
@@ -22,7 +23,8 @@ export function judgeTask(task, state, answers = {}, { info = {}, registry } = {
   return { results, passed: results.every((r) => r.pass !== false) };
 }
 
-export function scoreActivity(activity, attempts = {}, { conditionTypes } = {}) {
+export function scoreActivity(definition, attempts = {}, { conditionTypes } = {}) {
+  const activity = decodeActivity(definition);
   const registry = createConditionRegistry(activity.conditionTypes, conditionTypes);
   const parts = activity.parts.map((part) => {
     const tasks = part.tasks.map((task) => scoreTask(task, attempts[part.id]?.[task.id] ?? [], registry));

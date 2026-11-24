@@ -1,6 +1,8 @@
 // Activity: phase shift / period and amplitude, on the oscilloscope Tool.
 // Ported from the Tasks in Finished/oscilloscope_lab.html. Pure data (no DOM): the
 // runner core and Node tests import it directly. Prompts and Questions may use \( \) math.
+// Conditions are encoded answer keys (framework/v1/authoring/encode-keys.html); decode
+// one in Node or the console with decodeKey() from framework/v1/runner/keys.js.
 
 const ALL = ['Va', 'f', 'Dt', 'Va-marker', 'f-marker', 'Dt-marker'];
 
@@ -22,7 +24,7 @@ export default {
           title: 'Phase shift \\(\\pi/2\\)',
           prompt: 'Set \\(\\phi = 2\\pi f \\Delta t = \\pi/2\\) (90°) by adjusting \\(f\\) and \\(\\Delta t\\).',
           show: ALL,
-          condition: { state: 'phi', target: Math.PI / 2, tol: 0.05, targetLabel: 'π/2 ≈ 1.571 rad' },
+          condition: 'enc1:HVVeAlBUBkNJVxEEREZJVhETAAILAAJRVFcOF0NSXBZydmQXCQQICFBBAVRFTw9DSUVPXBhIRwAEABUAGjhBCQAVGRpRquUPc2SwqbgQAR9TQBxWQ0EHQw4',
           points: 1,
           hint: { after: 3, text: 'With \\(f = 0.5\\) Hz, a quarter period is \\(\\Delta t = 0.5\\) s.' },
         },
@@ -31,7 +33,7 @@ export default {
           title: 'Phase shift \\(\\pi/4\\)',
           prompt: 'Set \\(\\phi = 2\\pi f \\Delta t = \\pi/4\\) (45°). \\(\\Delta t\\) is now fixed.',
           lock: ['Dt', 'Dt-marker'],
-          condition: { state: 'phi', target: Math.PI / 4, tol: 0.05, targetLabel: 'π/4 ≈ 0.785 rad' },
+          condition: 'enc1:HVVeAlBUBkNJVxEEREZJVhETAAILAAJRVVcMGEZWXBhwcmETCQcEBV5EAVRFTw9DSUVPXBhIRwAEABUAGjhBCQAVGRpRquUPdWSwqbgQAB9RTxhWQ0EHQw4',
           points: 1,
           hint: { after: 3, text: 'Halving \\(f\\) halves \\(\\phi\\) when \\(\\Delta t\\) stays the same.' },
         },
@@ -62,7 +64,7 @@ export default {
           show: ['f', 'f-marker'],
           lock: ['Va', 'Va-marker'],
           hide: ['Dt', 'Dt-marker'],
-          condition: { state: 'T', target: 3, tol: 0.05, targetLabel: '3.00 s' },
+          condition: 'enc1:HVVeAlBUBkNJVzVOAUYRFRcVFxFMThNHRw1UTFFfVQ5xcX4CRFFCVgMDYRdTRQ9DSVdSQh1URQdHDw',
           points: 1,
           hint: { after: 3, text: 'Type \\(f = 0.33\\) Hz into the number box: the f marker snaps to tenths.' },
         },
@@ -72,7 +74,7 @@ export default {
           prompt: 'Adjust \\(V_a\\) so that \\(2 V_a = 4\\) V.',
           show: ['Va', 'Va-marker'],
           lock: ['f', 'f-marker'],
-          condition: { state: 'pkpk', target: 4, tol: 0.05, targetLabel: '4.00 V' },
+          condition: 'enc1:HVVeAlBUBkNJVxEHXQ9HWEcGExcJEVRJX00XAgcKCQJ7dHwQBRwSRQcFShNFbAIDFhlDVg9QS0RVUiRHEw',
           points: 1,
           hint: { after: 3, text: 'Peak-to-peak is twice the amplitude: \\(V_a = 2\\) V.' },
         },
