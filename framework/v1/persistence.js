@@ -11,9 +11,14 @@
 //   load() returns null when nothing usable is saved. No method ever throws, so a
 //   private window, blocked storage or a full quota just means no autosave.
 //   standaloneKey(toolId, modeId) -> the key for one Tool's Mode in Standalone mode.
+//   runKey(activityId)            -> the key for an Activity's Run (see runner.save()/restore()).
 
 export function standaloneKey(toolId, modeId) {
   return `fw1:standalone:${toolId}:${modeId}`;
+}
+
+export function runKey(activityId) {
+  return `fw1:run:${activityId}`;
 }
 
 export function createStore(key, storage) {

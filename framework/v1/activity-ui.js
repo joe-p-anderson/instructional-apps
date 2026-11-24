@@ -1,8 +1,11 @@
 // Activity runner UI (framework v1): the thin DOM layer over the runner core (runner/).
 //
-// mountActivity(tool, activity, root, { conditionTypes })
+// mountActivity(tool, activity, root, { conditionTypes, storage })
 //   Mounts one Tool instance per Part (its Mode and Setup) under Part tabs, adds a Task card
 //   row and a progress indicator to each Part, and shows a name gate before Part 1.
+//   The Run autosaves to `storage` (default localStorage; null disables it), keyed by Activity
+//   id, and a saved Run is restored on load in place of the name gate. "Start over" (confirmed)
+//   discards the saved Run and reloads the page for a new one.
 //   All judging, ordering and Control exposure come from the core; this layer only renders
 //   what runner.parts()/runner.task() report and forwards Start and Submit.
 //   Returns { runner, instances: { [partId]: ToolInstance }, select(partId), render(), activePart }.
@@ -10,13 +13,14 @@
 // Prompts, titles, Question prompts and Hints are trusted HTML from the Activity author and may
 // contain \( \) math, typeset with MathJax.
 
+import { createStore, runKey } from './persistence.js';
 import { createRunner } from './runner/index.js';
 import { createFrame, createTabs } from './tool-host.js';
 import { defineTool } from './tool.js';
 import { h } from './ui-kit.js';
 import { typeset } from './vendor.js';
 
-export function mountActivity(tool, activity, root, { conditionTypes } = {}) {
+export function mountActivity(tool, activity, root, { conditionTypes, storage = browserStorage() } = {}) {
   defineTool(tool);
   if (activity.tool !== tool.id) throw new Error(`Activity "${activity.id}" is for Tool "${activity.tool}", not "${tool.id}".`);
   if (!document.title) document.title = activity.title;
@@ -40,9 +44,22 @@ export function mountActivity(tool, activity, root, { conditionTypes } = {}) {
   host.runner = createRunner(activity, { tools: host.instances, conditionTypes });
   host.select = tabs.select;
 
+  // ── Autosave: the whole Run after every Start, Submit and Tool State change ──
+  const store = createStore(runKey(activity.id), storage);
+  const autosave = () => { if (host.runner.run) store.save(host.runner.save()); };
+  let restored = false;
+  try { restored = host.runner.restore(store.load()); } catch { /* unusable save: new Run */ }
+  for (const instance of Object.values(host.instances)) instance.state.onChange(autosave);
+
   // ── Name gate: the Part tabs stay hidden until a name starts the Run ──
   const student = h('div', { class: 'fw-student', hidden: true });
-  frame.header.append(student);
+  const startOver = h('button', { type: 'button', class: 'fw-button fw-start-over', hidden: true }, 'Start over');
+  startOver.addEventListener('click', () => {
+    if (!confirm('Start over? This discards your progress and begins a new Run; you will enter your name again.')) return;
+    store.clear();
+    location.reload();
+  });
+  frame.header.append(student, startOver);
   frame.tablist.hidden = true;
   frame.panels.hidden = true;
 
@@ -65,19 +82,30 @@ export function mountActivity(tool, activity, root, { conditionTypes } = {}) {
       nameInput.focus();
       return;
     }
+    autosave();
+    enterRun();
+  });
+  if (restored) {
+    enterRun();
+  } else {
+    frame.app.insertBefore(gate, frame.tablist);
+    nameInput.focus();
+  }
+
+  typeset([frame.app]);
+  return host;
+
+  // Leave the name gate and show the Run's Parts.
+  function enterRun() {
     gate.remove();
     student.textContent = host.runner.run.name;
     student.hidden = false;
+    startOver.hidden = false;
     frame.tablist.hidden = false;
     frame.panels.hidden = false;
     render();
     tabs.select(activity.parts[0].id);
-  });
-  frame.app.insertBefore(gate, frame.tablist);
-  nameInput.focus();
-
-  typeset([frame.app]);
-  return host;
+  }
 
   // ── Task cards and progress for one Part ──
   function partView(part, p) {
@@ -137,6 +165,7 @@ export function mountActivity(tool, activity, root, { conditionTypes } = {}) {
     submit.addEventListener('click', () => {
       const given = Object.fromEntries(answers.map((a) => [a.id, a.read()]).filter(([, v]) => v !== undefined));
       const attempt = host.runner.submit(part.id, task.id, given);
+      autosave();
       feedback.className = `fw-task-feedback ${attempt.passed ? 'fw-ok' : 'fw-fail'}`;
       feedback.textContent = attempt.passed
         ? '✓ Correct!'
@@ -185,4 +214,8 @@ function stripTags(html) {
   const div = document.createElement('div');
   div.innerHTML = html;
   return div.textContent;
+}
+
+function browserStorage() {
+  try { return globalThis.localStorage ?? null; } catch { return null; }
 }
