@@ -37,3 +37,24 @@ export async function sampleReport(name = 'Ada Lovelace') {
   runner.submit('p1', 'why', { why: 'Because the phase lags.' });
   return runner.report();
 }
+
+export const quizActivity = {
+  id: 'quiz', version: 1, title: 'Quiz Lab', course: 'PHY 1000', tool: 'stub',
+  parts: [{ id: 'p1', title: 'Part 1', mode: 'main', setup: {}, tasks: [
+    { id: 'ask', title: 'Ask', prompt: '', points: 1, questions: [
+      { id: 'T', kind: 'numeric', prompt: '', answer: 3, tol: 0.05, points: 2 },
+      { id: 'c', kind: 'choice', prompt: '', correct: 'b', points: 1,
+        choices: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }] },
+      { id: 'why', kind: 'text', prompt: '', points: 1 },
+    ] },
+  ] }],
+};
+
+/** A Report where each graded Question was right in a different Attempt and the Task never passed. */
+export async function quizReport(name = 'Grace Hopper') {
+  const runner = createRunner(quizActivity, { tools: { p1: stubTool() }, clock: tickingClock() });
+  runner.start(name);
+  runner.submit('p1', 'ask', { T: 3, c: 'a', why: '  ' });
+  runner.submit('p1', 'ask', { T: 9, c: 'b', why: 'because' });
+  return runner.report();
+}

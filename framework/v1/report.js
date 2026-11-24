@@ -14,6 +14,8 @@
 //     earned, possible,                 // points in total
 //     parts: [{ id, title, earned, possible,
 //       tasks: [{ id, title, passed, earned, possible,
+//         points,                       // the Task's own points, as defined
+//         questions: [{ id, graded, points }],   // each Question's points (no answer keys)
 //         attempts: [{ at, state, answers, results, passed,
 //                      snapshots?: [{ display, png }] }] }] }],   // snapshots on passing Attempts only
 //     checksum,                         // over everything above (checksumOf)

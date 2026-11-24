@@ -354,6 +354,16 @@ html.fw-root:has(.fw-viewer), html.fw-root:has(.fw-viewer) body { height: auto; 
 .fw-report-snapshot { margin: 6px 0; }
 .fw-report-snapshot img { max-width: 100%; height: auto; border: 1px solid var(--fw-border); background: #fff; }
 
+.fw-class { padding: 0 20px 24px; overflow-x: auto; }
+.fw-class-table { border-collapse: collapse; width: 100%; font-size: 15px; background: var(--fw-surface); }
+.fw-class-table th, .fw-class-table td { border: 1px solid var(--fw-border); padding: 4px 10px; text-align: left; }
+.fw-class-table th { font-variant: small-caps; letter-spacing: 0.04em; color: var(--fw-text-dim); }
+.fw-class-name { font: inherit; color: var(--fw-blue); background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; text-align: left; }
+.fw-class-flag { display: inline-block; margin-right: 6px; color: var(--fw-red); }
+.fw-class-errors { margin-top: 12px; color: var(--fw-red); font-size: 14px; }
+.fw-class-errors h3 { font-size: 16px; margin: 0 0 4px; }
+.fw-viewer-back { padding: 0 20px 8px; }
+
 @media print {
   html.fw-root, html.fw-root body { background: #fff; }
   .fw-viewer { border: none; max-width: none; background: #fff; }

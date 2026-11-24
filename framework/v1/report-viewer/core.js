@@ -3,10 +3,27 @@
 //   openReport(text) -> view   parse one Report file into a plain student view;
 //                              throws an Error with a readable message if it isn't a Report.
 //
+//   uploaderFromPath(path) -> { uploader, submissionId, submittedAt, fileName }
+//                              who uploaded a file, from Brightspace bulk-download naming
+//   await readSubmissions(files) -> [{ path, uploader, submissionId, submittedAt, text }]
+//                              files: [{ name, bytes: Uint8Array }]; zips are expanded,
+//                              and only .json entries are kept
+//   openClass(submissions) -> { rows, errors }
+//                              rows: one per readable Report, sorted by name:
+//                                { path, uploader, submissionId, submittedAt, sealedName, name,
+//                                  tasksPassed, taskCount, attemptCount, earned, possible,
+//                                  flags: [], view }   (view: the openReport student view)
+//                              errors: [{ path, uploader, message }] for files that aren't Reports
+//
+// Every score is recomputed from the Report's Attempts (spec, Scoring), never taken
+// from its stored totals. `flags` is filled in by the flag checks (ticket 11); the
+// grades CSV (ticket 12) reads the same rows.
+//
 // Reading dispatches on the Report's formatVersion through `readers`, so every
 // Report format version still in use stays readable (spec, The Report Viewer).
 // A new format version adds a reader that maps its Reports onto the same view.
 import { verifyReport } from '../report.js';
+import { isZip, readZip } from './zip.js';
 
 const readers = {
   1: readV1,
@@ -32,8 +49,93 @@ export function openReport(text) {
   return read(report);
 }
 
+// Brightspace bulk-download naming. PROVISIONAL: assumed from the commonly seen
+// shape, not yet checked against a real download (spec keeps this open). Each
+// submission is either a flat file or a folder named
+//   "<id>-<id> - First Last - <submitted date>"            (folder)
+//   "<id>-<id> - First Last - <submitted date> - <file>"   (flat file)
+// The folder or file closest to the Report that has this shape names the uploader.
+// Anything else has uploader null, and the Report's sealed name is used instead.
+const BULK_NAME = /^(\d+-\d+) - (.+?) - (.+?)(?: - (.+))?$/;
+
+export function uploaderFromPath(path) {
+  const segments = String(path).split(/[\\/]/).filter(Boolean);
+  const fileName = segments.at(-1) ?? '';
+  for (let i = segments.length - 1; i >= 0; i--) {
+    const m = BULK_NAME.exec(segments[i]);
+    if (!m) continue;
+    const isFile = i === segments.length - 1;
+    if (isFile && !m[4]) continue; // a flat file needs its own file name after the date
+    return {
+      uploader: m[2].trim(),
+      submissionId: m[1],
+      submittedAt: m[3].trim(),
+      fileName: isFile ? m[4] : fileName,
+    };
+  }
+  return { uploader: null, submissionId: null, submittedAt: null, fileName };
+}
+
+export async function readSubmissions(files) {
+  const out = [];
+  const decoder = new TextDecoder();
+  const add = (path, bytes) => {
+    if (!/\.json$/i.test(path)) return;
+    out.push({ path, ...withoutFileName(uploaderFromPath(path)), text: decoder.decode(bytes) });
+  };
+  for (const { name, bytes } of files) {
+    if (/\.zip$/i.test(name) || isZip(bytes)) {
+      for (const entry of await readZip(bytes)) add(`${name}/${entry.name}`, entry.bytes);
+    } else {
+      add(name, bytes);
+    }
+  }
+  return out;
+}
+
+const withoutFileName = ({ fileName: _ignored, ...rest }) => rest;
+
+export function openClass(submissions) {
+  const rows = [];
+  const errors = [];
+  for (const { path, uploader = null, submissionId = null, submittedAt = null, text } of submissions) {
+    let view;
+    try {
+      view = openReport(text);
+    } catch (err) {
+      errors.push({ path, uploader, message: err.message });
+      continue;
+    }
+    rows.push({
+      path, uploader, submissionId, submittedAt,
+      sealedName: view.student.name,
+      name: uploader || view.student.name || path,
+      tasksPassed: view.tasksPassed,
+      taskCount: view.taskCount,
+      attemptCount: view.attemptCount,
+      earned: view.earned,
+      possible: view.possible,
+      flags: [],
+      view,
+    });
+  }
+  rows.sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
+  return { rows, errors };
+}
+
 // Format version 1: the schema in ../report.js.
 function readV1(report) {
+  const parts = (report.parts ?? []).map((part, p) => {
+    const tasks = (part.tasks ?? []).map((task, t) => ({
+      id: task.id,
+      number: `${p + 1}.${t + 1}`,
+      title: task.title ?? task.id,
+      ...rescoreTaskV1(task),
+      attempts: (task.attempts ?? []).map(readAttemptV1),
+    }));
+    return { id: part.id, title: part.title ?? part.id, ...totals(tasks), tasks };
+  });
+  const tasks = parts.flatMap((p) => p.tasks);
   return {
     formatVersion: report.formatVersion,
     frameworkVersion: report.frameworkVersion ?? '',
@@ -48,22 +150,43 @@ function readV1(report) {
     startedAt: report.startedAt ?? null,
     downloadedAt: report.downloadedAt ?? null,
     checksumOk: verifyReport(report),
-    ...points(report),
-    parts: (report.parts ?? []).map((part, p) => ({
-      id: part.id,
-      title: part.title ?? part.id,
-      ...points(part),
-      tasks: (part.tasks ?? []).map((task, t) => ({
-        id: task.id,
-        number: `${p + 1}.${t + 1}`,
-        title: task.title ?? task.id,
-        passed: task.passed === true,
-        ...points(task),
-        attempts: (task.attempts ?? []).map(readAttemptV1),
-      })),
-    })),
+    ...totals(parts),
+    // The totals the Report claims; shown nowhere, kept for comparison only.
+    stored: { earned: num(report.earned), possible: num(report.possible) },
+    tasksPassed: tasks.filter((t) => t.passed).length,
+    taskCount: tasks.length,
+    attemptCount: tasks.reduce((n, t) => n + t.attempts.length, 0),
+    parts,
   };
 }
+
+// Rescore one Task from its own Attempts (spec, Scoring), never from its stored
+// earned/passed. The Report Viewer has no Activity definition, so it judges by
+// each Attempt's recorded results and answers, with the points the Report records:
+//   - an Attempt passed if none of its results failed; the Task's points are
+//     earned if any Attempt passed;
+//   - a graded Question's points once a result for it passed in any Attempt;
+//   - a free-text Question's points once any Attempt gave a non-empty answer.
+// A Report without per-Question points counts all its possible points as the Task's.
+function rescoreTaskV1(task) {
+  const attempts = (task.attempts ?? []).filter((a) => a && typeof a === 'object');
+  const questions = (Array.isArray(task.questions) ? task.questions : [])
+    .map((q) => ({ id: q?.id, graded: q?.graded !== false, points: num(q?.points) }));
+  const own = Number.isFinite(task.points) ? task.points : num(task.possible);
+  const passed = attempts.some(attemptPassed);
+  let earned = passed ? own : 0;
+  for (const q of questions) {
+    const earns = q.graded
+      ? attempts.some((a) => resultsOf(a).some((r) => r?.kind === 'question' && r.id === q.id && r.pass === true))
+      : attempts.some((a) => nonEmpty(a.answers?.[q.id]));
+    if (earns) earned += q.points;
+  }
+  return { passed, earned, possible: own + questions.reduce((n, q) => n + q.points, 0) };
+}
+
+const resultsOf = (a) => (Array.isArray(a.results) ? a.results : null) ?? [];
+const attemptPassed = (a) => Array.isArray(a.results) && a.results.every((r) => r?.pass !== false);
+const nonEmpty = (v) => v !== undefined && v !== null && String(v).trim() !== '';
 
 function readAttemptV1(attempt, i) {
   const results = attempt.results ?? [];
@@ -81,7 +204,8 @@ function readAttemptV1(attempt, i) {
   };
 }
 
-// The student view shows the points the Report carries; recomputing them from the
-// Attempts needs the Activity definition (class view, ticket 10).
-const points = (item) => ({ earned: num(item.earned), possible: num(item.possible) });
+const totals = (items) => ({
+  earned: items.reduce((n, i) => n + i.earned, 0),
+  possible: items.reduce((n, i) => n + i.possible, 0),
+});
 const num = (v) => (Number.isFinite(v) ? v : 0);
