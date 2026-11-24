@@ -9,6 +9,7 @@
 //       id, title, prompt,                      // prompt may contain math
 //       show?: [controlId], lock?: [controlId], hide?: [controlId],
 //       condition?,                             // see conditions.js
+//       questions?: [question],                  // see questions.js
 //       points,
 //       hint?: { after: missCount, text },
 //     }],
@@ -42,6 +43,24 @@ export function validateActivity(activity) {
       }
       if (task.hint !== undefined && (typeof task.hint.after !== 'number' || typeof task.hint.text !== 'string')) {
         fail(`Task "${task.id}" hint needs { after: number, text: string }`);
+      }
+      if (task.questions !== undefined && !Array.isArray(task.questions)) fail(`Task "${task.id}" questions must be a list`);
+      const questionIds = new Set();
+      for (const q of task.questions ?? []) {
+        const where = `Question "${q.id}" in Task "${task.id}"`;
+        if (!q.id) fail(`a Question in Task "${task.id}" is missing its id`);
+        if (questionIds.has(q.id)) fail(`duplicate ${where}`);
+        questionIds.add(q.id);
+        if (!['numeric', 'choice', 'text'].includes(q.kind)) fail(`${where} kind must be numeric, choice or text`);
+        if (q.points !== undefined && typeof q.points !== 'number') fail(`${where} points must be a number`);
+        if (q.kind === 'numeric') {
+          if (typeof q.answer !== 'number') fail(`${where} needs a numeric answer`);
+          if (typeof q.tol !== 'number' && typeof q.relTol !== 'number') fail(`${where} needs tol or relTol`);
+        }
+        if (q.kind === 'choice') {
+          if (!Array.isArray(q.choices) || q.choices.length < 2) fail(`${where} needs at least two choices`);
+          if (!q.choices.some((c) => c.id === q.correct)) fail(`${where} correct must name one of its choices`);
+        }
       }
     }
   }

@@ -10,6 +10,7 @@
 // controls.get(id) with get/set/lock/unlock/show/hide, displays[].snapshot).
 import { evaluateCondition, createConditionRegistry } from './conditions.js';
 import { validateActivity } from './activity.js';
+import { evaluateQuestions } from './questions.js';
 
 export { builtinConditionTypes, createConditionRegistry, evaluateCondition } from './conditions.js';
 export { validateActivity } from './activity.js';
@@ -104,7 +105,7 @@ export function createRunner(activity, { tools = {}, clock = () => new Date(), c
       };
     },
 
-    submit(partId, taskId) {
+    submit(partId, taskId, answers = {}) {
       requireRun();
       const part = findPart(partId);
       const task = findTask(part, taskId);
@@ -117,11 +118,13 @@ export function createRunner(activity, { tools = {}, clock = () => new Date(), c
       const results = task.condition
         ? evaluateCondition(task.condition, state, { info: tool.state.describe(), registry })
         : [];
+      results.push(...evaluateQuestions(task.questions, answers));
       const attempt = {
         at: clock().toISOString(),
         state,
+        answers: structuredClone(answers),
         results,
-        passed: results.every((r) => r.pass),
+        passed: results.every((r) => r.pass !== false),
       };
       const record = progress.get(part.id).get(task.id);
       record.attempts.push(attempt);
