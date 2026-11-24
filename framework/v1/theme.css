@@ -308,3 +308,55 @@ html.fw-root, html.fw-root body {
 .fw-task-feedback.fw-fail { color: var(--fw-red); }
 .fw-task-hint { font-size: 14px; color: var(--fw-yellow); font-style: italic; line-height: 1.4; }
 .fw-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Report Viewer (report-viewer/): a scrolling document page, printable ── */
+.fw-viewer, .fw-viewer *, .fw-viewer *::before, .fw-viewer *::after { box-sizing: border-box; }
+html.fw-root:has(.fw-viewer), html.fw-root:has(.fw-viewer) body { height: auto; min-height: 100%; }
+.fw-viewer {
+  max-width: 960px; margin: 0 auto; min-height: 100vh;
+  background: var(--fw-bg);
+  border-left: 1px solid var(--fw-border-dk); border-right: 1px solid var(--fw-border-dk);
+}
+.fw-viewer-drop {
+  margin: 16px 20px; padding: 18px; text-align: center;
+  border: 2px dashed var(--fw-border-dk); background: var(--fw-surface);
+}
+.fw-viewer-drop.fw-dragging { border-color: var(--fw-blue); background: #fff; }
+.fw-viewer-drop-label { font-variant: small-caps; letter-spacing: 0.06em; font-size: 18px; color: var(--fw-blue); display: block; margin-bottom: 6px; }
+.fw-viewer-input { font-family: var(--fw-font); font-size: 15px; max-width: 100%; }
+.fw-viewer-drop-help { margin: 8px 0 0; font-size: 14px; color: var(--fw-text-dim); font-style: italic; }
+.fw-viewer-message { margin: 0 20px 16px; padding: 8px 12px; border: 1px solid var(--fw-red); color: var(--fw-red); background: var(--fw-surface); }
+.fw-viewer-message[hidden] { display: none; }
+
+.fw-report { padding: 0 20px 24px; }
+.fw-report-actions { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.fw-report-head { border-bottom: 3px double var(--fw-border-dk); padding-bottom: 10px; margin-bottom: 12px; }
+.fw-report-course { font-size: 15px; color: var(--fw-text-dim); font-style: italic; }
+.fw-report-title { margin: 2px 0 8px; font-size: 24px; font-variant: small-caps; letter-spacing: 0.04em; }
+.fw-report-meta { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px 16px; margin: 0; font-size: 15px; }
+.fw-report-meta dt, .fw-report-answers dt { font-variant: small-caps; color: var(--fw-text-dim); display: inline; }
+.fw-report-meta dt::after, .fw-report-answers dt::after { content: ': '; }
+.fw-report-meta dd, .fw-report-answers dd { display: inline; margin: 0; overflow-wrap: anywhere; }
+.fw-report-warning { color: var(--fw-red); font-weight: bold; margin: 8px 0 0; }
+.fw-report-part { margin-bottom: 18px; }
+.fw-report-part h3 { margin: 12px 0 2px; font-size: 20px; font-variant: small-caps; border-bottom: 1px solid var(--fw-border-dk); }
+.fw-report-points { font-size: 14px; color: var(--fw-text-dim); font-style: italic; }
+.fw-report-task { margin: 10px 0 0 8px; padding: 8px 10px; background: var(--fw-surface); border: 1px solid var(--fw-border); break-inside: avoid; }
+.fw-report-task[data-status="passed"] { border-left: 4px solid var(--fw-green); }
+.fw-report-task h4 { margin: 0; font-size: 16px; font-variant: small-caps; letter-spacing: 0.03em; }
+.fw-report-attempts { margin: 6px 0 0; padding-left: 22px; font-size: 15px; }
+.fw-report-attempt { margin-bottom: 6px; }
+.fw-report-attempt.fw-pass .fw-report-attempt-head { color: var(--fw-green); }
+.fw-report-attempt.fw-miss .fw-report-attempt-head { color: var(--fw-red); }
+.fw-report-state, .fw-report-answers { margin: 2px 0; }
+.fw-report-answers > div { white-space: pre-wrap; }
+.fw-report-feedback { margin: 2px 0; padding-left: 18px; font-style: italic; color: var(--fw-text-dim); }
+.fw-report-snapshot { margin: 6px 0; }
+.fw-report-snapshot img { max-width: 100%; height: auto; border: 1px solid var(--fw-border); background: #fff; }
+
+@media print {
+  html.fw-root, html.fw-root body { background: #fff; }
+  .fw-viewer { border: none; max-width: none; background: #fff; }
+  .fw-viewer-chrome { display: none !important; }
+  .fw-report-task { background: #fff; }
+}

@@ -14,6 +14,7 @@ Static ES modules and CSS, served as-is (no build, no install). Breaking changes
 | `report.js` | **The Report format**: schema (header comment), `sealReport`/`verifyReport`/`checksumOf` (keyed SHA-256 over canonical JSON), `readReport(text)`, `reportFilename`, `createFingerprint`, `REPORT_FORMAT_VERSION`, `FRAMEWORK_VERSION`. No DOM. |
 | `authoring/encode-keys.html` | Authoring helper: paste a Condition or Question key (JS expression), copy the `enc1:` string into the Activity in its place. Also exposes `encodeKey()`/`decodeKey()` in the console. Deters casual cheating only (ADR 0001). |
 | `activity-ui.js` | Activity runner UI: `mountActivity(tool, activity, root)`, a thin DOM layer over the core (name gate, Part tabs each with its own Tool instance, Task cards with Submit/feedback/Hint, per-Part progress, Download Report, Start over). |
+| `report-viewer/` | **The Report Viewer** page, `report-viewer/index.html` (client-side only; no file leaves the browser). `core.js`: DOM-free core, `openReport(text)` parses a Report into a plain student view, dispatching on Report format version through its `readers` table (`READABLE_FORMAT_VERSIONS`). `ui.js`: `mountReportViewer(root)`, the thin DOM layer (drop/choose a file, student view, Print / Save as PDF). |
 | `vendor.js` | Loaders for the vendored, pinned libraries in `vendor/` (`loadPlotly()`, `loadMathJax()`, `typeset(elements)`). |
 
 ## Opening an Activity
