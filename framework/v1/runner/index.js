@@ -6,10 +6,12 @@
 //   runner.task(partId, taskId)   // status, misses, hint, attempts
 //   runner.submit(partId, taskId, answers?) // judge State + Question answers; returns the Attempt
 //   runner.score()                // points earned/possible per Task, Part and total (see scoring.js)
+//   await runner.report()         // the sealed Report so far (format: ../report.js)
 //
 // Each Part has its own Tool instance (Tool contract: state.snapshot/describe/onChange,
 // controls.get(id) with get/set/lock/unlock/show/hide, displays[].snapshot).
 import { createConditionRegistry } from './conditions.js';
+import { createFingerprint, sealReport, REPORT_FORMAT_VERSION, FRAMEWORK_VERSION } from '../report.js';
 import { validateActivity } from './activity.js';
 import { judgeTask, scoreActivity } from './scoring.js';
 
@@ -24,6 +26,7 @@ export function createRunner(activity, { tools = {}, clock = () => new Date(), c
     if (!tools[part.id]) throw new Error(`Part "${part.id}" needs a Tool instance.`);
   }
   let run = null;
+  const pendingSnapshots = new Set();
   const registry = createConditionRegistry(activity.conditionTypes, conditionTypes);
 
   // Per-Task progress, keyed by Part id then Task id.
@@ -71,6 +74,23 @@ export function createRunner(activity, { tools = {}, clock = () => new Date(), c
     for (const id of task.hide ?? []) control(id).hide();
   }
 
+  function score() {
+    const attempts = Object.fromEntries(activity.parts.map((part) => [
+      part.id,
+      Object.fromEntries(part.tasks.map((task) => [task.id, progress.get(part.id).get(task.id).attempts])),
+    ]));
+    return scoreActivity(activity, attempts, { conditionTypes });
+  }
+
+  // PNG data URLs of the Part's Displays, attached to the (passing) Attempt once taken.
+  function captureSnapshots(part, attempt) {
+    const displays = tools[part.id].displays ?? [];
+    const pending = Promise.all(displays.map(async (d) => ({ display: d.id, png: await d.snapshot() })))
+      .catch(() => [])
+      .then((snapshots) => { attempt.snapshots = snapshots; pendingSnapshots.delete(pending); });
+    pendingSnapshots.add(pending);
+  }
+
   return {
     get run() { return run; },
 
@@ -78,7 +98,7 @@ export function createRunner(activity, { tools = {}, clock = () => new Date(), c
       if (run) throw new Error('This Run has already started; start over to change the name.');
       const trimmed = String(name ?? '').trim();
       if (!trimmed) throw new Error('A name is required to start the Run.');
-      run = Object.freeze({ name: trimmed, fingerprint: randomFingerprint(), startedAt: clock().toISOString() });
+      run = Object.freeze({ name: trimmed, fingerprint: createFingerprint(), startedAt: clock().toISOString() });
       for (const part of activity.parts) {
         const first = part.tasks.findIndex((_, i) => statusOf(part, i) === 'open');
         if (first !== -1) applyExposure(part, part.tasks[first]);
@@ -109,12 +129,38 @@ export function createRunner(activity, { tools = {}, clock = () => new Date(), c
     },
 
     // Points earned and possible, recomputed from the recorded Attempts.
-    score() {
-      const attempts = Object.fromEntries(activity.parts.map((part) => [
-        part.id,
-        Object.fromEntries(part.tasks.map((task) => [task.id, progress.get(part.id).get(task.id).attempts])),
-      ]));
-      return scoreActivity(activity, attempts, { conditionTypes });
+    score,
+
+    // The Report of the Run so far, sealed with its checksum. Waits for any
+    // Display snapshots still being taken.
+    async report() {
+      requireRun();
+      await Promise.all(pendingSnapshots);
+      const downloadedAt = clock().toISOString();
+      const scored = score();
+      return sealReport({
+        formatVersion: REPORT_FORMAT_VERSION,
+        frameworkVersion: FRAMEWORK_VERSION,
+        activity: { id: activity.id, version: activity.version, title: activity.title, course: activity.course ?? '' },
+        student: { name: run.name },
+        fingerprint: run.fingerprint,
+        startedAt: run.startedAt,
+        downloadedAt,
+        earned: scored.earned,
+        possible: scored.possible,
+        parts: activity.parts.map((part, p) => ({
+          id: part.id,
+          title: part.title ?? '',
+          earned: scored.parts[p].earned,
+          possible: scored.parts[p].possible,
+          tasks: part.tasks.map((task, t) => ({
+            id: task.id,
+            title: task.title ?? '',
+            ...scored.parts[p].tasks[t],
+            attempts: structuredClone(progress.get(part.id).get(task.id).attempts),
+          })),
+        })),
+      });
     },
 
     submit(partId, taskId, answers = {}) {
@@ -139,6 +185,7 @@ export function createRunner(activity, { tools = {}, clock = () => new Date(), c
       record.attempts.push(attempt);
       if (attempt.passed) {
         record.passed = true;
+        captureSnapshots(part, attempt);
         const next = part.tasks[part.tasks.indexOf(task) + 1];
         if (next) applyExposure(part, next);
       }
@@ -152,10 +199,4 @@ const missesOf = (record) => record.attempts.filter((a) => !a.passed).length;
 function hintFor(task, record) {
   if (!task.hint) return null;
   return missesOf(record) >= task.hint.after ? task.hint.text : null;
-}
-
-function randomFingerprint() {
-  const bytes = new Uint8Array(16);
-  globalThis.crypto.getRandomValues(bytes);
-  return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
