@@ -9,7 +9,7 @@
 // untrusted, so it is only ever inserted as text (h() children), never as HTML.
 import { h } from '../ui-kit.js';
 import { typeset } from '../vendor.js';
-import { openReport, readSubmissions, openClass } from './core.js';
+import { openReport, readUploads, openClass } from './core.js';
 import { isZip } from './zip.js';
 import { gradesCsv } from './grades-csv.js';
 
@@ -71,7 +71,7 @@ export function mountReportViewer(root) {
     }
     let cls;
     try {
-      cls = openClass(await readSubmissions(read));
+      cls = openClass(await readUploads(read));
     } catch (err) {
       output.replaceChildren();
       showError(`${read.map((f) => f.name).join(', ')}: ${err.message}`);

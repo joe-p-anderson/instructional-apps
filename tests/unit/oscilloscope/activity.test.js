@@ -7,7 +7,7 @@ import { stubTool } from '../runner/stub-tool.js';
 
 const CONTROLS = ['Va', 'f', 'Dt', 'Va-marker', 'f-marker', 'Dt-marker'];
 
-// A stub oscilloscope: settable signal parameters with the real derived metrics.
+// A stub oscilloscope: settable signal values with the real derived metrics.
 function scope() {
   const tool = stubTool({
     state: {
@@ -18,10 +18,10 @@ function scope() {
     },
     controls: CONTROLS,
   });
-  const params = { Va: 2, f: 0.5, Dt: 0.25 };
+  const signal = { Va: 2, f: 0.5, Dt: 0.25 };
   tool.setSignal = (patch) => {
-    Object.assign(params, patch);
-    tool.setState({ ...params, ...metrics(params) });
+    Object.assign(signal, patch);
+    tool.setState({ ...signal, ...metrics(signal) });
   };
   tool.setSignal({});
   return tool;

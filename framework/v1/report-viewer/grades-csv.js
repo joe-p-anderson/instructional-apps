@@ -16,7 +16,7 @@
 //   <item> Points Grade      the points recomputed from the Attempts
 //   End-of-Line Indicator    "#", which Brightspace imports expect as the last column
 const COLUMNS = [
-  ['Submission Id', (row) => row.submissionId ?? ''],
+  ['Submission Id', (row) => row.uploadId ?? ''],
   ['Student', (row) => row.name],
   [(item) => `${item} Points Grade`, (row) => row.earned],
   ['End-of-Line Indicator', () => '#'],

@@ -3,14 +3,14 @@
 //   openReport(text) -> view   parse one Report file into a plain student view;
 //                              throws an Error with a readable message if it isn't a Report.
 //
-//   uploaderFromPath(path) -> { uploader, submissionId, submittedAt, fileName }
+//   uploaderFromPath(path) -> { uploader, uploadId, uploadedAt, fileName }
 //                              who uploaded a file, from Brightspace bulk-download naming
-//   await readSubmissions(files) -> [{ path, uploader, submissionId, submittedAt, text }]
+//   await readUploads(files) -> [{ path, uploader, uploadId, uploadedAt, text }]
 //                              files: [{ name, bytes: Uint8Array }]; zips are expanded,
 //                              and only .json entries are kept
-//   openClass(submissions) -> { rows, errors }
+//   openClass(uploads) -> { rows, errors }
 //                              rows: one per readable Report, sorted by name:
-//                                { path, uploader, submissionId, submittedAt, sealedName, name,
+//                                { path, uploader, uploadId, uploadedAt, sealedName, name,
 //                                  tasksPassed, taskCount, attemptCount, earned, possible,
 //                                  flags: [], view }   (view: the openReport student view)
 //                              errors: [{ path, uploader, message }] for files that aren't Reports
@@ -55,7 +55,7 @@ export function openReport(text) {
 
 // Brightspace bulk-download naming. PROVISIONAL: assumed from the commonly seen
 // shape, not yet checked against a real download (spec keeps this open). Each
-// submission is either a flat file or a folder named
+// upload is either a flat file or a folder named
 //   "<id>-<id> - First Last - <submitted date>"            (folder)
 //   "<id>-<id> - First Last - <submitted date> - <file>"   (flat file)
 // The folder or file closest to the Report that has this shape names the uploader.
@@ -72,15 +72,15 @@ export function uploaderFromPath(path) {
     if (isFile && !m[4]) continue; // a flat file needs its own file name after the date
     return {
       uploader: m[2].trim(),
-      submissionId: m[1],
-      submittedAt: m[3].trim(),
+      uploadId: m[1],
+      uploadedAt: m[3].trim(),
       fileName: isFile ? m[4] : fileName,
     };
   }
-  return { uploader: null, submissionId: null, submittedAt: null, fileName };
+  return { uploader: null, uploadId: null, uploadedAt: null, fileName };
 }
 
-export async function readSubmissions(files) {
+export async function readUploads(files) {
   const out = [];
   const decoder = new TextDecoder();
   const add = (path, bytes) => {
@@ -99,10 +99,10 @@ export async function readSubmissions(files) {
 
 const withoutFileName = ({ fileName: _ignored, ...rest }) => rest;
 
-export function openClass(submissions) {
+export function openClass(uploads) {
   const rows = [];
   const errors = [];
-  for (const { path, uploader = null, submissionId = null, submittedAt = null, text } of submissions) {
+  for (const { path, uploader = null, uploadId = null, uploadedAt = null, text } of uploads) {
     let view;
     try {
       view = openReport(text);
@@ -111,7 +111,7 @@ export function openClass(submissions) {
       continue;
     }
     rows.push({
-      path, uploader, submissionId, submittedAt,
+      path, uploader, uploadId, uploadedAt,
       sealedName: view.student.name,
       name: uploader || view.student.name || path,
       tasksPassed: view.tasksPassed,

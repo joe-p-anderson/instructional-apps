@@ -33,8 +33,8 @@ test('a Run fingerprint shared across uploaders flags both Reports; one uploader
   assert.match(flagsOf(cls, 'Bo Diddley').find((f) => f.kind === 'shared-fingerprint').message, /Ada Lovelace/);
   assert.ok(!kinds(cls, 'Cy Young').includes('shared-fingerprint'));
 
-  const resubmitted = openClass([sub('Ada Lovelace', ada, 'a1.json'), sub('Ada Lovelace', ada, 'a2.json')]);
-  assert.deepEqual(resubmitted.rows.map((r) => r.flags), [[], []]);
+  const uploadedTwice = openClass([sub('Ada Lovelace', ada, 'a1.json'), sub('Ada Lovelace', ada, 'a2.json')]);
+  assert.deepEqual(uploadedTwice.rows.map((r) => r.flags), [[], []]);
 });
 
 test('an identical Attempt history across uploaders is flagged, even from different Runs', async () => {

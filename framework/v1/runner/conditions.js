@@ -3,7 +3,7 @@
 // A Condition is one of:
 //   { state, target, tol, targetLabel? }   value within tolerance
 //   { state, equals }                      exact or boolean match
-//   { type, ...params }                    a registered Condition type
+//   { type, ...options }                   a registered Condition type
 //   (state, info) => boolean | { pass, feedback }   the escape hatch
 //   [ condition, ... ]                     several components; all must pass
 //

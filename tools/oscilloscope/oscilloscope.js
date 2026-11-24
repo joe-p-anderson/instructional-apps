@@ -53,25 +53,25 @@ function layout() {
 
 function mount(container, modeId = 'dual-trace', setup = {}) {
   const start = { ...DEFAULTS, ...(setup || {}) };
-  const params = { Va: start.Va, f: start.f, Dt: start.Dt };
+  const signal = { Va: start.Va, f: start.f, Dt: start.Dt };
   const changes = createEmitter();
   let ready = false;
 
   // ── State ──
   function getState() {
-    const m = metrics(params);
-    return { ...params, phi: m.phi, T: m.T, pkpk: m.pkpk, ratio: params.Dt / m.T };
+    const m = metrics(signal);
+    return { ...signal, phi: m.phi, T: m.T, pkpk: m.pkpk, ratio: signal.Dt / m.T };
   }
 
   // ── Controls column ──
-  const onParam = (key) => (v) => { params[key] = v; update(); };
+  const onSignal = (key) => (v) => { signal[key] = v; update(); };
   const sliders = {
     Va: slider({ id: 'Va', name: 'Va', label: 'V<sub>a</sub>', unit: 'V', min: 0, max: 3, step: 0.01,
-      value: params.Va, onChange: onParam('Va') }),
+      value: signal.Va, onChange: onSignal('Va') }),
     f: slider({ id: 'f', name: 'f', label: 'f', unit: 'Hz', min: 0.1, max: 1, step: 0.01,
-      value: params.f, onChange: onParam('f') }),
+      value: signal.f, onChange: onSignal('f') }),
     Dt: slider({ id: 'Dt', name: 'Δt', label: 'Δt', unit: 's', min: -WINDOW, max: WINDOW, step: 0.01,
-      value: params.Dt, onChange: onParam('Dt') }),
+      value: signal.Dt, onChange: onSignal('Dt') }),
   };
   const fmt = (d, unit) => (v) => `${v.toFixed(d)}${unit ? ` ${unit}` : ''}`;
   const readouts = {
@@ -100,7 +100,7 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
     'Va-marker': { key: 'Va', label: 'Va marker', fill: C.blue,
       at: (s) => [0, s.Va], drag: (x, y) => ({ Va: clamp(y, ...RANGES.Va) }) },
     'Dt-marker': { key: 'Dt', label: 'Δt marker', fill: C.orange,
-      at: (s) => [1 / s.f - s.Dt, s.Va], drag: (x) => ({ Dt: clamp(1 / params.f - x, ...RANGES.Dt) }) },
+      at: (s) => [1 / s.f - s.Dt, s.Va], drag: (x) => ({ Dt: clamp(1 / signal.f - x, ...RANGES.Dt) }) },
     'f-marker': { key: 'f', label: 'f marker', fill: C.blue,
       at: (s) => [1 / s.f, 0], drag: (x) => ({ f: Math.round((1 / clamp(x, 1, WINDOW)) * 10) / 10 }) },
   };
@@ -111,7 +111,7 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
     markers[id] = createControl({
       id,
       label: spec.label,
-      get: () => params[spec.key],
+      get: () => signal[spec.key],
       set: (v) => sliders[spec.key].set(v),
       onLock: redrawMarkers,
       onHide: redrawMarkers,
@@ -124,7 +124,7 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
   function markerTrace(id) {
     const spec = markerSpecs[id];
     const c = markers[id];
-    const [x, y] = spec.at(params);
+    const [x, y] = spec.at(signal);
     const locked = c.isLocked();
     return {
       x: c.isHidden() ? [] : [x],
@@ -137,8 +137,8 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
 
   function traces() {
     return [
-      { x: TS, y: cosWave(TS, params.Va, params.f, 0), mode: 'lines', line: { color: C.blue, width: 2.5 }, hoverinfo: 'skip' },
-      { x: TS, y: cosWave(TS, params.Va, params.f, params.Dt), mode: 'lines', line: { color: C.red, width: 2.5 }, hoverinfo: 'skip' },
+      { x: TS, y: cosWave(TS, signal.Va, signal.f, 0), mode: 'lines', line: { color: C.blue, width: 2.5 }, hoverinfo: 'skip' },
+      { x: TS, y: cosWave(TS, signal.Va, signal.f, signal.Dt), mode: 'lines', line: { color: C.red, width: 2.5 }, hoverinfo: 'skip' },
       ...markerIds.map(markerTrace),
     ];
   }
@@ -189,7 +189,7 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
     dragging = markerIds.find((id) => {
       const c = markers[id];
       if (c.isLocked() || c.isHidden()) return false;
-      const [x, y] = markerSpecs[id].at(params);
+      const [x, y] = markerSpecs[id].at(signal);
       return Math.hypot(px - xa.d2p(x), py - ya.d2p(y)) < GRAB_RADIUS;
     }) || null;
     if (!dragging) return;
@@ -226,7 +226,7 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
       snapshot: () => Plotly.toImage(plotDiv, { format: 'png', width: 620, height: 300 }),
       toScreen,
     }],
-    serialize: () => ({ Va: params.Va, f: params.f, Dt: params.Dt }),
+    serialize: () => ({ Va: signal.Va, f: signal.f, Dt: signal.Dt }),
     restore(saved = {}) {
       for (const k of ['Va', 'f', 'Dt']) if (Number.isFinite(saved[k])) sliders[k].set(saved[k]);
     },

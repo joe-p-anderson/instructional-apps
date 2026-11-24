@@ -4,8 +4,8 @@ import { openClass } from '../../../framework/v1/report-viewer/core.js';
 import { gradesCsv } from '../../../framework/v1/report-viewer/grades-csv.js';
 import { sampleReport, quizReport } from './fixtures.js';
 
-const sub = async (path, uploader, submissionId, report) =>
-  ({ path, uploader, submissionId, text: JSON.stringify(await report) });
+const sub = async (path, uploader, uploadId, report) =>
+  ({ path, uploader, uploadId, text: JSON.stringify(await report) });
 
 test('the grades CSV has a row per student with the recomputed points (provisional columns)', async () => {
   const inflated = await sampleReport('Ada Lovelace');
