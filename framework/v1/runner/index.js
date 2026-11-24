@@ -3,10 +3,11 @@
 //   const runner = createRunner(activity, { tools: { [partId]: toolInstance } });
 //   runner.start(name)            // name gate; begins the Run
 //   runner.parts()                // Parts with each Task's status: open | locked | passed
-//   runner.task(partId, taskId)   // status, misses, hint, attempts
+//   runner.task(partId, taskId)   // status, misses, hint, answers (to show), attempts
+//   runner.draft(partId, taskId, answers) // keep unsubmitted Question answers (saved with the Run)
 //   runner.submit(partId, taskId, answers?) // judge State + Question answers; returns the Attempt
 //   runner.score()                // points earned/possible per Task, Part and total (see scoring.js)
-//   runner.save()                 // JSON-able Run: name, fingerprint, Attempts, per-Part Tool State
+//   runner.save()                 // JSON-able Run: name, fingerprint, Attempts, drafts, per-Part Tool State
 //   runner.restore(saved)         // resume a saved Run in a fresh runner; Attempts for Task ids
 //                                 //   that no longer exist are dropped. Returns false if unusable.
 //   await runner.report()         // the sealed Report so far (format: ../report.js)
@@ -42,7 +43,7 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
   const progress = new Map(
     activity.parts.map((part) => [
       part.id,
-      new Map(part.tasks.map((task) => [task.id, { passed: false, attempts: [] }])),
+      new Map(part.tasks.map((task) => [task.id, { passed: false, attempts: [], draft: null }])),
     ]),
   );
 
@@ -133,8 +134,15 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
         status: statusOf(part, part.tasks.indexOf(task)),
         misses: missesOf(record),
         hint: hintFor(task, record),
+        answers: structuredClone(answersOf(record)),
         attempts: structuredClone(record.attempts),
       };
+    },
+
+    // Keep the Question answers typed but not yet submitted, so they survive save()/restore().
+    draft(partId, taskId, answers = {}) {
+      const part = findPart(partId);
+      progress.get(part.id).get(findTask(part, taskId).id).draft = structuredClone(answers);
     },
 
     // Points earned and possible, recomputed from the recorded Attempts.
@@ -188,6 +196,10 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
           state: tools[part.id].serialize?.() ?? null,
           attempts: Object.fromEntries(part.tasks.map((task) => [task.id,
             structuredClone(progress.get(part.id).get(task.id).attempts)])),
+          drafts: Object.fromEntries(part.tasks
+            .map((task) => [task.id, progress.get(part.id).get(task.id).draft])
+            .filter(([, d]) => d)
+            .map(([id, d]) => [id, structuredClone(d)])),
         }])),
       };
     },
@@ -204,9 +216,11 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
           try { tools[part.id].restore?.(savedPart.state); } catch { /* keep the Setup */ }
         }
         for (const task of part.tasks) {
+          const record = progress.get(part.id).get(task.id);
+          const draft = savedPart.drafts?.[task.id];
+          if (draft && typeof draft === 'object') record.draft = structuredClone(draft);
           const attempts = savedPart.attempts?.[task.id];
           if (!Array.isArray(attempts)) continue;
-          const record = progress.get(part.id).get(task.id);
           record.attempts = structuredClone(attempts);
           record.passed = attempts.some((a) => a?.passed);
         }
@@ -242,6 +256,7 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
       };
       const record = progress.get(part.id).get(task.id);
       record.attempts.push(attempt);
+      record.draft = null;
       if (attempt.passed) {
         record.passed = true;
         captureSnapshots(part, attempt);
@@ -254,6 +269,14 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
 }
 
 const missesOf = (record) => record.attempts.filter((a) => !a.passed).length;
+
+// The answers a Task's Questions show: the passing Attempt's once passed, else the
+// unsubmitted draft, else the last Attempt's.
+function answersOf(record) {
+  const passing = record.attempts.find((a) => a?.passed);
+  if (passing) return passing.answers ?? {};
+  return record.draft ?? record.attempts.at(-1)?.answers ?? {};
+}
 
 function hintFor(task, record) {
   if (!task.hint) return null;

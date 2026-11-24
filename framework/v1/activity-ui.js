@@ -89,6 +89,7 @@ export function mountActivity(tool, activity, root, { conditionTypes, storage = 
     enterRun();
   });
   if (restored) {
+    for (const view of Object.values(views)) for (const card of Object.values(view.cards)) card.restore();
     enterRun();
   } else {
     frame.app.insertBefore(gate, frame.tablist);
@@ -129,30 +130,15 @@ export function mountActivity(tool, activity, root, { conditionTypes, storage = 
   }
 
   function taskCard(part, task, number) {
-    const answers = []; // [{ id, read(), inputs }]
+    const answers = []; // [{ id, read(), write(value), field }]
     const questions = (task.questions ?? []).map((q, i) => {
       const promptId = `fw-q-${part.id}-${task.id}-${q.id}`;
       const prompt = h('div', { class: 'fw-question-prompt', id: promptId, html: q.prompt ?? '' });
-      let field;
-      let read;
-      if (q.kind === 'text') {
-        field = h('textarea', { class: 'fw-question-input', rows: 3, 'aria-labelledby': promptId,
-          placeholder: 'Write your answer here…' });
-        read = () => field.value;
-      } else if (q.kind === 'numeric') {
-        field = h('input', { type: 'text', inputmode: 'decimal', class: 'fw-question-input fw-question-number',
-          'aria-labelledby': promptId });
-        read = () => field.value;
-      } else {
-        const name = `${promptId}-choice`;
-        field = h('div', { role: 'radiogroup', 'aria-labelledby': promptId, class: 'fw-question-choices' },
-          q.choices.map((c) => h('label', { class: 'fw-choice' },
-            h('input', { type: 'radio', name, value: c.id }), h('span', { html: c.text }))));
-        read = () => field.querySelector('input:checked')?.value;
-      }
-      answers.push({ id: q.id, read, field });
-      return h('div', { class: 'fw-question', 'data-question': i }, prompt, field);
+      const input = questionInputs[q.kind](q, promptId);
+      answers.push({ id: q.id, ...input });
+      return h('div', { class: 'fw-question', 'data-question': i }, prompt, input.field);
     });
+    const given = () => Object.fromEntries(answers.map((a) => [a.id, a.read()]).filter(([, v]) => v !== undefined));
 
     const check = h('span', { class: 'fw-task-check', 'aria-hidden': 'true' });
     const submit = h('button', { type: 'button', class: 'fw-button', 'aria-label': `Submit ${number}` }, 'Submit');
@@ -166,17 +152,35 @@ export function mountActivity(tool, activity, root, { conditionTypes, storage = 
       h('div', { class: 'fw-task-submit' }, submit, feedback),
       hint);
 
+    // Typed answers are kept as a draft with the Run, so a reload doesn't lose them.
+    el.addEventListener('input', () => {
+      if (host.runner.task(part.id, task.id).status !== 'open') return;
+      host.runner.draft(part.id, task.id, given());
+      autosave();
+    });
+
     submit.addEventListener('click', () => {
-      const given = Object.fromEntries(answers.map((a) => [a.id, a.read()]).filter(([, v]) => v !== undefined));
-      const attempt = host.runner.submit(part.id, task.id, given);
+      const attempt = host.runner.submit(part.id, task.id, given());
       autosave();
       if (attempt.passed) host.runner.snapshotsTaken().then(autosave); // persist the snapshots too
-      feedback.className = `fw-task-feedback ${attempt.passed ? 'fw-ok' : 'fw-fail'}`;
-      feedback.textContent = attempt.passed
-        ? '✓ Correct!'
-        : `✗ ${attempt.results.filter((r) => r.pass === false).map((r) => r.feedback).join('; ')}`;
+      showFeedback(attempt, '✓ Correct!');
       render();
     });
+
+    function showFeedback(attempt, passText) {
+      feedback.className = `fw-task-feedback ${attempt.passed ? 'fw-ok' : 'fw-fail'}`;
+      feedback.textContent = attempt.passed
+        ? passText
+        : `✗ ${attempt.results.filter((r) => r.pass === false).map((r) => r.feedback).join('; ')}`;
+    }
+
+    // After a reload: the Task's answers (passing, draft or last missed) and its last miss feedback.
+    function restore() {
+      const state = host.runner.task(part.id, task.id);
+      for (const a of answers) if (state.answers[a.id] !== undefined) a.write(state.answers[a.id]);
+      const last = state.attempts.at(-1);
+      if (last && !last.passed && state.status !== 'passed') showFeedback(last);
+    }
 
     function update() {
       const state = host.runner.task(part.id, task.id);
@@ -200,7 +204,7 @@ export function mountActivity(tool, activity, root, { conditionTypes, storage = 
       }
     }
 
-    return { el, update };
+    return { el, update, restore };
   }
 
   // Re-read every Part's progress from the core.
@@ -214,6 +218,33 @@ export function mountActivity(tool, activity, root, { conditionTypes, storage = 
     }
   }
 }
+
+// How each Question kind (runner/questions.js) is answered on the page: its field and how
+// to read an answer from it or write a saved one back.
+const questionInputs = {
+  text(q, promptId) {
+    const field = h('textarea', { class: 'fw-question-input', rows: 3, 'aria-labelledby': promptId,
+      placeholder: 'Write your answer here…' });
+    return { field, read: () => field.value, write: (v) => { field.value = String(v); } };
+  },
+  numeric(q, promptId) {
+    const field = h('input', { type: 'text', inputmode: 'decimal', class: 'fw-question-input fw-question-number',
+      'aria-labelledby': promptId });
+    return { field, read: () => field.value, write: (v) => { field.value = String(v); } };
+  },
+  choice(q, promptId) {
+    const name = `${promptId}-choice`;
+    const field = h('div', { role: 'radiogroup', 'aria-labelledby': promptId, class: 'fw-question-choices' },
+      q.choices.map((c) => h('label', { class: 'fw-choice' },
+        h('input', { type: 'radio', name, value: c.id }), h('span', { html: c.text }))));
+    const radios = () => [...field.querySelectorAll('input')];
+    return {
+      field,
+      read: () => radios().find((r) => r.checked)?.value,
+      write: (v) => { for (const r of radios()) r.checked = r.value === v; },
+    };
+  },
+};
 
 // Download the Run's Report so far (allowed at any time after the Run starts).
 function reportButton(host) {
