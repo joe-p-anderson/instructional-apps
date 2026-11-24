@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Basics of Sinusoidal Signals — PHY/EGR 3120</title>
+
+<!-- Plotly -->
+<script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+
+<!-- MathJax -->
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] },
+  startup: { typeset: true }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #F2EFE4;
+  --surface:   #FAF8F2;
+  --border:    #C8BFA0;
+  --border-dk: #8B7D5E;
+  --blue:      #1B4F8A;
+  --red:       #B81C1C;
+  --yellow:    #C8900A;
+  --black:     #1A1008;
+  --text:      #1A1008;
+  --text-dim:  #5C4F38;
+  --text-muted:#9C8C70;
+  --green:     #2A6E2A;
+  --font: 'Baskerville Old Face', 'Baskervville', 'Libre Baskerville', Baskerville, Georgia, serif;
+}
+
+html, body {
+  height: 100%;
+  background: #D8D0BC;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 18px;
+  overflow: hidden;
+}
+
+#page-wrapper {
+  max-width: 960px;
+  margin: 0 auto;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-left: 1px solid var(--border-dk);
+  border-right: 1px solid var(--border-dk);
+  overflow: hidden;
+}
+
+/* ── Header ── */
+#site-header {
+  border-bottom: 3px double var(--border-dk);
+  padding: 10px 20px 8px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-shrink: 0;
+  background: var(--surface);
+}
+
+.header-titles { display: flex; flex-direction: column; gap: 2px; }
+
+.page-title {
+  font-size: 24px;
+  font-weight: bold;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  color: var(--black);
+}
+
+.course-label {
+  font-size: 16px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.dl-btn {
+  background: var(--blue);
+  border: none;
+  color: #fff;
+  font-family: var(--font);
+  font-size: 16px;
+  font-variant: small-caps;
+  letter-spacing: 0.07em;
+  padding: 5px 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.dl-btn:hover { background: #13376A; }
+
+/* ── Tab strip ── */
+.tab-strip {
+  display: flex;
+  border-bottom: 2px solid var(--border-dk);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  border-right: 1px solid var(--border);
+  border-bottom: 3px solid transparent;
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 17px;
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+  padding: 7px 20px 5px;
+  cursor: pointer;
+  position: relative;
+  bottom: -2px;
+  transition: color 0.15s;
+}
+.tab-btn:hover { color: var(--blue); }
+.tab-btn.active {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+  background: var(--bg);
+  font-weight: bold;
+}
+
+/* ── Tab panes: 3-frame grid ── */
+.tab-pane { display: none; overflow: hidden; }
+.tab-pane.active {
+  display: grid;
+  grid-template-columns: 230px 1fr;
+  grid-template-rows: 1fr auto;
+  height: calc(100vh - 88px);
+}
+
+/* Frame 1: controls left */
+.controls-col {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  border-right: 2px solid var(--border-dk);
+  overflow-y: auto;
+  background: var(--surface);
+}
+
+/* Frame 2: plot top-right */
+.plot-col {
+  grid-column: 2;
+  grid-row: 1;
+  padding: 12px 14px 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg);
+}
+
+.plot-wrap {
+  flex: 1;
+  border: 1.5px solid var(--border-dk);
+  background: var(--surface);
+  min-height: 0;
+  overflow: hidden;
+}
+.plot-wrap > div { width: 100%; height: 100%; }
+
+/* Frame 3: tasks bottom-right */
+.tasks-row {
+  grid-column: 2;
+  grid-row: 2;
+  border-top: 2px solid var(--border-dk);
+  background: var(--surface);
+  display: flex;
+  overflow-x: auto;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.task-card {
+  flex: 1;
+  min-width: 240px;
+  padding: 10px 14px;
+  border-right: 1px solid var(--border);
+  transition: opacity 0.25s;
+}
+.task-card:last-child { border-right: none; }
+.task-card.locked { opacity: 0.32; pointer-events: none; }
+.task-card.done .task-submit-row { display: none; }
+
+/* ── Control sections ── */
+.ctrl-section {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ctrl-label {
+  font-size: 14px;
+  font-variant: small-caps;
+  letter-spacing: 0.22em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+/* ── Sliders ── */
+.slider-group { margin-bottom: 12px; }
+
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  gap: 6px;
+}
+
+.slider-name {
+  font-size: 17px;
+  font-style: italic;
+  color: var(--black);
+  flex-shrink: 0;
+}
+
+/* Editable number input replacing the static value span */
+.slider-num-input {
+  width: 68px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--blue);
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: bold;
+  text-align: right;
+  padding: 1px 4px;
+  outline: none;
+  transition: border-color 0.15s;
+  /* hide browser spinner arrows */
+  -moz-appearance: textfield;
+}
+.slider-num-input::-webkit-outer-spin-button,
+.slider-num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.slider-num-input:focus { border-color: var(--blue); background: var(--surface); }
+.slider-num-input.invalid { border-color: var(--red); color: var(--red); }
+
+.slider-row { display: flex; align-items: center; gap: 6px; }
+
+input[type=range] {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  background: var(--border);
+  border-radius: 0;
+  outline: none;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px; height: 13px;
+  border-radius: 0;
+  background: var(--blue);
+  border: 1.5px solid var(--black);
+  cursor: pointer;
+}
+
+.reset-btn {
+  background: none;
+  border: 1px solid var(--border-dk);
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 15px;
+  padding: 2px 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.12s;
+}
+.reset-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+.drag-hint {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  line-height: 1.4;
+}
+
+/* ── Live metrics ── */
+.metric-line { font-size: 15px; color: var(--text-dim); line-height: 2.0; }
+.metric-line .mval { color: var(--blue); font-weight: bold; }
+
+/* ── Legend ── */
+.legend-row { display: flex; align-items: center; gap: 7px; font-size: 15px; margin-bottom: 6px; }
+.leg-line { display: inline-block; width: 22px; height: 2.5px; flex-shrink: 0; }
+
+/* ── Task cards ── */
+.task-heading { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 5px; }
+
+.task-check-box {
+  width: 18px; height: 18px;
+  border: 1.5px solid var(--border-dk);
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  transition: all 0.25s;
+}
+.task-card.done .task-check-box {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+
+.task-title {
+  font-size: 17px;
+  font-weight: bold;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  color: var(--black);
+  line-height: 1.3;
+}
+
+.task-desc {
+  font-size: 15px;
+  color: var(--text-dim);
+  font-style: italic;
+  margin-left: 26px;
+  margin-bottom: 7px;
+  line-height: 1.5;
+}
+
+.task-submit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 26px;
+  margin-bottom: 6px;
+}
+
+.check-btn {
+  background: none;
+  border: 1.5px solid var(--blue);
+  color: var(--blue);
+  font-family: var(--font);
+  font-size: 16px;
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.check-btn:hover { background: var(--blue); color: #fff; }
+
+.task-feedback {
+  font-size: 15px;
+  font-style: italic;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.task-feedback.visible { opacity: 1; }
+.task-feedback.ok   { color: var(--green); }
+.task-feedback.fail { color: var(--red); }
+
+/* Question block */
+.question-block { display: none; margin-left: 26px; margin-top: 8px; }
+.question-block.visible { display: block; }
+
+.question-prompt {
+  font-size: 15px;
+  color: var(--red);
+  font-style: italic;
+  margin-bottom: 5px;
+  line-height: 1.4;
+}
+
+.question-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border-dk);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  padding: 6px;
+  resize: vertical;
+  min-height: 54px;
+  outline: none;
+  line-height: 1.5;
+}
+.question-input:focus { border-color: var(--blue); }
+
+.save-answer-btn {
+  margin-top: 5px;
+  background: none;
+  border: 1px solid var(--red);
+  color: var(--red);
+  font-family: var(--font);
+  font-size: 15px;
+  font-variant: small-caps;
+  letter-spacing: 0.07em;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.save-answer-btn:hover { background: var(--red); color: #fff; }
+
+.saved-badge { display:none; font-size:14px; color:var(--green); font-style:italic; margin-left:7px; }
+.saved-badge.visible { display:inline; }
+
+/* Scrollbars */
+.controls-col::-webkit-scrollbar,
+.tasks-row::-webkit-scrollbar { width: 5px; height: 5px; }
+.controls-col::-webkit-scrollbar-thumb,
+.tasks-row::-webkit-scrollbar-thumb { background: var(--border); }
+</style>
+</head>
+<body>
+<div id="page-wrapper">
+
+<!-- HEADER -->
+<div id="site-header">
+  <div class="header-titles">
+    <div class="page-title">Basics of Sinusoidal Signals</div>
+    <div class="course-label">PHY/EGR 3120: Electronics &mdash; Interactive Activity</div>
+  </div>
+  <button class="dl-btn" onclick="downloadPDF()">&#8659;&nbsp; Download Assignment PDF</button>
+</div>
+
+<!-- TAB STRIP -->
+<div class="tab-strip">
+  <button class="tab-btn active" onclick="switchTab(0)">Experiment 1 &mdash; Phase Shift</button>
+  <button class="tab-btn"        onclick="switchTab(1)">Experiment 2 &mdash; Period &amp; Amplitude</button>
+</div>
+
+<!-- ═══════════ TAB 1 ═══════════ -->
+<div class="tab-pane active" id="tab0">
+
+  <!-- Frame 1: Controls -->
+  <div class="controls-col">
+    <div class="ctrl-section">
+      <div class="ctrl-label">Parameters</div>
+
+      <!-- Va -->
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-name">\(V_a\) <span style="font-size:15px;font-style:normal;color:var(--text-dim);">V</span></span>
+          <input type="number" class="slider-num-input" id="t1-Va-num"
+                 min="0" max="3" step="0.01" value="2.00"
+                 onkeydown="if(event.key==='Enter')numInputChanged('t1-Va','t1-Va-num',0,3,0.01,update1)" onblur="numInputChanged('t1-Va','t1-Va-num',0,3,0.01,update1)">
+        </div>
+        <div class="slider-row">
+          <input type="range" id="t1-Va" min="0" max="3" step="0.01" value="2">
+          <button class="reset-btn" onclick="resetParam('t1-Va','t1-Va-num',2,update1)">&#8635;&thinsp;2</button>
+        </div>
+      </div>
+
+      <!-- f -->
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-name">\(f\) <span style="font-size:15px;font-style:normal;color:var(--text-dim);">Hz</span></span>
+          <input type="number" class="slider-num-input" id="t1-f-num"
+                 min="0.1" max="1" step="0.01" value="0.50"
+                 onkeydown="if(event.key==='Enter')numInputChanged('t1-f','t1-f-num',0.1,1,0.01,update1)" onblur="numInputChanged('t1-f','t1-f-num',0.1,1,0.01,update1)">
+        </div>
+        <div class="slider-row">
+          <input type="range" id="t1-f" min="0.1" max="1" step="0.01" value="0.5">
+          <button class="reset-btn" onclick="resetParam('t1-f','t1-f-num',0.5,update1)">&#8635;&thinsp;0.5</button>
+        </div>
+      </div>
+
+      <!-- Δt -->
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-name">\(\Delta t\) <span style="font-size:15px;font-style:normal;color:var(--text-dim);">s</span></span>
+          <input type="number" class="slider-num-input" id="t1-Dt-num"
+                 min="-10" max="10" step="0.01" value="0.25"
+                 onkeydown="if(event.key==='Enter')numInputChanged('t1-Dt','t1-Dt-num',-10,10,0.01,update1)" onblur="numInputChanged('t1-Dt','t1-Dt-num',-10,10,0.01,update1)">
+        </div>
+        <div class="slider-row">
+          <input type="range" id="t1-Dt" min="-10" max="10" step="0.01" value="0.25">
+          <button class="reset-btn" id="t1-Dt-reset" onclick="resetParam('t1-Dt','t1-Dt-num',0.25,update1)">&#8635;&thinsp;0.25</button>
+        </div>
+      </div>
+
+      <div class="drag-hint">&#9711; Drag white dots on the plot to adjust \(V_a\), \(\Delta t\), and \(f\).</div>
+    </div>
+
+    <div class="ctrl-section">
+      <div class="ctrl-label">Live Metrics</div>
+      <div class="metric-line">\(\phi\): <span class="mval" id="t1-phase">&mdash;</span></div>
+      <div class="metric-line">\(T\): <span class="mval" id="t1-period">&mdash;</span></div>
+      <div class="metric-line">\(\Delta t / T\): <span class="mval" id="t1-ratio">&mdash;</span></div>
+    </div>
+
+    <div class="ctrl-section" style="border-bottom:none;">
+      <div class="ctrl-label">Legend</div>
+      <div class="legend-row">
+        <span class="leg-line" style="background:var(--blue);"></span>
+        \(V_a \cos(2\pi f t)\)
+      </div>
+      <div class="legend-row">
+        <span class="leg-line" style="background:var(--red);"></span>
+        \(V_a \cos(2\pi f (t+\Delta t))\)
+      </div>
+    </div>
+  </div>
+
+  <!-- Frame 2: Plot -->
+  <div class="plot-col">
+    <div class="plot-wrap"><div id="plot1"></div></div>
+  </div>
+
+  <!-- Frame 3: Tasks -->
+  <div class="tasks-row">
+
+    <div class="task-card" id="t1-task1">
+      <div class="task-heading">
+        <div class="task-check-box" id="t1-task1-chk"></div>
+        <div class="task-title">Task 1 &mdash; Phase Shift \(\pi/2\)</div>
+      </div>
+      <div class="task-desc">Set \(\phi = 2\pi f \Delta t = \pi/2\) (90&deg;) by adjusting \(f\) and \(\Delta t\).</div>
+      <div class="task-submit-row">
+        <button class="check-btn" onclick="submitTask1_1()">Check</button>
+        <span class="task-feedback" id="t1-task1-fb"></span>
+      </div>
+    </div>
+
+    <div class="task-card locked" id="t1-task2">
+      <div class="task-heading">
+        <div class="task-check-box" id="t1-task2-chk"></div>
+        <div class="task-title">Task 2 &mdash; Phase Shift \(\pi/4\)</div>
+      </div>
+      <div class="task-desc">Set \(\phi = 2\pi f \Delta t = \pi/4\) (45&deg;).</div>
+      <div class="task-submit-row">
+        <button class="check-btn" onclick="submitTask1_2()">Check</button>
+        <span class="task-feedback" id="t1-task2-fb"></span>
+      </div>
+      <div class="question-block" id="t1-q2-block">
+        <div class="question-prompt">&#9658; Why is phase shift somewhat difficult to measure from an oscilloscope?</div>
+        <textarea class="question-input" id="t1-q2-input" placeholder="Write your answer here&hellip;"></textarea>
+        <div>
+          <button class="save-answer-btn" onclick="saveAnswer('t1-q2')">Save Answer</button>
+          <span class="saved-badge" id="t1-q2-saved">&#10003; Saved</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /tab0 -->
+
+<!-- ═══════════ TAB 2 ═══════════ -->
+<div class="tab-pane" id="tab1">
+
+  <div class="controls-col">
+    <div class="ctrl-section">
+      <div class="ctrl-label">Parameters</div>
+
+      <!-- Va -->
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-name">\(V_a\) <span style="font-size:15px;font-style:normal;color:var(--text-dim);">V</span></span>
+          <input type="number" class="slider-num-input" id="t2-Va-num"
+                 min="0" max="3" step="0.01" value="2.00"
+                 onkeydown="if(event.key==='Enter')numInputChanged('t2-Va','t2-Va-num',0,3,0.01,update2)" onblur="numInputChanged('t2-Va','t2-Va-num',0,3,0.01,update2)">
+        </div>
+        <div class="slider-row">
+          <input type="range" id="t2-Va" min="0" max="3" step="0.01" value="2">
+          <button class="reset-btn" onclick="resetParam('t2-Va','t2-Va-num',2,update2)">&#8635;&thinsp;2</button>
+        </div>
+      </div>
+
+      <!-- f -->
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-name">\(f\) <span style="font-size:15px;font-style:normal;color:var(--text-dim);">Hz</span></span>
+          <input type="number" class="slider-num-input" id="t2-f-num"
+                 min="0.1" max="1" step="0.1" value="0.50"
+                 onkeydown="if(event.key==='Enter')numInputChanged('t2-f','t2-f-num',0.1,1,0.1,update2)" onblur="numInputChanged('t2-f','t2-f-num',0.1,1,0.1,update2)">
+        </div>
+        <div class="slider-row">
+          <input type="range" id="t2-f" min="0.1" max="1" step="0.1" value="0.5">
+          <button class="reset-btn" onclick="resetParam('t2-f','t2-f-num',0.5,update2)">&#8635;&thinsp;0.5</button>
+        </div>
+      </div>
+
+      <!-- Δt -->
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-name">\(\Delta t\) <span style="font-size:15px;font-style:normal;color:var(--text-dim);">s</span></span>
+          <input type="number" class="slider-num-input" id="t2-Dt-num"
+                 min="0" max="10" step="0.01" value="0.25"
+                 onkeydown="if(event.key==='Enter')numInputChanged('t2-Dt','t2-Dt-num',0,10,0.01,update2)" onblur="numInputChanged('t2-Dt','t2-Dt-num',0,10,0.01,update2)">
+        </div>
+        <div class="slider-row">
+          <input type="range" id="t2-Dt" min="0" max="10" step="0.01" value="0.25">
+          <button class="reset-btn" onclick="resetParam('t2-Dt','t2-Dt-num',0.25,update2)">&#8635;&thinsp;0.25</button>
+        </div>
+      </div>
+
+      <div class="drag-hint">&#9711; Drag white dots on the plot to adjust \(V_a\), \(\Delta t\), and \(f\).</div>
+    </div>
+
+    <div class="ctrl-section">
+      <div class="ctrl-label">Live Metrics</div>
+      <div class="metric-line">\(T\): <span class="mval" id="t2-period">&mdash;</span></div>
+      <div class="metric-line">Pk-to-Pk: <span class="mval" id="t2-pkpk">&mdash;</span></div>
+      <div class="metric-line">\(\phi\): <span class="mval" id="t2-phase">&mdash;</span></div>
+    </div>
+
+    <div class="ctrl-section" style="border-bottom:none;">
+      <div class="ctrl-label">Legend</div>
+      <div class="legend-row">
+        <span class="leg-line" style="background:var(--blue);"></span>
+        \(V_a \cos(2\pi f t)\)
+      </div>
+      <div class="legend-row">
+        <span class="leg-line" style="background:var(--red);"></span>
+        \(V_a \cos(2\pi f (t+\Delta t))\)
+      </div>
+    </div>
+  </div>
+
+  <div class="plot-col">
+    <div class="plot-wrap"><div id="plot2"></div></div>
+  </div>
+
+  <div class="tasks-row">
+
+    <div class="task-card" id="t2-task1">
+      <div class="task-heading">
+        <div class="task-check-box" id="t2-task1-chk"></div>
+        <div class="task-title">Task 1 &mdash; Period \(= 3\) s</div>
+      </div>
+      <div class="task-desc">Adjust \(f\) so that \(T = 1/f = 3\) s.</div>
+      <div class="task-submit-row">
+        <button class="check-btn" onclick="submitTask2_1()">Check</button>
+        <span class="task-feedback" id="t2-task1-fb"></span>
+      </div>
+    </div>
+
+    <div class="task-card locked" id="t2-task2">
+      <div class="task-heading">
+        <div class="task-check-box" id="t2-task2-chk"></div>
+        <div class="task-title">Task 2 &mdash; Peak-to-Peak \(= 4\) V</div>
+      </div>
+      <div class="task-desc">Adjust \(V_a\) so that \(2 V_a = 4\) V.</div>
+      <div class="task-submit-row">
+        <button class="check-btn" onclick="submitTask2_2()">Check</button>
+        <span class="task-feedback" id="t2-task2-fb"></span>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /tab1 -->
+
+</div><!-- /page-wrapper -->
+
+<!-- ═══════════ JAVASCRIPT ═══════════ -->
+<script>
+const PI = Math.PI;
+const winlim = 10;
+const snap = { t1: { task1: null, task2: null }, t2: { task1: null, task2: null } };
+
+function linspace(a, b, n) {
+  const r = [];
+  for (let i = 0; i < n; i++) r.push(a + (b - a) * i / (n - 1));
+  return r;
+}
+const tlist = linspace(-0.1, winlim + 0.1, 300);
+
+function cosWave(Va, f, off) {
+  return tlist.map(t => Va * Math.cos(2 * PI * f * (t + off)));
+}
+
+const plotCfg = { displayModeBar: false, scrollZoom: false };
+
+function makeLayout() {
+  return {
+    paper_bgcolor: '#FAF8F2',
+    plot_bgcolor:  '#FAF8F2',
+    font: { family: "'Baskerville Old Face', Baskerville, Georgia, serif", size: 16, color: '#5C4F38' },
+    xaxis: {
+      title: { text: 'Time (s)', standoff: 8, font: { size: 16 } },
+      range: [0, winlim], gridcolor: '#DDD5C0',
+      zerolinecolor: '#8B7D5E', zerolinewidth: 1.5,
+      color: '#5C4F38', fixedrange: true, dtick: 1,
+    },
+    yaxis: {
+      title: { text: 'Voltage (V)', standoff: 8, font: { size: 16 } },
+      range: [-4, 4], gridcolor: '#DDD5C0',
+      zerolinecolor: '#8B7D5E', zerolinewidth: 1.5,
+      color: '#5C4F38', fixedrange: true,
+    },
+    margin: { l: 56, r: 12, t: 14, b: 48 },
+    showlegend: false, dragmode: false,
+  };
+}
+
+/* ── Helpers ── */
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+function switchTab(i) {
+  document.querySelectorAll('.tab-pane').forEach((p, j) => p.classList.toggle('active', i === j));
+  document.querySelectorAll('.tab-btn').forEach((b, j)  => b.classList.toggle('active', i === j));
+  setTimeout(() => Plotly.Plots.resize(i === 0 ? 'plot1' : 'plot2'), 50);
+}
+
+/**
+ * Called when the number input changes.
+ * Validates against [min,max], updates the range slider, fires updateFn.
+ */
+function numInputChanged(sliderId, numId, min, max, step, updateFn) {
+  const numEl   = document.getElementById(numId);
+  const slideEl = document.getElementById(sliderId);
+  const raw = parseFloat(numEl.value);
+  if (isNaN(raw)) { numEl.classList.add('invalid'); return; }
+  const val = clamp(raw, min, max);
+  numEl.classList.remove('invalid');
+  numEl.value    = val;
+  slideEl.value  = val;
+  // Push into the appropriate state object, then call update
+  updateFn(true);
+}
+
+/**
+ * Called when the range slider moves — updates the number input to match.
+ */
+function syncNumFromSlider(sliderId, numId, decimals) {
+  const val = parseFloat(document.getElementById(sliderId).value);
+  document.getElementById(numId).value = val.toFixed(decimals);
+}
+
+function resetParam(sliderId, numId, defaultVal, updateFn) {
+  document.getElementById(sliderId).value = defaultVal;
+  document.getElementById(numId).value    = String(defaultVal);
+  updateFn(true);
+}
+
+function showFeedback(id, ok, msg) {
+  const el = document.getElementById(id);
+  el.textContent = ok ? '✓ Correct!' : ('✗ ' + msg);
+  el.className = 'task-feedback visible ' + (ok ? 'ok' : 'fail');
+  if (!ok) setTimeout(() => el.classList.remove('visible'), 3200);
+}
+
+function markDone(cardId, chkId) {
+  document.getElementById(cardId).classList.add('done');
+  document.getElementById(chkId).textContent = '✓';
+}
+
+function unlockTask(cardId) {
+  document.getElementById(cardId).classList.remove('locked');
+}
+
+function saveAnswer(key) {
+  const badge = document.getElementById(key + '-saved');
+  badge.classList.add('visible');
+  setTimeout(() => badge.classList.remove('visible'), 2500);
+}
+
+/* ═══════════════════ TAB 1 ═══════════════════ */
+let s1 = { Va: 2, f: 0.5, Dt: 0.25 };
+let t1_1done = false, t1_2done = false;
+let drag1 = null;
+
+function applyState1() {
+  s1.Va = clamp(s1.Va, 0, 3);
+  s1.f  = clamp(s1.f, 0.1, 1);
+  s1.Dt = clamp(s1.Dt, -winlim, winlim);
+  // Range sliders
+  document.getElementById('t1-Va').value = s1.Va;
+  document.getElementById('t1-f').value  = s1.f;
+  document.getElementById('t1-Dt').value = s1.Dt;
+  // Number inputs
+  document.getElementById('t1-Va-num').value = s1.Va.toFixed(2);
+  document.getElementById('t1-f-num').value  = s1.f.toFixed(2);
+  document.getElementById('t1-Dt-num').value = s1.Dt.toFixed(2);
+}
+
+function update1(fromSlider) {
+  if (fromSlider) {
+    // Whichever control was touched last wins — read both and take the slider value
+    // (numInputChanged already set the slider before calling here)
+    s1.Va = +document.getElementById('t1-Va').value;
+    s1.f  = +document.getElementById('t1-f').value;
+    s1.Dt = +document.getElementById('t1-Dt').value;
+  }
+  applyState1();
+  const { Va, f, Dt } = s1;
+  const T = 1 / f, phase = 2 * PI * f * Dt;
+  document.getElementById('t1-phase').textContent  = phase.toFixed(4) + ' rad (' + (phase * 180 / PI).toFixed(1) + '°)';
+  document.getElementById('t1-period').textContent = T.toFixed(3) + ' s';
+  document.getElementById('t1-ratio').textContent  = (Dt / T).toFixed(4);
+  Plotly.update('plot1', {
+    x: [tlist, tlist, [0], [T - Dt], [T]],
+    y: [cosWave(Va, f, 0), cosWave(Va, f, Dt), [Va], [Va], [0]]
+  }, {}, [0, 1, 2, 3, 4]);
+}
+
+function submitTask1_1() {
+  if (t1_1done) return;
+  const phase = 2 * PI * s1.f * s1.Dt;
+  const ok = Math.abs(phase - PI / 2) <= 0.05;
+  showFeedback('t1-task1-fb', ok, 'φ = ' + phase.toFixed(3) + ' rad; need π/2 ≈ 1.571');
+  if (ok) {
+    t1_1done = true;
+    snap.t1.task1 = { ...s1, phase };
+    Plotly.toImage(document.getElementById('plot1'), { format:'png', width:620, height:300 })
+      .then(img => { snap.t1.task1.img = img; });
+    markDone('t1-task1', 't1-task1-chk');
+    unlockTask('t1-task2');
+    // Disable Δt controls per script instruction
+    disableDt1();
+  }
+}
+
+function disableDt1() {
+  const slider = document.getElementById('t1-Dt');
+  const numIn  = document.getElementById('t1-Dt-num');
+  const resetB = document.getElementById('t1-Dt-reset');
+  slider.disabled = true;
+  slider.style.opacity = '0.35';
+  numIn.disabled  = true;
+  numIn.style.opacity = '0.35';
+  numIn.style.cursor  = 'not-allowed';
+  resetB.disabled = true;
+  resetB.style.opacity = '0.35';
+  resetB.style.cursor  = 'not-allowed';
+}
+
+function submitTask1_2() {
+  if (t1_2done) return;
+  const phase = 2 * PI * s1.f * s1.Dt;
+  const ok = Math.abs(phase - PI / 4) <= 0.05;
+  showFeedback('t1-task2-fb', ok, 'φ = ' + phase.toFixed(3) + ' rad; need π/4 ≈ 0.785');
+  if (ok) {
+    t1_2done = true;
+    snap.t1.task2 = { ...s1, phase };
+    Plotly.toImage(document.getElementById('plot1'), { format:'png', width:620, height:300 })
+      .then(img => { snap.t1.task2.img = img; });
+    markDone('t1-task2', 't1-task2-chk');
+    document.getElementById('t1-q2-block').classList.add('visible');
+  }
+}
+
+function initPlot1() {
+  const { Va, f, Dt } = s1, T = 1 / f;
+  const mk = { color: '#FAF8F2', size: 11, line: { color: '#1A1008', width: 2 } };
+  const mkBlue   = { color: '#1B4F8A', size: 11, line: { color: '#1A1008', width: 2 } };
+  const mkOrange = { color: '#E8720C', size: 11, line: { color: '#1A1008', width: 2 } };
+  Plotly.newPlot('plot1', [
+    { x: tlist, y: cosWave(Va, f, 0),  mode: 'lines', line: { color: '#1B4F8A', width: 2.5 }, hoverinfo: 'skip' },
+    { x: tlist, y: cosWave(Va, f, Dt), mode: 'lines', line: { color: '#B81C1C', width: 2.5 }, hoverinfo: 'skip' },
+    { x: [0],      y: [Va], mode: 'markers', marker: mkBlue,   hovertemplate: 'Drag: Va<extra></extra>' },
+    { x: [T - Dt], y: [Va], mode: 'markers', marker: mkOrange, hovertemplate: 'Drag: Δt<extra></extra>' },
+    { x: [T],      y: [0],  mode: 'markers', marker: mkBlue,   hovertemplate: 'Drag: f<extra></extra>'  },
+  ], makeLayout(), plotCfg);
+
+  document.getElementById('plot1').addEventListener('mousedown', e => {
+    drag1 = closestPt(e, 'plot1', s1);
+    if (drag1) e.preventDefault();
+  });
+
+  // Range slider → number input sync
+  document.getElementById('t1-Va').addEventListener('input', () => {
+    syncNumFromSlider('t1-Va', 't1-Va-num', 2); update1(true);
+  });
+  document.getElementById('t1-f').addEventListener('input', () => {
+    syncNumFromSlider('t1-f', 't1-f-num', 2); update1(true);
+  });
+  document.getElementById('t1-Dt').addEventListener('input', () => {
+    syncNumFromSlider('t1-Dt', 't1-Dt-num', 2); update1(true);
+  });
+
+  update1();
+}
+
+/* ═══════════════════ TAB 2 ═══════════════════ */
+let s2 = { Va: 2, f: 0.5, Dt: 0.25 };
+let t2_1done = false, t2_2done = false;
+let drag2 = null;
+
+function applyState2() {
+  s2.Va = clamp(s2.Va, 0, 3);
+  s2.f  = clamp(s2.f, 0.1, 1);
+  s2.Dt = clamp(s2.Dt, 0, winlim);
+  document.getElementById('t2-Va').value = s2.Va;
+  document.getElementById('t2-f').value  = s2.f;
+  document.getElementById('t2-Dt').value = s2.Dt;
+  document.getElementById('t2-Va-num').value = s2.Va.toFixed(2);
+  document.getElementById('t2-f-num').value  = s2.f.toFixed(2);
+  document.getElementById('t2-Dt-num').value = s2.Dt.toFixed(2);
+}
+
+function update2(fromSlider) {
+  if (fromSlider) {
+    s2.Va = +document.getElementById('t2-Va').value;
+    s2.f  = +document.getElementById('t2-f').value;
+    s2.Dt = +document.getElementById('t2-Dt').value;
+  }
+  applyState2();
+  const { Va, f, Dt } = s2;
+  const T = 1 / f, phase = 2 * PI * f * Dt;
+  document.getElementById('t2-period').textContent = T.toFixed(3) + ' s';
+  document.getElementById('t2-pkpk').textContent   = (2 * Va).toFixed(2) + ' V';
+  document.getElementById('t2-phase').textContent  = phase.toFixed(4) + ' rad';
+  Plotly.update('plot2', {
+    x: [tlist, tlist, [0], [T - Dt], [T]],
+    y: [cosWave(Va, f, 0), cosWave(Va, f, Dt), [Va], [Va], [0]]
+  }, {}, [0, 1, 2, 3, 4]);
+}
+
+function submitTask2_1() {
+  if (t2_1done) return;
+  const T = 1 / s2.f;
+  const ok = Math.abs(T - 3) <= 0.05;
+  showFeedback('t2-task1-fb', ok, 'T = ' + T.toFixed(3) + ' s; need T = 3.000 s');
+  if (ok) {
+    t2_1done = true;
+    snap.t2.task1 = { ...s2, T };
+    Plotly.toImage(document.getElementById('plot2'), { format:'png', width:620, height:300 })
+      .then(img => { snap.t2.task1.img = img; });
+    markDone('t2-task1', 't2-task1-chk');
+    unlockTask('t2-task2');
+  }
+}
+
+function submitTask2_2() {
+  if (t2_2done) return;
+  const pkpk = 2 * s2.Va;
+  const ok = Math.abs(pkpk - 4) <= 0.05;
+  showFeedback('t2-task2-fb', ok, 'Pk-pk = ' + pkpk.toFixed(2) + ' V; need 4.00 V');
+  if (ok) {
+    t2_2done = true;
+    snap.t2.task2 = { ...s2, pkpk };
+    Plotly.toImage(document.getElementById('plot2'), { format:'png', width:620, height:300 })
+      .then(img => { snap.t2.task2.img = img; });
+    markDone('t2-task2', 't2-task2-chk');
+  }
+}
+
+function initPlot2() {
+  const { Va, f, Dt } = s2, T = 1 / f;
+  const mk = { color: '#FAF8F2', size: 11, line: { color: '#1A1008', width: 2 } };
+  Plotly.newPlot('plot2', [
+    { x: tlist, y: cosWave(Va, f, 0),  mode: 'lines', line: { color: '#1B4F8A', width: 2.5 }, hoverinfo: 'skip' },
+    { x: tlist, y: cosWave(Va, f, Dt), mode: 'lines', line: { color: '#B81C1C', width: 2.5 }, hoverinfo: 'skip' },
+    { x: [0],      y: [Va], mode: 'markers', marker: mk, hovertemplate: 'Drag: Va<extra></extra>' },
+    { x: [T - Dt], y: [Va], mode: 'markers', marker: mk, hovertemplate: 'Drag: Δt<extra></extra>' },
+    { x: [T],      y: [0],  mode: 'markers', marker: mk, hovertemplate: 'Drag: f<extra></extra>'  },
+  ], makeLayout(), plotCfg);
+
+  document.getElementById('plot2').addEventListener('mousedown', e => {
+    drag2 = closestPt(e, 'plot2', s2);
+    if (drag2) e.preventDefault();
+  });
+
+  document.getElementById('t2-Va').addEventListener('input', () => {
+    syncNumFromSlider('t2-Va', 't2-Va-num', 2); update2(true);
+  });
+  document.getElementById('t2-f').addEventListener('input', () => {
+    syncNumFromSlider('t2-f', 't2-f-num', 2); update2(true);
+  });
+  document.getElementById('t2-Dt').addEventListener('input', () => {
+    syncNumFromSlider('t2-Dt', 't2-Dt-num', 2); update2(true);
+  });
+
+  update2();
+}
+
+/* ── Drag helpers ── */
+function closestPt(evt, plotId, s) {
+  const div = document.getElementById(plotId);
+  if (!div._fullLayout) return null;
+  const rect = div.getBoundingClientRect();
+  const xa = div._fullLayout.xaxis, ya = div._fullLayout.yaxis;
+  const ml = div._fullLayout.margin.l, mt = div._fullLayout.margin.t;
+  const mx = evt.clientX - rect.left - ml;
+  const my = evt.clientY - rect.top  - mt;
+  const T  = 1 / s.f;
+  const pts = [
+    { name: 'Va', px: xa.d2p(0),        py: ya.d2p(s.Va) },
+    { name: 'Dt', px: xa.d2p(T - s.Dt), py: ya.d2p(s.Va) },
+    { name: 'f',  px: xa.d2p(T),        py: ya.d2p(0)    },
+  ];
+  for (const p of pts)
+    if (Math.hypot(mx - p.px, my - p.py) < 18) return { name: p.name, plotId };
+  return null;
+}
+
+document.addEventListener('mousemove', e => {
+  const drag = drag1 || drag2;
+  if (!drag) return;
+  e.preventDefault();
+  const s  = drag.plotId === 'plot1' ? s1 : s2;
+  const fn = drag.plotId === 'plot1' ? update1 : update2;
+  const div = document.getElementById(drag.plotId);
+  const rect = div.getBoundingClientRect();
+  const xa = div._fullLayout.xaxis, ya = div._fullLayout.yaxis;
+  const x = xa.p2d(e.clientX - rect.left - div._fullLayout.margin.l);
+  const y = ya.p2d(e.clientY - rect.top  - div._fullLayout.margin.t);
+  if      (drag.name === 'Va') s.Va = clamp(y, 0, 3);
+  else if (drag.name === 'Dt') {
+    if (drag.plotId === 'plot1' && t1_1done) return; // locked after task 1
+    s.Dt = clamp(1 / s.f - x, -winlim, winlim);
+  }
+  else if (drag.name === 'f')  s.f  = Math.round((1 / clamp(x, 1, 10)) * 10) / 10;
+  fn();
+});
+document.addEventListener('mouseup', () => { drag1 = null; drag2 = null; });
+
+/* ════════════════════════════════
+   PDF GENERATION
+════════════════════════════════ */
+function downloadPDF() {
+  openPrintWindow();
+}
+
+function fmtVars(sn) {
+  if (!sn) return '&mdash;';
+  return `V<sub>a</sub> = ${sn.Va.toFixed(2)} V,&ensp;f = ${sn.f.toFixed(2)} Hz,&ensp;&Delta;t = ${sn.Dt.toFixed(2)} s`;
+}
+
+function taskHTML(num, title, desc, done, imgSrc, varsHTML, extraRows, questionPrompt, answerText) {
+  const statusColor = done ? '#2A6E2A' : '#B81C1C';
+  const statusStr   = done ? '&#10003; Completed' : '&#9675; Not Completed';
+  let h = `<div class="task-block">
+    <h3>${num}. ${title}</h3>
+    <p class="desc">${desc}</p>
+    <p class="status" style="color:${statusColor}"><strong>${statusStr}</strong></p>`;
+  if (done && imgSrc) {
+    h += `<img class="plot-img" src="${imgSrc}" alt="Plot at task completion">`;
+  }
+  if (done && varsHTML) {
+    h += `<p class="detail"><strong>Parameter values at completion:</strong><br>${varsHTML}</p>`;
+    for (const row of (extraRows || [])) h += `<p class="detail">${row}</p>`;
+  }
+  if (done && questionPrompt) {
+    h += `<div class="answer-block">
+      <p class="qprompt">${questionPrompt}</p>
+      <div class="answer-text">${answerText
+        ? answerText.replace(/\n/g, '<br>')
+        : '<em style="color:#9C8C70;">No answer provided.</em>'}</div>
+    </div>`;
+  }
+  return h + `</div>`;
+}
+
+function openPrintWindow() {
+  const s1sn1 = snap.t1.task1, s1sn2 = snap.t1.task2;
+  const s2sn1 = snap.t2.task1, s2sn2 = snap.t2.task2;
+  const q2answer = (document.getElementById('t1-q2-input') || {}).value || '';
+  const phase1str = s1sn1 ? (2*PI*s1sn1.f*s1sn1.Dt).toFixed(4) + ' rad' : '';
+  const phase2str = s1sn2 ? (2*PI*s1sn2.f*s1sn2.Dt).toFixed(4) + ' rad' : '';
+  const T3str     = s2sn1 ? (1/s2sn1.f).toFixed(3) + ' s' : '';
+  const pp4str    = s2sn2 ? (2*s2sn2.Va).toFixed(2) + ' V' : '';
+  const now = new Date().toLocaleString('en-US', { dateStyle:'medium', timeStyle:'short' });
+
+  const html = `<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8">
+<title>Assignment &mdash; Basics of Sinusoidal Signals</title>
+<script>window.MathJax={tex:{inlineMath:[['\\\\(','\\\\)']],displayMath:[['\\\\[','\\\\]']]}};<\/script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async><\/script>
+<style>
+  body { font-family: 'Baskerville Old Face', Baskerville, 'Libre Baskerville', Georgia, serif;
+         font-size: 13pt; color: #1A1008; background:#fff; margin:0; }
+  .page { max-width: 7.5in; margin:0 auto; padding: 0.65in 0.8in; }
+  h1 { font-size: 22pt; font-variant:small-caps; letter-spacing:0.05em;
+       border-bottom: 3px double #8B7D5E; padding-bottom:8px; margin-bottom:6px; }
+  .meta { font-size:11pt; color:#5C4F38; font-style:italic; margin-bottom:24px; }
+  h2 { font-size:17pt; font-variant:small-caps; color:#1B4F8A; letter-spacing:0.04em;
+       border-bottom:1.5px solid #C8BFA0; padding-bottom:5px; margin:28px 0 14px; }
+  .plot-img { display:block; max-width:100%; border:1px solid #C8BFA0; margin:8px 0 16px; }
+  .task-block { margin-bottom:18px; padding:12px 14px; border:1px solid #C8BFA0; background:#FAF8F2; }
+  .task-block h3 { font-size:14pt; font-variant:small-caps; margin-bottom:5px; }
+  p.desc { font-style:italic; color:#5C4F38; font-size:12pt; margin-bottom:6px; }
+  p.status { font-size:12pt; margin-bottom:6px; }
+  p.detail { font-size:12pt; margin-bottom:4px; }
+  .answer-block { margin-top:10px; padding:8px 10px; border-left:3px solid #B81C1C; background:#fff; }
+  .qprompt { font-size:12pt; color:#B81C1C; font-style:italic; margin-bottom:5px; }
+  .answer-text { font-size:12pt; color:#1A1008; line-height:1.5; }
+  @media print { @page { margin:0.65in; size:letter; } body { font-size:12pt; } }
+</style></head><body><div class="page">
+<h1>Basics of Sinusoidal Signals</h1>
+<div class="meta">PHY/EGR 3120: Electronics &mdash; Interactive Activity &nbsp;&bull;&nbsp; Generated: ${now}</div>
+
+<h2>Experiment 1 &mdash; Phase Shift</h2>
+${taskHTML(1, 'Phase Shift \\(\\pi/2\\)',
+  'Set \\(\\phi = 2\\pi f \\Delta t = \\pi/2\\) (90°).',
+  t1_1done, s1sn1 && s1sn1.img || null, fmtVars(s1sn1),
+  phase1str ? [`<strong>Phase at completion:</strong> ${phase1str}`] : [],
+  null, null
+)}
+${taskHTML(2, 'Phase Shift \\(\\pi/4\\)',
+  'Set \\(\\phi = 2\\pi f \\Delta t = \\pi/4\\) (45°).',
+  t1_2done, s1sn2 && s1sn2.img || null, fmtVars(s1sn2),
+  phase2str ? [`<strong>Phase at completion:</strong> ${phase2str}`] : [],
+  'Why is phase shift somewhat difficult to measure from an oscilloscope?',
+  q2answer
+)}
+
+<h2>Experiment 2 &mdash; Period &amp; Amplitude</h2>
+${taskHTML(1, 'Set Period to 3 s',
+  'Adjust \\(f\\) so that \\(T = 1/f = 3\\) s.',
+  t2_1done, s2sn1 && s2sn1.img || null, fmtVars(s2sn1),
+  T3str ? [`<strong>Period at completion:</strong> ${T3str}`] : [],
+  null, null
+)}
+${taskHTML(2, 'Set Peak-to-Peak to 4 V',
+  'Adjust \\(V_a\\) so that \\(2V_a = 4\\) V.',
+  t2_2done, s2sn2 && s2sn2.img || null, fmtVars(s2sn2),
+  pp4str ? [`<strong>Peak-to-peak at completion:</strong> ${pp4str}`] : [],
+  null, null
+)}
+</div></body></html>`;
+
+  const w = window.open('', '_blank', 'width=860,height=680');
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 1200); // extra time for MathJax to render
+}
+
+/* ── Boot ── */
+window.addEventListener('load', () => {
+  initPlot1();
+  initPlot2();
+  window.addEventListener('resize', () => {
+    Plotly.Plots.resize('plot1');
+    Plotly.Plots.resize('plot2');
+  });
+});
+</script>
+</body>
+</html>
