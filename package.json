@@ -1,0 +1,10 @@
+{
+  "name": "instructional-apps",
+  "private": true,
+  "type": "module",
+  "description": "Static instructional apps. npm is used only for tests; nothing here is needed to serve the apps.",
+  "scripts": {
+    "test": "node --test \"tests/unit/**/*.test.js\"",
+    "test:e2e": "playwright test"
+  }
+}
