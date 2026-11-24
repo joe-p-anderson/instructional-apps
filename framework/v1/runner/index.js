@@ -1,9 +1,24 @@
 // Activity runner core: pure logic, no DOM.
+//
+//   const runner = createRunner(activity, { tools: { [partId]: toolInstance } });
+//   runner.start(name)            // name gate; begins the Run
+//   runner.parts()                // Parts with each Task's status: open | locked | passed
+//   runner.task(partId, taskId)   // status, misses, hint, attempts
+//   runner.submit(partId, taskId) // judge the Part's current State; returns the Attempt
+//
+// Each Part has its own Tool instance (Tool contract: state.snapshot/describe/onChange,
+// controls.get(id) with get/set/lock/unlock/show/hide, displays[].snapshot).
 import { evaluateCondition, createConditionRegistry } from './conditions.js';
+import { validateActivity } from './activity.js';
 
 export { builtinConditionTypes, createConditionRegistry, evaluateCondition } from './conditions.js';
+export { validateActivity } from './activity.js';
 
 export function createRunner(activity, { tools = {}, clock = () => new Date(), conditionTypes } = {}) {
+  validateActivity(activity);
+  for (const part of activity.parts) {
+    if (!tools[part.id]) throw new Error(`Part "${part.id}" needs a Tool instance.`);
+  }
   let run = null;
   const registry = createConditionRegistry(activity.conditionTypes, conditionTypes);
 
@@ -38,6 +53,20 @@ export function createRunner(activity, { tools = {}, clock = () => new Date(), c
     return !previous || previous.passed ? 'open' : 'locked';
   }
 
+  // Apply a Task's Control exposure to its Part's Tool. Controls the Task
+  // doesn't mention keep whatever exposure earlier Tasks gave them.
+  function applyExposure(part, task) {
+    const controls = tools[part.id].controls;
+    const control = (id) => {
+      const c = controls.get(id);
+      if (!c) throw new Error(`Task "${task.id}" names unknown Control "${id}".`);
+      return c;
+    };
+    for (const id of task.show ?? []) { const c = control(id); c.show(); c.unlock(); }
+    for (const id of task.lock ?? []) { const c = control(id); c.show(); c.lock(); }
+    for (const id of task.hide ?? []) control(id).hide();
+  }
+
   return {
     get run() { return run; },
 
@@ -46,6 +75,10 @@ export function createRunner(activity, { tools = {}, clock = () => new Date(), c
       const trimmed = String(name ?? '').trim();
       if (!trimmed) throw new Error('A name is required to start the Run.');
       run = Object.freeze({ name: trimmed, fingerprint: randomFingerprint(), startedAt: clock().toISOString() });
+      for (const part of activity.parts) {
+        const first = part.tasks.findIndex((_, i) => statusOf(part, i) === 'open');
+        if (first !== -1) applyExposure(part, part.tasks[first]);
+      }
       return run;
     },
 
@@ -65,6 +98,8 @@ export function createRunner(activity, { tools = {}, clock = () => new Date(), c
         id: task.id,
         title: task.title,
         status: statusOf(part, part.tasks.indexOf(task)),
+        misses: missesOf(record),
+        hint: hintFor(task, record),
         attempts: structuredClone(record.attempts),
       };
     },
@@ -90,10 +125,21 @@ export function createRunner(activity, { tools = {}, clock = () => new Date(), c
       };
       const record = progress.get(part.id).get(task.id);
       record.attempts.push(attempt);
-      if (attempt.passed) record.passed = true;
-      return attempt;
+      if (attempt.passed) {
+        record.passed = true;
+        const next = part.tasks[part.tasks.indexOf(task) + 1];
+        if (next) applyExposure(part, next);
+      }
+      return { ...structuredClone(attempt), hint: hintFor(task, record) };
     },
   };
+}
+
+const missesOf = (record) => record.attempts.filter((a) => !a.passed).length;
+
+function hintFor(task, record) {
+  if (!task.hint) return null;
+  return missesOf(record) >= task.hint.after ? task.hint.text : null;
 }
 
 function randomFingerprint() {
