@@ -12,13 +12,16 @@
 import { createConditionRegistry } from './conditions.js';
 import { validateActivity } from './activity.js';
 import { judgeTask, scoreActivity } from './scoring.js';
+import { decodeActivity } from './keys.js';
 
 export { builtinConditionTypes, createConditionRegistry, evaluateCondition } from './conditions.js';
 export { validateActivity } from './activity.js';
 export { evaluateQuestions } from './questions.js';
 export { judgeTask, scoreActivity } from './scoring.js';
+export { encodeKey, decodeKey, decodeActivity, isEncodedKey } from './keys.js';
 
-export function createRunner(activity, { tools = {}, clock = () => new Date(), conditionTypes } = {}) {
+export function createRunner(definition, { tools = {}, clock = () => new Date(), conditionTypes } = {}) {
+  const activity = decodeActivity(definition); // encoded keys stay inside the runner
   validateActivity(activity);
   for (const part of activity.parts) {
     if (!tools[part.id]) throw new Error(`Part "${part.id}" needs a Tool instance.`);
