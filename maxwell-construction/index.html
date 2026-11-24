@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maxwell's Construction</title>
+<style>
+  :root {
+    --bg: #f6f6f3; --panel: #ffffff; --ink: #1d1d1f; --muted: #66666c;
+    --grid: #ececE6; --grid-major: #d6d6cf; --axis: #a9a9a1; --border: #dcdcd4;
+    --pos: #d1344b; --neg: #2a68d6; --ok: #22915a; --bad: #d23c3c;
+    --accent: #6a46d4; --neutral: #4d4d52; --zero: #7a3fb8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151619; --panel: #1e1f23; --ink: #ececef; --muted: #9b9ba4;
+      --grid: #26272c; --grid-major: #34353b; --axis: #55565e; --border: #33343a;
+      --pos: #ff6b7e; --neg: #6ea5ff; --ok: #4cc98b; --bad: #ff6d6d;
+      --accent: #a68cff; --neutral: #c4c4cb; --zero: #c99bff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .app { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 20px;
+         padding: 20px; max-width: 1500px; margin: 0 auto; }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; padding: 12px 16px; }
+    .panel { order: 2; }
+  }
+  h1 { font-size: 21px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 16px; font-size: 13.5px; }
+  h2 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em;
+       color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+          padding: 14px 16px; margin-bottom: 14px; }
+  button { font: inherit; font-size: 14px; padding: 7px 12px; border-radius: 8px;
+           border: 1px solid var(--border); background: var(--panel); color: var(--ink); cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .4; cursor: default; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--panel)); }
+  .seg { display: flex; gap: 6px; margin-bottom: 10px; }
+  .seg button { flex: 1; font-size: 13px; padding: 7px 6px; }
+  .row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; margin: 10px 0 2px; }
+  .row output { font-variant-numeric: tabular-nums; font-weight: 600; }
+  select { font: inherit; font-size: 14px; padding: 3px 6px; border-radius: 6px;
+           border: 1px solid var(--border); background: var(--panel); color: var(--ink); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .check { display: flex; gap: 8px; align-items: center; margin: 7px 0; font-size: 14px; cursor: pointer; }
+  .check input { accent-color: var(--accent); width: 16px; height: 16px; }
+  .note { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+
+  .steps { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .steps button { font-size: 13px; padding: 5px 11px; border-radius: 999px; }
+  .steps button.cur { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .steps button.done:not(.cur) { border-color: var(--ok); color: var(--ok); }
+  .caption h3 { margin: 0 0 4px; font-size: 18px; }
+  .caption p { margin: 0; color: var(--muted); max-width: 75ch; }
+
+  .boardWrap { position: relative; background: var(--panel); border: 1px solid var(--border);
+               border-radius: 12px; overflow: hidden; margin: 12px auto;
+               max-width: max(320px, calc((100vh - 270px) * 34 / 26)); }
+  svg#board { display: block; width: 100%; height: auto; touch-action: none; user-select: none; -webkit-user-select: none; }
+  svg#board.drawing { cursor: crosshair; }
+  svg#board.pannable { cursor: grab; }
+  svg#board.panning { cursor: grabbing; }
+  .viewCtl { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; align-items: center; }
+  .viewCtl button { font-size: 12.5px; padding: 4px 9px; background: color-mix(in srgb, var(--panel) 88%, transparent); }
+  .viewHint { position: absolute; left: 10px; bottom: 6px; font-size: 11.5px; color: var(--muted);
+              background: color-mix(in srgb, var(--panel) 85%, transparent); padding: 1px 6px; border-radius: 6px; pointer-events: none; }
+  .tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg);
+         font-size: 13px; padding: 5px 9px; border-radius: 7px; white-space: nowrap;
+         opacity: 0; transition: opacity .1s; font-variant-numeric: tabular-nums; }
+  .tip.show { opacity: .94; }
+
+  .task { background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+          padding: 12px 16px; margin-bottom: 12px; min-height: 56px; }
+  .task .prompt { font-size: 16px; }
+  .task .prompt b { font-variant-numeric: tabular-nums; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+  .chip { font-size: 13px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border);
+          font-variant-numeric: tabular-nums; color: var(--muted); }
+  .chip.done { border-color: var(--ok); color: var(--ok); }
+  .chip.cur { border-color: var(--accent); color: var(--ink); font-weight: 600; }
+  .msg { margin-top: 8px; font-size: 14px; }
+  .msg.ok { color: var(--ok); } .msg.bad { color: var(--bad); } .msg.info { color: var(--muted); }
+  .nav { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  #actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+
+  /* SVG styling. --s is (view width / 34), so text keeps a constant on-screen size at any zoom. */
+  #board { --s: 1; }
+  .gl { stroke: var(--grid); stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .gl.major { stroke: var(--grid-major); }
+  .gl.axis { stroke: var(--axis); }
+  .tick { font-size: calc(.55px * var(--s)); fill: var(--muted); }
+  .lbl { font-size: calc(.5px * var(--s)); font-weight: 600; paint-order: stroke; stroke: var(--panel);
+         stroke-width: calc(.14px * var(--s)); stroke-linejoin: round; font-variant-numeric: tabular-nums; }
+  .lbl.big { font-size: calc(.62px * var(--s)); }
+  .lbl.huge { font-size: calc(.75px * var(--s)); }
+  .ptlbl { font-size: calc(.42px * var(--s)); font-weight: 600; fill: var(--ink); paint-order: stroke; stroke: var(--panel);
+           stroke-width: calc(.12px * var(--s)); stroke-linejoin: round; font-variant-numeric: tabular-nums; }
+  .hit { fill: transparent; cursor: pointer; }
+  .qtext { font-size: calc(.44px * var(--s)); font-weight: 700; fill: #fff; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  @keyframes pulse { 0% { stroke-opacity: .9; } 100% { stroke-opacity: .15; } }
+  .pulse { animation: pulse 1s ease-in-out infinite alternate; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <h1>Maxwell's Construction</h1>
+    <p class="sub">Find the equipotentials of a dipole by adding the potentials of its two point charges.</p>
+
+    <section class="card">
+      <h2>Setup</h2>
+      <div class="seg">
+        <button data-preset="1">Equal (+1, −1)</button>
+        <button data-preset="2">Unequal (+2, −1)</button>
+      </div>
+      <label class="row" for="ratio">Charge ratio q₊ : |q₋| <output id="ratioOut"></output></label>
+      <input type="range" id="ratio" min="1" max="4" step="0.5">
+      <p class="note">Units: k·q = 36 V·(grid units) for each unit of charge, so a circle of potential V has radius r = k|q| / |V|. The charges are 8 units apart. Potentials are |V| = 2, 3, 4, 5, 6, 8, 9, 10, 12, 18 (radii 18, 12, 9, 7.2, 6, 4.5, 4, 3.6, 3, 2). For radii that fall between grid points, the nearest half unit is accepted and the circle is drawn at the exact radius. A larger charge uses only the potentials whose circles fit within r = 18.</p>
+      <button id="restart" style="width:100%;margin-top:10px">Restart construction</button>
+    </section>
+
+    <section class="card">
+      <h2>Display</h2>
+      <label class="check"><input type="checkbox" id="colorByV"> Color by potential</label>
+      <label class="check"><input type="checkbox" id="showExact"> Show exact equipotentials</label>
+      <label class="check"><input type="checkbox" id="showCircles"> Show circles (step 5)</label>
+      <label class="check"><input type="checkbox" id="highlight"> Highlight matching points (step 5)</label>
+      <label class="check"><input type="checkbox" id="showUsedPts"> Show construction points (step 6)</label>
+    </section>
+  </aside>
+
+  <main>
+    <nav class="steps" id="steps"></nav>
+    <div class="caption" id="caption"></div>
+    <div class="boardWrap" id="boardWrap">
+      <svg id="board" viewBox="-25 -19 50 38" xmlns="http://www.w3.org/2000/svg" aria-label="Construction board">
+        <g id="gGrid"></g>
+        <g id="gCircles"></g>
+        <g id="gExact"></g>
+        <g id="gCurves"></g>
+        <g id="gPoints"></g>
+        <g id="gCharges"></g>
+        <g id="gPreview"></g>
+      </svg>
+      <div class="viewCtl">
+        <button id="zoomIn" title="Zoom in">+</button>
+        <button id="zoomOut" title="Zoom out">−</button>
+        <button id="resetView">Reset view</button>
+      </div>
+      <div class="viewHint" id="viewHint"></div>
+      <div class="tip" id="tip"></div>
+    </div>
+    <div class="task" id="task"></div>
+    <div class="nav">
+      <button id="back">← Back</button>
+      <div id="actions"></div>
+      <button id="next" class="primary">Next →</button>
+    </div>
+  </main>
+</div>
+
+<script>
+// ---------- constants ----------
+const K = 36;          // k·q per unit charge, in V·grid units
+const LEVELS = [2, 3, 4, 5, 6, 8, 9, 10, 12, 18];  // |V| values: mostly divisors of 36; 5, 8, 10 fill in intermediate sums
+const OUTER_R = 18;    // largest circle drawn
+const SNAP = 0.5;      // radius snapping
+const SEP = 4;         // charges at x = ∓SEP
+const ASPECT = 26 / 34;                         // board height / width
+const HOME = { cx: 0, cy: 0, w: 50 };           // default view: fits the r = 18 circles
+const ZOOM_MIN = 8, ZOOM_MAX = 100;             // limits on view width
+const DATA = { x0: -32, x1: 32, y0: -26, y1: 26 }; // region sampled for the exact equipotentials
+const FAMS = ['pos', 'neg'];
+
+const $ = s => document.querySelector(s);
+const svg = $('#board');
+
+// ---------- state ----------
+const state = {
+  ratio: 1,
+  colorByV: true, showExact: false, showCircles: false, highlight: true, showUsedPts: false,
+  step: 0,
+  targets: { pos: [], neg: [] },   // potentials to draw, in order
+  placed: { pos: [], neg: [] },    // potentials drawn correctly
+  attempt: null,                   // last wrong circle {fam, r}
+  misses: 0,
+  msg: null,                       // {kind, html}
+  curves: [],                      // finished curves {V, pts:[idx], closed}
+  active: null,                    // curve in progress {V, pts:[idx]}
+  flash: null,                     // index of a wrongly clicked point
+};
+let view = { ...HOME };
+let drag = null;       // drawing a circle
+let pan = null;        // panning the view
+let pinch = null;      // two-finger zoom
+let spaceDown = false;
+const pointers = new Map();
+let exactCache = null;
+
+// ---------- helpers ----------
+const sy = y => -y;  // world y-up -> svg y-down
+const n2 = v => +v.toFixed(3);
+const S = () => view.w / 34;        // scale so strokes and markers keep a constant on-screen size
+const u = v => n2(v * S());
+function fmtNum(v) { return (Math.round(Math.abs(v) * 100) / 100).toFixed(2).replace(/\.?0+$/, ''); }
+function fmt(v) {
+  const r = Math.round(v * 100) / 100;
+  if (Math.abs(r) < 1e-9) return '0';
+  return (r > 0 ? '+' : '−') + fmtNum(r);
+}
+const snap = r => Math.round(r / SNAP) * SNAP;
+const sameV = (a, b) => Math.abs(a - b) < 1e-6;
+
+function charges() {
+  return { pos: { x: -SEP, q: state.ratio }, neg: { x: SEP, q: -1 } };
+}
+function kq(fam) { return K * Math.abs(charges()[fam].q); }
+function radius(fam, V) { return kq(fam) / Math.abs(V); }
+function isDone(fam) { return state.placed[fam].length === state.targets[fam].length; }
+function currentTarget(fam) { return state.targets[fam][state.placed[fam].length]; }
+
+// The LEVELS whose circles fit (r <= OUTER_R), largest circle first.
+function levelsFor(fam) {
+  const c = charges()[fam], s = Math.sign(c.q), k = kq(fam);
+  return LEVELS.filter(V => k / V <= OUTER_R + 1e-9).map(V => s * V);
+}
+
+function potential(x, y) {
+  const C = charges();
+  const r1 = Math.hypot(x - C.pos.x, y) || 1e-9, r2 = Math.hypot(x - C.neg.x, y) || 1e-9;
+  return K * C.pos.q / r1 + K * C.neg.q / r2;
+}
+
+// Every crossing of a + circle with a − circle (both centers lie on the x-axis).
+function intersections() {
+  const C = charges(), d = C.neg.x - C.pos.x, out = [];
+  for (const V1 of state.placed.pos) {
+    const r1 = radius('pos', V1);
+    for (const V2 of state.placed.neg) {
+      const r2 = radius('neg', V2);
+      const a = (r1 * r1 - r2 * r2 + d * d) / (2 * d), h2 = r1 * r1 - a * a;
+      if (h2 < -1e-9) continue;
+      const x = C.pos.x + a, sum = Math.round((V1 + V2) * 1e6) / 1e6;
+      if (h2 < 1e-9) out.push({ x, y: 0, V1, V2, sum });
+      else { const h = Math.sqrt(h2); out.push({ x, y: h, V1, V2, sum }, { x, y: -h, V1, V2, sum }); }
+    }
+  }
+  return out;
+}
+
+function colorFor(V, vmax, minOpacity = 0.35) {
+  if (!state.colorByV) return { stroke: 'var(--neutral)', op: 0.85 };
+  const stroke = Math.abs(V) < 1e-9 ? 'var(--zero)' : V > 0 ? 'var(--pos)' : 'var(--neg)';
+  const op = vmax > 0 ? minOpacity + (1 - minOpacity) * Math.min(1, Math.abs(V) / vmax) : 1;
+  return { stroke, op: Math.abs(V) < 1e-9 ? 1 : op };
+}
+
+// ---------- setup ----------
+function setup() {
+  FAMS.forEach(f => { state.targets[f] = levelsFor(f); state.placed[f] = []; });
+  Object.assign(state, { step: 0, attempt: null, misses: 0, msg: null, curves: [], active: null, flash: null });
+  exactCache = null;
+  syncControls();
+  render();
+}
+function hasProgress() { return state.placed.pos.length + state.placed.neg.length > 0; }
+function changeSetup(apply) {
+  if (hasProgress() && !confirm('Changing the setup restarts the construction. Continue?')) { syncControls(); return; }
+  apply();
+  setup();
+}
+function syncControls() {
+  $('#ratio').value = state.ratio; $('#ratioOut').textContent = fmtNum(state.ratio) + ' : 1';
+  document.querySelectorAll('[data-preset]').forEach(b => b.classList.toggle('on', +b.dataset.preset === state.ratio));
+  $('#colorByV').checked = state.colorByV; $('#showExact').checked = state.showExact;
+  $('#showCircles').checked = state.showCircles; $('#highlight').checked = state.highlight;
+  $('#showUsedPts').checked = state.showUsedPts;
+}
+
+// ---------- steps ----------
+const STEPS = [
+  { short: '1 · +q circles', title: 'Step 1 · Circles of the positive charge',
+    text: 'A single point charge has V = kq/r, so its equipotentials are circles with r = kq/V. Draw one circle for each potential listed below: press anywhere on the board and drag. The radius is measured from the charge and snaps to half grid units.' },
+  { short: '2 · −q circles', title: 'Step 2 · Circles of the negative charge',
+    text: 'Do the same for the negative charge. Its potentials are negative, but the radius uses magnitudes: r = k|q| / |V|.' },
+  { short: '3 · Superpose', title: 'Step 3 · Superpose',
+    text: 'Potential is a scalar, so the potential of both charges together is just the sum: V = V₊ + V₋. Lay the two families of circles on top of each other.' },
+  { short: '4 · Add', title: 'Step 4 · Add at the crossings',
+    text: 'Where a + circle crosses a − circle we know both potentials, so the total there is their sum. Each crossing is labeled with V₊ + V₋. Hover or tap a point to see the arithmetic.' },
+  { short: '5 · Connect', title: 'Step 5 · Connect equal sums',
+    text: 'Points with the same total lie on the same equipotential of the dipole. Click a point to start a curve, then click other points with the same sum in order along the curve. Click the last point again to finish, or the first point to close a loop. Try V = 0 first.' },
+  { short: '6 · Compare', title: 'Step 6 · Compare with the exact equipotentials',
+    text: 'Your curves (solid) are shown with the exact equipotentials of the dipole at the same potentials (dashed). Where do they agree, and where does the construction miss? More circles near a region give more points there, so the construction is better there.' },
+];
+function canGo(s) {
+  if (s <= 0) return true;
+  if (s === 1) return isDone('pos');
+  return isDone('pos') && isDone('neg');
+}
+function goStep(s) {
+  if (s < 0 || s >= STEPS.length || !canGo(s)) return;
+  state.step = s; state.msg = null; state.attempt = null; state.misses = 0; state.active = null;
+  render();
+}
+
+// ---------- drawing circles ----------
+function drawingFam() { return state.step === 0 ? 'pos' : state.step === 1 ? 'neg' : null; }
+function canDraw() { const f = drawingFam(); return !!f && !isDone(f); }
+
+function tryCircle(fam, r) {
+  const V = currentTarget(fam);
+  if (V === undefined || r < SNAP / 2) return;
+  const rt = radius(fam, V), k = kq(fam);
+  if (Math.abs(r - rt) <= SNAP / 2 + 1e-9) {
+    state.placed[fam].push(V);
+    state.attempt = null; state.misses = 0;
+    const exact = Math.abs(rt - r) > 1e-9
+      ? ` The exact radius is ${fmtNum(k)} / ${fmtNum(V)} = ${fmtNum(rt)}, so ${fmtNum(r)} is the closest grid value. The circle is drawn at the exact radius.`
+      : '';
+    const tail = isDone(fam) ? ' All circles for this charge are done. Press <b>Next</b>.' : '';
+    state.msg = { kind: 'ok', html: `✓ V = ${fmt(V)} at r = ${fmtNum(rt)}.${exact}${tail}` };
+  } else {
+    state.misses++;
+    state.attempt = { fam, r };
+    const Vr = Math.sign(V) * k / r;
+    let html = `At r = ${fmtNum(r)} this charge gives V = ${fmt(Vr)}, not ${fmt(V)}. `
+      + (r > rt ? 'That is too far out: move closer to the charge.' : 'That is too close in: move farther from the charge.');
+    if (state.misses >= 2) html += ` Hint: r = k|q| / |V| = ${fmtNum(k)} / ${fmtNum(V)}.`;
+    state.msg = { kind: 'bad', html };
+  }
+  render();
+}
+function revealOne() {
+  const fam = drawingFam(); if (!fam || isDone(fam)) return;
+  const V = currentTarget(fam);
+  state.placed[fam].push(V); state.attempt = null; state.misses = 0;
+  state.msg = { kind: 'info', html: `Shown: r = ${fmtNum(kq(fam))} / ${fmtNum(V)} = ${fmtNum(radius(fam, V))} for V = ${fmt(V)}.` };
+  render();
+}
+function undoCircle() {
+  const fam = drawingFam(); if (!fam) return;
+  state.placed[fam].pop(); state.attempt = null; state.misses = 0; state.msg = null;
+  render();
+}
+function clearCircles() {
+  const fam = drawingFam(); if (!fam) return;
+  state.placed[fam] = []; state.attempt = null; state.misses = 0; state.msg = null;
+  render();
+}
+function revealAll() {
+  const fam = drawingFam(); if (!fam) return;
+  while (!isDone(fam)) state.placed[fam].push(currentTarget(fam));
+  state.attempt = null; state.misses = 0;
+  state.msg = { kind: 'info', html: 'All circles filled in. Press <b>Next</b>.' };
+  render();
+}
+
+function toWorld(e) {
+  const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+  return { x: p.x, y: -p.y };
+}
+function updateDrag(e) {
+  const w = toWorld(e), c = charges()[drag.fam];
+  drag.r = Math.min(OUTER_R + 4, snap(Math.hypot(w.x - c.x, w.y)));
+  drag.w = w;
+  renderPreview();
+}
+
+// ---------- view: zoom and pan ----------
+function applyView() {
+  const h = view.w * ASPECT;
+  svg.setAttribute('viewBox', `${n2(view.cx - view.w / 2)} ${n2(sy(view.cy) - h / 2)} ${n2(view.w)} ${n2(h)}`);
+  svg.style.setProperty('--s', S().toFixed(4));
+}
+let viewFrame = 0;
+function viewChanged() {
+  if (viewFrame) return;
+  viewFrame = requestAnimationFrame(() => { viewFrame = 0; applyView(); renderGrid(); render(); });
+}
+// Zoom by `factor` (>1 zooms out) keeping the world point under (clientX, clientY) fixed.
+function zoomAt(clientX, clientY, factor) {
+  const p = toWorld({ clientX, clientY });
+  const w = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, view.w * factor)), k = w / view.w;
+  view = { cx: p.x - (p.x - view.cx) * k, cy: p.y - (p.y - view.cy) * k, w };
+  applyView(); viewChanged();
+}
+function zoomCenter(factor) {
+  const r = svg.getBoundingClientRect();
+  zoomAt(r.left + r.width / 2, r.top + r.height / 2, factor);
+}
+function panBy(dxPx, dyPx) {
+  const scale = view.w / svg.getBoundingClientRect().width;
+  view.cx -= dxPx * scale; view.cy += dyPx * scale;
+  applyView(); viewChanged();
+}
+svg.addEventListener('wheel', e => {
+  e.preventDefault();
+  const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+  zoomAt(e.clientX, e.clientY, Math.exp(dy * 0.0015));
+}, { passive: false });
+svg.addEventListener('contextmenu', e => e.preventDefault());
+$('#zoomIn').addEventListener('click', () => zoomCenter(1 / 1.3));
+$('#zoomOut').addEventListener('click', () => zoomCenter(1.3));
+$('#resetView').addEventListener('click', () => { view = { ...HOME }; applyView(); viewChanged(); });
+
+// ---------- pointer handling: draw, pan, pinch ----------
+svg.addEventListener('pointerdown', e => {
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size === 2) {           // second finger: switch to pinch zoom
+    drag = null; pan = null; renderPreview();
+    const [a, b] = [...pointers.values()];
+    pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+    svg.setPointerCapture(e.pointerId);
+    return;
+  }
+  if (pointers.size > 2) return;
+  const onPoint = e.target.dataset && e.target.dataset.i !== undefined;
+  const wantsPan = e.button === 1 || e.button === 2 || spaceDown || (e.button === 0 && !onPoint && !canDraw());
+  if (wantsPan) {
+    svg.setPointerCapture(e.pointerId);
+    pan = { x: e.clientX, y: e.clientY };
+    svg.classList.add('panning');
+    e.preventDefault();
+    return;
+  }
+  if (e.button === 0 && canDraw()) {
+    svg.setPointerCapture(e.pointerId);
+    drag = { fam: drawingFam(), r: 0 };
+    updateDrag(e);
+    e.preventDefault();
+  }
+});
+svg.addEventListener('pointermove', e => {
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinch && pointers.size >= 2) {
+    const [a, b] = [...pointers.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    if (d > 0) zoomAt(mx, my, pinch.d / d);
+    panBy(mx - pinch.mx, my - pinch.my);
+    Object.assign(pinch, { d, mx, my });
+  } else if (pan) {
+    panBy(e.clientX - pan.x, e.clientY - pan.y);
+    pan.x = e.clientX; pan.y = e.clientY;
+  } else if (drag) {
+    updateDrag(e);
+  }
+});
+function pointerEnd(e, cancelled) {
+  pointers.delete(e.pointerId);
+  if (pinch) { if (pointers.size < 2) pinch = null; return; }
+  if (pan) { pan = null; svg.classList.remove('panning'); return; }
+  if (drag) {
+    const { fam, r } = drag; drag = null;
+    renderPreview();
+    if (!cancelled) tryCircle(fam, r);
+  }
+}
+svg.addEventListener('pointerup', e => pointerEnd(e, false));
+svg.addEventListener('pointercancel', e => pointerEnd(e, true));
+document.addEventListener('keydown', e => {
+  if (e.key === ' ' && !/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)) {
+    spaceDown = true; svg.classList.add('pannable'); e.preventDefault();
+  }
+});
+document.addEventListener('keyup', e => { if (e.key === ' ') { spaceDown = false; renderCursor(); } });
+
+// ---------- connecting points ----------
+function connect(i) {
+  const pts = intersections(), p = pts[i];
+  if (!p) return;
+  const a = state.active;
+  if (!a) {
+    state.active = { V: p.sum, pts: [i] };
+    state.msg = { kind: 'info', html: `Started the V = ${fmt(p.sum)} curve. Click other points whose sum is ${fmt(p.sum)}.` };
+  } else if (a.pts.includes(i)) {
+    if (i === a.pts[0] && a.pts.length >= 3) return finishCurve(true);
+    if (i === a.pts[a.pts.length - 1]) return finishCurve(false);
+    return;
+  } else if (sameV(p.sum, a.V)) {
+    a.pts.push(i);
+    state.msg = { kind: 'ok', html: `✓ ${fmt(p.V1)} + (${fmt(p.V2)}) = ${fmt(p.sum)}. ${a.pts.length} points so far.` };
+  } else {
+    state.flash = i;
+    state.msg = { kind: 'bad', html: `That point has V = ${fmt(p.V1)} + (${fmt(p.V2)}) = ${fmt(p.sum)}, not ${fmt(a.V)}.` };
+    setTimeout(() => { if (state.flash === i) { state.flash = null; renderPoints(); } }, 900);
+  }
+  render();
+}
+function finishCurve(closed) {
+  const a = state.active; if (!a) return;
+  if (a.pts.length < 2 || (closed && a.pts.length < 3)) {
+    state.msg = { kind: 'bad', html: closed ? 'A loop needs at least three points.' : 'A curve needs at least two points.' };
+    return render();
+  }
+  state.curves.push({ V: a.V, pts: a.pts.slice(), closed });
+  state.active = null;
+  state.msg = { kind: 'ok', html: `Equipotential V = ${fmt(a.V)} drawn. Pick another sum, or turn on <b>Show exact equipotentials</b> to check it.` };
+  render();
+}
+function undoPoint() {
+  const a = state.active;
+  if (a) { a.pts.pop(); if (!a.pts.length) state.active = null; }
+  else state.curves.pop();
+  state.msg = null;
+  render();
+}
+function clearCurves() { state.curves = []; state.active = null; state.msg = null; render(); }
+
+svg.addEventListener('click', e => {
+  const i = e.target.dataset && e.target.dataset.i;
+  if (i !== undefined && state.step === 4) connect(+i);
+});
+
+// tooltip
+const tip = $('#tip'), wrap = $('#boardWrap');
+svg.addEventListener('pointerover', e => {
+  const i = e.target.dataset && e.target.dataset.i;
+  if (i === undefined) return;
+  const p = intersections()[+i]; if (!p) return;
+  tip.innerHTML = `V₊ = ${fmt(p.V1)}, V₋ = ${fmt(p.V2)} → V = <b>${fmt(p.sum)}</b>`;
+  const rb = wrap.getBoundingClientRect();
+  const x = e.clientX - rb.left + 14, y = e.clientY - rb.top - 34;
+  tip.style.left = Math.min(x, rb.width - 190) + 'px';
+  tip.style.top = Math.max(4, y) + 'px';
+  tip.classList.add('show');
+});
+svg.addEventListener('pointerout', e => { if (e.target.dataset && e.target.dataset.i !== undefined) tip.classList.remove('show'); });
+
+// ---------- natural cubic spline through the clicked points ----------
+function solveLinear(A, b) {  // Gaussian elimination with partial pivoting (systems here are tiny)
+  const n = b.length;
+  for (let c = 0; c < n; c++) {
+    let p = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+    [A[c], A[p]] = [A[p], A[c]]; [b[c], b[p]] = [b[p], b[c]];
+    for (let r = c + 1; r < n; r++) {
+      const f = A[r][c] / A[c][c];
+      for (let k = c; k < n; k++) A[r][k] -= f * A[c][k];
+      b[r] -= f * b[c];
+    }
+  }
+  const x = new Array(n).fill(0);
+  for (let r = n - 1; r >= 0; r--) {
+    let s = b[r];
+    for (let k = r + 1; k < n; k++) s -= A[r][k] * x[k];
+    x[r] = s / A[r][r];
+  }
+  return x;
+}
+// Second derivatives of the interpolating cubic spline for values v at knot spacings h.
+// Open: natural ends (M = 0). Closed: periodic.
+function splineM(v, h, closed) {
+  const n = v.length, A = [...Array(n)].map(() => new Array(n).fill(0)), b = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) {
+    if (!closed && (i === 0 || i === n - 1)) { A[i][i] = 1; continue; }
+    const im = (i - 1 + n) % n, ip = (i + 1) % n, h0 = h[im], h1 = h[i];
+    A[i][im] += h0; A[i][i] += 2 * (h0 + h1); A[i][ip] += h1;
+    b[i] = 6 * ((v[ip] - v[i]) / h1 - (v[i] - v[im]) / h0);
+  }
+  return solveLinear(A, b);
+}
+// SVG path of a natural cubic spline, parameterized by chord length, as exact Bézier segments.
+function splinePath(P, closed) {
+  if (P.length < 2) return '';
+  const f = p => `${n2(p.x)} ${n2(sy(p.y))}`;
+  if (P.length === 2 || (closed && P.length < 3)) return `M${f(P[0])}L${f(P[1])}`;
+  const n = P.length, segs = closed ? n : n - 1;
+  const h = [];
+  for (let i = 0; i < n; i++) { const q = P[(i + 1) % n]; h.push(Math.max(1e-6, Math.hypot(q.x - P[i].x, q.y - P[i].y))); }
+  const Mx = splineM(P.map(p => p.x), h, closed), My = splineM(P.map(p => p.y), h, closed);
+  let d = `M${f(P[0])}`;
+  for (let i = 0; i < segs; i++) {
+    const j = (i + 1) % n, hi = h[i];
+    const ctrl = (v0, v1, m0, m1) => {
+      const d0 = (v1 - v0) / hi - hi * (2 * m0 + m1) / 6;   // slope at start of segment
+      const d1 = (v1 - v0) / hi + hi * (m0 + 2 * m1) / 6;   // slope at end of segment
+      return [v0 + d0 * hi / 3, v1 - d1 * hi / 3];
+    };
+    const [x1, x2] = ctrl(P[i].x, P[j].x, Mx[i], Mx[j]);
+    const [y1, y2] = ctrl(P[i].y, P[j].y, My[i], My[j]);
+    d += `C${f({ x: x1, y: y1 })} ${f({ x: x2, y: y2 })} ${f(P[j])}`;
+  }
+  return d + (closed ? 'Z' : '');
+}
+
+function allSums() {
+  const s = new Set();
+  for (const a of state.targets.pos) for (const b of state.targets.neg) s.add(Math.round((a + b) * 1e6) / 1e6);
+  return [...s].sort((a, b) => a - b);
+}
+
+// Marching squares on a fine grid for the exact dipole equipotentials (geometry cached per setup).
+function exactLevels() {
+  const key = String(state.ratio);
+  if (exactCache && exactCache.key === key) return exactCache.levels;
+  const h = 0.12, nx = Math.round((DATA.x1 - DATA.x0) / h), ny = Math.round((DATA.y1 - DATA.y0) / h);
+  const W = nx + 1, F = new Float64Array(W * (ny + 1));
+  for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) F[j * W + i] = potential(DATA.x0 + i * h, DATA.y0 + j * h);
+  const levels = [];
+  const cx = [0, 0, 0, 0], cy = [0, 0, 0, 0];
+  for (const L of allSums()) {
+    const segs = [];
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      const x = DATA.x0 + i * h, y = DATA.y0 + j * h;
+      const v0 = F[j * W + i] - L, v1 = F[j * W + i + 1] - L, v2 = F[(j + 1) * W + i + 1] - L, v3 = F[(j + 1) * W + i] - L;
+      if ((v0 < 0) === (v1 < 0) && (v1 < 0) === (v2 < 0) && (v2 < 0) === (v3 < 0)) continue;
+      let k = 0;
+      const edge = (a, b, ax, ay, bx, by) => {
+        if ((a < 0) !== (b < 0)) { const t = a / (a - b); cx[k] = ax + t * (bx - ax); cy[k] = ay + t * (by - ay); k++; }
+      };
+      edge(v0, v1, x, y, x + h, y); edge(v1, v2, x + h, y, x + h, y + h);
+      edge(v2, v3, x + h, y + h, x, y + h); edge(v3, v0, x, y + h, x, y);
+      for (let s = 0; s + 1 < k; s += 2) segs.push([cx[s], cy[s], cx[s + 1], cy[s + 1]]);
+    }
+    levels.push({ L, d: chainSegments(segs) });
+  }
+  exactCache = { key, levels };
+  return levels;
+}
+// Join marching-squares segments that share endpoints into long polylines, so dash patterns run continuously.
+function chainSegments(segs) {
+  const key = (x, y) => `${x.toFixed(4)},${y.toFixed(4)}`;
+  const ends = new Map();   // endpoint key -> segment indices touching it
+  segs.forEach((s, i) => {
+    for (const k of [key(s[0], s[1]), key(s[2], s[3])]) { if (!ends.has(k)) ends.set(k, []); ends.get(k).push(i); }
+  });
+  const used = new Uint8Array(segs.length);
+  // From point (x, y), keep stepping to an unused segment that touches it.
+  const walk = (x, y) => {
+    const pts = [];
+    for (;;) {
+      const next = (ends.get(key(x, y)) || []).find(i => !used[i]);
+      if (next === undefined) return pts;
+      used[next] = 1;
+      const s = segs[next], fwd = key(s[0], s[1]) === key(x, y);
+      [x, y] = fwd ? [s[2], s[3]] : [s[0], s[1]];
+      pts.push([x, y]);
+    }
+  };
+  let d = '';
+  segs.forEach((s, i) => {
+    if (used[i]) return;
+    used[i] = 1;
+    const back = walk(s[0], s[1]).reverse(), fwd = walk(s[2], s[3]);
+    const line = [...back, [s[0], s[1]], [s[2], s[3]], ...fwd];
+    d += 'M' + line.map(([x, y]) => `${n2(x)} ${n2(-y)}`).join('L');
+  });
+  return d;
+}
+
+// ---------- rendering ----------
+function renderGrid() {
+  const h = view.w * ASPECT;
+  const x0 = view.cx - view.w / 2, x1 = view.cx + view.w / 2, y0 = view.cy - h / 2, y1 = view.cy + h / 2;
+  let g = '';
+  for (let x = Math.ceil(x0); x <= x1; x++) {
+    const cls = x === 0 ? 'gl axis' : x % 5 === 0 ? 'gl major' : 'gl';
+    g += `<line class="${cls}" x1="${x}" y1="${n2(sy(y1))}" x2="${x}" y2="${n2(sy(y0))}"/>`;
+  }
+  for (let y = Math.ceil(y0); y <= y1; y++) {
+    const cls = y === 0 ? 'gl axis' : y % 5 === 0 ? 'gl major' : 'gl';
+    g += `<line class="${cls}" x1="${n2(x0)}" y1="${sy(y)}" x2="${n2(x1)}" y2="${sy(y)}"/>`;
+  }
+  const step = view.w <= 22 ? 1 : view.w <= 55 ? 2 : 5;
+  for (let x = Math.ceil((x0 + u(1)) / step) * step; x < x1 - u(0.5); x += step)
+    g += `<text class="tick" x="${x}" y="${n2(sy(y0) - u(0.25))}" text-anchor="middle">${x}</text>`;
+  for (let y = Math.ceil((y0 + u(1.2)) / step) * step; y < y1 - u(0.5); y += step)
+    if (y) g += `<text class="tick" x="${n2(x0 + u(0.25))}" y="${n2(sy(y) + u(0.18))}">${y}</text>`;
+  $('#gGrid').innerHTML = g;
+}
+
+function circleSVG(fam, V, r, faint) {
+  const C = charges()[fam], vmax = Math.max(...state.targets[fam].map(Math.abs));
+  const col = colorFor(V, vmax);
+  const op = faint ? col.op * 0.3 : col.op;
+  // fan labels outward (away from the other charge) so small inner circles don't stack up
+  const idx = state.targets[fam].findIndex(t => sameV(t, V));
+  const ang = (fam === 'pos' ? 115 + 16 * idx : 65 - 16 * idx) * Math.PI / 180;
+  const lx = C.x + (r + u(0.05)) * Math.cos(ang), ly = (r + u(0.05)) * Math.sin(ang);
+  let s = `<circle cx="${C.x}" cy="0" r="${n2(r)}" fill="none" stroke="${col.stroke}" stroke-opacity="${op.toFixed(2)}" stroke-width="${u(0.08)}"/>`;
+  if (!faint) s += `<text class="lbl" x="${n2(lx)}" y="${n2(sy(ly))}" text-anchor="middle" fill="${col.stroke}">${fmt(V)}</text>`;
+  return s;
+}
+function renderCircles() {
+  let g = '';
+  const st = state.step;
+  if (st === 5 || (st === 4 && !state.showCircles)) { $('#gCircles').innerHTML = ''; return; }
+  const faintAll = st === 4;   // step 5 with "Show circles" on: faint reference only
+  for (const V of state.placed.pos) g += circleSVG('pos', V, radius('pos', V), st === 1 || faintAll);
+  if (st >= 1) for (const V of state.placed.neg) g += circleSVG('neg', V, radius('neg', V), faintAll);
+  if (state.attempt && drawingFam() === state.attempt.fam) {
+    const C = charges()[state.attempt.fam];
+    g += `<circle cx="${C.x}" cy="0" r="${state.attempt.r}" fill="none" stroke="var(--bad)" stroke-width="${u(0.08)}" stroke-dasharray="${u(0.3)} ${u(0.2)}"/>`;
+  }
+  $('#gCircles').innerHTML = g;
+}
+function renderPreview() {
+  let g = '';
+  if (drag && drag.r > 0) {
+    const C = charges()[drag.fam];
+    g += `<circle cx="${C.x}" cy="0" r="${drag.r}" fill="none" stroke="var(--accent)" stroke-width="${u(0.09)}" stroke-dasharray="${u(0.35)} ${u(0.2)}"/>`;
+    g += `<line x1="${C.x}" y1="0" x2="${n2(drag.w.x)}" y2="${n2(sy(drag.w.y))}" stroke="var(--accent)" stroke-width="${u(0.04)}" stroke-opacity="0.6"/>`;
+    g += `<text class="lbl huge" x="${n2(drag.w.x + u(0.5))}" y="${n2(sy(drag.w.y) - u(0.5))}" fill="var(--accent)">r = ${fmtNum(drag.r)}</text>`;
+  }
+  $('#gPreview').innerHTML = g;
+}
+function renderPoints() {
+  let g = '';
+  if (state.step === 3 || state.step === 4) {
+    const pts = intersections(), a = state.active;
+    pts.forEach((p, i) => {
+      const x = n2(p.x), y = n2(sy(p.y));
+      if (state.flash === i) g += `<circle cx="${x}" cy="${y}" r="${u(0.42)}" fill="none" stroke="var(--bad)" stroke-width="${u(0.1)}"/>`;
+      if (a && a.pts.includes(i)) g += `<circle cx="${x}" cy="${y}" r="${u(0.34)}" fill="none" stroke="var(--accent)" stroke-width="${u(0.09)}"/>`;
+      else if (a && state.highlight && sameV(p.sum, a.V)) g += `<circle class="pulse" cx="${x}" cy="${y}" r="${u(0.34)}" fill="none" stroke="var(--accent)" stroke-width="${u(0.07)}"/>`;
+      g += `<circle cx="${x}" cy="${y}" r="${u(0.13)}" fill="var(--ink)"/>`;
+      g += `<text class="ptlbl" x="${n2(p.x + u(0.18))}" y="${n2(sy(p.y) - u(0.2))}">${fmt(p.sum)}</text>`;
+    });
+    const style = state.step === 4 ? '' : ' style="cursor:default"';
+    pts.forEach((p, i) => { g += `<circle class="hit"${style} data-i="${i}" cx="${n2(p.x)}" cy="${n2(sy(p.y))}" r="${u(0.45)}"/>`; });
+  } else if (state.step === 5 && state.showUsedPts) {
+    // Compare step: only the points each curve was built from, in the curve's color
+    const pts = intersections(), vmax = Math.max(...allSums().map(Math.abs), 1e-9);
+    for (const c of state.curves) {
+      const col = colorFor(c.V, vmax, 0.55);
+      for (const i of c.pts) {
+        const p = pts[i];
+        g += `<circle cx="${n2(p.x)}" cy="${n2(sy(p.y))}" r="${u(0.2)}" fill="${col.stroke}" stroke="var(--panel)" stroke-width="${u(0.06)}"/>`;
+      }
+    }
+  }
+  $('#gPoints').innerHTML = g;
+}
+function renderCurves() {
+  let g = '';
+  if (state.step >= 4) {
+    const pts = intersections(), sums = allSums(), vmax = Math.max(...sums.map(Math.abs), 1e-9);
+    for (const c of state.curves) {
+      const P = c.pts.map(i => pts[i]), col = colorFor(c.V, vmax, 0.55);
+      g += `<path d="${splinePath(P, c.closed)}" fill="none" stroke="${col.stroke}" stroke-opacity="${col.op.toFixed(2)}" stroke-width="${u(0.14)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      const top = P.reduce((m, p) => (p.y > m.y ? p : m), P[0]);
+      g += `<text class="lbl big" x="${n2(top.x)}" y="${n2(sy(top.y) - u(0.45))}" text-anchor="middle" fill="${col.stroke}">V = ${fmt(c.V)}</text>`;
+    }
+    if (state.active && state.active.pts.length > 1) {
+      const P = state.active.pts.map(i => pts[i]);
+      g += `<path d="${splinePath(P, false)}" fill="none" stroke="var(--accent)" stroke-width="${u(0.12)}" stroke-dasharray="${u(0.3)} ${u(0.18)}" stroke-linecap="round"/>`;
+    }
+  }
+  $('#gCurves').innerHTML = g;
+}
+function renderExact() {
+  const compare = state.step === 5;   // step 6: only the levels the student drew, drawn stronger
+  if (!compare && !state.showExact) { $('#gExact').innerHTML = ''; return; }
+  const all = exactLevels(), vmax = Math.max(...all.map(l => Math.abs(l.L)), 1e-9);
+  const levels = compare ? all.filter(l => state.curves.some(c => sameV(c.V, l.L))) : all;
+  $('#gExact').innerHTML = levels.map(({ L, d }) => {
+    const col = colorFor(L, vmax, 0.5), op = compare ? Math.max(0.75, col.op) : col.op * 0.6;
+    return `<path d="${d}" fill="none" stroke="${col.stroke}" stroke-opacity="${op.toFixed(2)}" stroke-width="${u(compare ? 0.09 : 0.07)}" stroke-dasharray="${compare ? `${u(0.45)} ${u(0.3)}` : `${u(0.3)} ${u(0.22)}`}"/>`;
+  }).join('');
+}
+function renderCharges() {
+  const C = charges(), fam = drawingFam();
+  let g = '';
+  for (const f of FAMS) {
+    const c = C[f];
+    if (fam === f && !isDone(f)) g += `<circle class="pulse" cx="${c.x}" cy="0" r="${u(0.95)}" fill="none" stroke="var(--accent)" stroke-width="${u(0.1)}"/>`;
+    g += `<circle cx="${c.x}" cy="0" r="${u(0.6)}" fill="${f === 'pos' ? 'var(--pos)' : 'var(--neg)'}"/>`;
+    g += `<text class="qtext" x="${c.x}" y="0">${fmt(c.q)}</text>`;
+  }
+  $('#gCharges').innerHTML = g;
+}
+function renderCursor() {
+  svg.classList.toggle('drawing', canDraw() && !spaceDown);
+  svg.classList.toggle('pannable', !canDraw() || spaceDown);
+  $('#viewHint').textContent = canDraw()
+    ? 'Scroll or pinch to zoom · right-drag or Space-drag to pan'
+    : 'Scroll or pinch to zoom · drag to pan';
+}
+
+function button(label, fn, opts = {}) {
+  const b = document.createElement('button');
+  b.textContent = label; b.onclick = fn; b.disabled = !!opts.disabled;
+  return b;
+}
+function renderUI() {
+  const st = state.step;
+  // step chips
+  const nav = $('#steps'); nav.innerHTML = '';
+  STEPS.forEach((s, i) => {
+    const b = button(s.short, () => goStep(i), { disabled: !canGo(i) });
+    if (i === st) b.classList.add('cur');
+    if ((i === 0 && isDone('pos')) || (i === 1 && isDone('neg'))) b.classList.add('done');
+    nav.appendChild(b);
+  });
+  $('#caption').innerHTML = `<h3>${STEPS[st].title}</h3><p>${STEPS[st].text}</p>`;
+  renderCursor();
+
+  // task panel
+  let html = '';
+  const fam = drawingFam();
+  if (fam) {
+    const V = currentTarget(fam), sign = fam === 'pos' ? '+' : '−';
+    html += V !== undefined
+      ? `<div class="prompt">k|q| = <b>${fmtNum(kq(fam))}</b> for the ${sign}q charge. Draw the <b>V = ${fmt(V)}</b> circle.</div>`
+      : `<div class="prompt">All circles for the ${sign}q charge are drawn.</div>`;
+    html += '<div class="chips">' + state.targets[fam].map((t, i) => {
+      const cls = i < state.placed[fam].length ? 'done' : i === state.placed[fam].length ? 'cur' : '';
+      return `<span class="chip ${cls}">V = ${fmt(t)}</span>`;
+    }).join('') + '</div>';
+  } else if (st === 2) {
+    html += `<div class="prompt">${state.placed.pos.length} circles for +q and ${state.placed.neg.length} for −q. Each crossing is a point where we know both V₊ and V₋.</div>`;
+  } else if (st === 3) {
+    const pts = intersections(), sums = [...new Set(pts.map(p => p.sum))].sort((a, b) => a - b);
+    html += `<div class="prompt">${pts.length} crossing points. Totals present: ${sums.map(fmt).join(', ')}.</div>`;
+  } else if (st === 4) {
+    const a = state.active;
+    html += a
+      ? `<div class="prompt">Building <b>V = ${fmt(a.V)}</b>: ${a.pts.length} point${a.pts.length === 1 ? '' : 's'}.</div>`
+      : `<div class="prompt">Click any crossing point to start an equipotential.</div>`;
+    if (state.curves.length) html += '<div class="chips">' + state.curves.map(c => `<span class="chip done">V = ${fmt(c.V)}${c.closed ? ' (loop)' : ''}</span>`).join('') + '</div>';
+  } else if (st === 5) {
+    html += state.curves.length
+      ? `<div class="prompt">Solid: your curves. Dashed: the exact equipotentials at the same potentials.</div>`
+        + (state.showUsedPts ? '' : `<div class="msg info">Turn on <b>Show construction points</b> to see which known points each curve passes through.</div>`)
+        + '<div class="chips">' + [...new Set(state.curves.map(c => c.V))].sort((a, b) => a - b).map(V => `<span class="chip done">V = ${fmt(V)}</span>`).join('') + '</div>'
+      : `<div class="prompt">No curves drawn yet. Go back to step 5 and connect some equal sums first.</div>`;
+  }
+  if (state.msg) html += `<div class="msg ${state.msg.kind}">${state.msg.html}</div>`;
+  $('#task').innerHTML = html;
+
+  // actions
+  const act = $('#actions'); act.innerHTML = '';
+  if (fam) {
+    const none = !state.placed[fam].length;
+    act.append(button('Undo circle', undoCircle, { disabled: none }),
+               button('Clear circles', clearCircles, { disabled: none }),
+               button('Show this circle', revealOne, { disabled: isDone(fam) }),
+               button('Fill in all (demo)', revealAll, { disabled: isDone(fam) }));
+  } else if (st === 4) {
+    const a = state.active;
+    act.append(button('Undo', undoPoint, { disabled: !a && !state.curves.length }),
+               button('Finish curve', () => finishCurve(false), { disabled: !a || a.pts.length < 2 }),
+               button('Close loop', () => finishCurve(true), { disabled: !a || a.pts.length < 3 }),
+               button('Clear curves', clearCurves, { disabled: !a && !state.curves.length }));
+  }
+  $('#back').disabled = st === 0;
+  $('#next').disabled = st === STEPS.length - 1 || !canGo(st + 1);
+  $('#next').style.visibility = st === STEPS.length - 1 ? 'hidden' : 'visible';
+}
+
+function render() {
+  renderCircles(); renderExact(); renderCurves(); renderPoints(); renderCharges(); renderPreview(); renderUI();
+}
+
+// ---------- controls ----------
+document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+  const r = +b.dataset.preset;
+  if (r !== state.ratio) changeSetup(() => { state.ratio = r; });
+}));
+$('#ratio').addEventListener('input', e => { $('#ratioOut').textContent = fmtNum(+e.target.value) + ' : 1'; });
+$('#ratio').addEventListener('change', e => changeSetup(() => { state.ratio = +e.target.value; }));
+$('#colorByV').addEventListener('change', e => { state.colorByV = e.target.checked; render(); });
+$('#showExact').addEventListener('change', e => { state.showExact = e.target.checked; render(); });
+$('#showCircles').addEventListener('change', e => { state.showCircles = e.target.checked; render(); });
+$('#highlight').addEventListener('change', e => { state.highlight = e.target.checked; render(); });
+$('#showUsedPts').addEventListener('change', e => { state.showUsedPts = e.target.checked; render(); });
+$('#restart').addEventListener('click', () => changeSetup(() => {}));
+$('#back').addEventListener('click', () => goStep(state.step - 1));
+$('#next').addEventListener('click', () => goStep(state.step + 1));
+document.addEventListener('keydown', e => {
+  if (state.step !== 4 || !state.active) return;
+  if (e.key === 'Escape') { state.active = null; state.msg = null; render(); }
+  if (e.key === 'Enter') finishCurve(false);
+});
+
+applyView();
+renderGrid();
+setup();
+</script>
+</body>
+</html>
