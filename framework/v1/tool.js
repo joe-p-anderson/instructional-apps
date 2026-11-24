@@ -36,6 +36,9 @@
 // Display:
 //   id, label
 //   snapshot() -> Promise<string> PNG data URL of what the Display currently shows
+//   toScreen(x, y) (optional)     viewport (client) pixel position of the plot point (x, y) in
+//                                 the Display's data units, or null until the Display is laid
+//                                 out at its box size. Lets tests and authors aim at markers.
 
 /** Throw if `tool` does not look like a v1 Tool definition. Returns the tool. */
 export function defineTool(tool) {

@@ -6,7 +6,7 @@ test('the authoring page encodes a Condition that the runner decodes back exactl
   await page.goto(PAGE);
   await page.getByRole('textbox', { name: 'Value' })
     .fill("{ state: 'phi', target: Math.PI / 2, tol: 0.05, targetLabel: 'π/2 ≈ 1.571 rad' }");
-  const output = page.locator('#ek-output');
+  const output = page.getByRole('status', { name: 'Encoded key' });
   await expect(output).toHaveText(/^enc1:/);
   const key = await output.textContent();
   expect(key).not.toContain('target');

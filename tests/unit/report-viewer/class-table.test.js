@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { uploaderFromPath, readSubmissions, openClass } from '../../../framework/v1/report-viewer/core.js';
+import { uploaderFromPath, readUploads, openClass } from '../../../framework/v1/report-viewer/core.js';
 import { readZip } from '../../../framework/v1/report-viewer/zip.js';
 import { sampleReport, quizReport } from './fixtures.js';
 import { makeZip } from './make-zip.js';
@@ -11,20 +11,20 @@ const file = (name, data) => ({ name, bytes: typeof data === 'string' ? new Text
 test('the uploader is read from a flat Brightspace bulk-download file name', () => {
   assert.deepEqual(
     uploaderFromPath('143560-1234567 - Ada Lovelace - Nov 24, 2026 1027 AM - demo_Ada-Lovelace_2026-11-24.json'),
-    { uploader: 'Ada Lovelace', submissionId: '143560-1234567', submittedAt: 'Nov 24, 2026 1027 AM',
+    { uploader: 'Ada Lovelace', uploadId: '143560-1234567', uploadedAt: 'Nov 24, 2026 1027 AM',
       fileName: 'demo_Ada-Lovelace_2026-11-24.json' });
 });
 
-test('the uploader is read from a per-submission folder name', () => {
+test('the uploader is read from a per-upload folder name', () => {
   assert.deepEqual(
     uploaderFromPath('Lab 3 Download/143560-1234568 - Grace Brewster Hopper - Nov 25, 2026 901 PM/report.json'),
-    { uploader: 'Grace Brewster Hopper', submissionId: '143560-1234568', submittedAt: 'Nov 25, 2026 901 PM',
+    { uploader: 'Grace Brewster Hopper', uploadId: '143560-1234568', uploadedAt: 'Nov 25, 2026 901 PM',
       fileName: 'report.json' });
 });
 
 test('a file name not shaped like a bulk download has no uploader', () => {
   assert.deepEqual(uploaderFromPath('demo_Ada-Lovelace_2026-11-24.json'),
-    { uploader: null, submissionId: null, submittedAt: null, fileName: 'demo_Ada-Lovelace_2026-11-24.json' });
+    { uploader: null, uploadId: null, uploadedAt: null, fileName: 'demo_Ada-Lovelace_2026-11-24.json' });
 });
 
 test('the zip reader reads stored and deflated entries', async () => {
@@ -36,13 +36,13 @@ test('the zip reader reads stored and deflated entries', async () => {
   }
 });
 
-test('a bulk-download zip yields one submission per Report, matched to its uploader; other files are skipped', async () => {
+test('a bulk-download zip yields one upload per Report, matched to its uploader; other files are skipped', async () => {
   const zip = makeZip([
     { name: '143560-1 - Ada Lovelace - Nov 24, 2026 1027 AM - demo_Ada.json', data: await json('Ada Lovelace') },
     { name: '143560-2 - Grace Hopper - Nov 24, 2026 1030 AM/demo_Grace.json', data: await json('Grace Hopper') },
     { name: 'index.html', data: '<html></html>' },
   ]);
-  const subs = await readSubmissions([file('Lab Download.zip', zip)]);
+  const subs = await readUploads([file('Lab Download.zip', zip)]);
   assert.deepEqual(subs.map((s) => [s.uploader, s.path]), [
     ['Ada Lovelace', 'Lab Download.zip/143560-1 - Ada Lovelace - Nov 24, 2026 1027 AM - demo_Ada.json'],
     ['Grace Hopper', 'Lab Download.zip/143560-2 - Grace Hopper - Nov 24, 2026 1030 AM/demo_Grace.json'],
@@ -51,7 +51,7 @@ test('a bulk-download zip yields one submission per Report, matched to its uploa
 });
 
 test('many Reports dropped without a zip are read too', async () => {
-  const subs = await readSubmissions([file('a.json', await json('Ada')), file('b.json', await json('Bo'))]);
+  const subs = await readUploads([file('a.json', await json('Ada')), file('b.json', await json('Bo'))]);
   assert.deepEqual(subs.map((s) => [s.path, s.uploader]), [['a.json', null], ['b.json', null]]);
 });
 

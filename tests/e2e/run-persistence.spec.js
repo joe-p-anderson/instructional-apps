@@ -76,3 +76,39 @@ test('Start over, once confirmed, discards the Run and begins a new one', async 
   await page.waitForFunction(() => window.activityHost);
   expect((await run(page)).fingerprint).toBe(second.fingerprint);
 });
+
+test('a reload restores Question answers, unsubmitted drafts and the last miss feedback', async ({ page }) => {
+  await open(page);
+  await enterName(page);
+  const p1 = part(page, 1);
+  await setNumber(p1, 'Δt', 0.5);
+  await p1.getByRole('button', { name: 'Submit Task 1.1' }).click();
+  await setNumber(p1, 'f', 0.3);
+  await p1.getByRole('button', { name: 'Submit Task 1.2' }).click();
+  const missFeedback = await p1.getByRole('status', { name: 'Task 1.2 feedback' }).textContent();
+  expect(missFeedback).toMatch(/^✗/);
+
+  await page.reload();
+  await page.waitForFunction(() => window.activityHost);
+  const again = part(page, 1);
+  await expect(again.getByRole('status', { name: 'Task 1.2 feedback' })).toHaveText(missFeedback);
+
+  await setNumber(again, 'f', 0.25);
+  await again.getByRole('button', { name: 'Submit Task 1.2' }).click();
+  const why = again.getByRole('textbox', { name: /difficult to measure/ });
+  await why.fill('The traces are hard to line up.');
+
+  await page.reload();
+  await page.waitForFunction(() => window.activityHost);
+  const third = part(page, 1);
+  const draft = third.getByRole('textbox', { name: /difficult to measure/ });
+  await expect(draft).toHaveValue('The traces are hard to line up.');
+  await draft.fill('The traces are hard to line up exactly.');
+  await third.getByRole('button', { name: 'Submit Task 1.3' }).click();
+
+  await page.reload();
+  await page.waitForFunction(() => window.activityHost);
+  const last = part(page, 1);
+  await expect(last.getByRole('region', { name: 'Task 1.3' })).toHaveAttribute('data-status', 'passed');
+  await expect(last.getByRole('textbox', { name: /difficult to measure/ })).toHaveValue('The traces are hard to line up exactly.');
+});

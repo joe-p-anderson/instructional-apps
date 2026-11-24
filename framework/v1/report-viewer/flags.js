@@ -45,13 +45,16 @@ function flagWrongActivity(rows) {
   }
 }
 
-// Every Attempt of every Task, with its time, State, answers and outcome. Times are
-// part of it, so students who happen to Submit the same values don't match; a
-// history copied into another Run does. No Attempts at all is no history.
+// Every Attempt of every Task, in order, with its State, answers and outcome but not
+// its time, so a copier who replays the same values later still matches. Students
+// who all pass on the first try with the same (e.g. snapped) values would match
+// too, so only a history with at least one failed Attempt counts: two students
+// missing in exactly the same way is the telltale. No Attempts is no history.
 function attemptHistory(row) {
-  if (!row.view.attemptCount) return null;
+  const attempts = row.view.parts.flatMap((part) => part.tasks.flatMap((task) => task.attempts));
+  if (!attempts.some((a) => !a.passed)) return null;
   return JSON.stringify(row.view.parts.map((part) => part.tasks.map((task) => task.attempts.map((a) =>
-    [a.at, a.passed, a.state, a.answers, a.feedback]))));
+    [a.passed, a.state, a.answers, a.feedback]))));
 }
 
 // Flag every row whose key (when it has one) is shared with a row from a different

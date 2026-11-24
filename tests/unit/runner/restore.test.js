@@ -91,3 +91,44 @@ test('a Run of an Activity with encoded keys saves and restores', () => {
   t2.setState({ x: 2 });
   assert.equal(r.submit('p1', 'reach-2').passed, true);
 });
+
+// A Part with Question Tasks, for answers that outlive a reload.
+const asked = {
+  id: 'asked', version: 1, title: 'Asked', course: 'PHY 0000', tool: 'stub',
+  parts: [{ id: 'p1', title: 'Part 1', mode: 'main', setup: {}, tasks: [
+    { id: 'q1', title: 'Q1', prompt: '', points: 1,
+      questions: [{ id: 'T', kind: 'numeric', prompt: '', answer: 3, tol: 0.1 }] },
+    { id: 'q2', title: 'Q2', prompt: '', points: 1,
+      questions: [{ id: 'why', kind: 'text', prompt: '' }, { id: 'n', kind: 'numeric', prompt: '', answer: 1, tol: 0.1 }] },
+  ] }],
+};
+
+test("a restored Run gives back each Task's answers: the passing ones, the last missed ones, and unsubmitted drafts", () => {
+  const r = createRunner(asked, { tools: { p1: tool() } });
+  r.start('Ada');
+  assert.deepEqual(r.task('p1', 'q1').answers, {});
+  r.submit('p1', 'q1', { T: '2.96' });
+  r.submit('p1', 'q2', { why: 'because', n: '5' });
+  r.draft('p1', 'q2', { why: 'because, really', n: '1.0' });
+  const missed = createRunner(asked, { tools: { p1: tool() } });
+  missed.start('Ada');
+  missed.submit('p1', 'q1', { T: '4' });
+
+  const again = createRunner(asked, { tools: { p1: tool() } });
+  again.restore(JSON.parse(JSON.stringify(r.save())));
+  assert.deepEqual(again.task('p1', 'q1').answers, { T: '2.96' });
+  assert.deepEqual(again.task('p1', 'q2').answers, { why: 'because, really', n: '1.0' });
+
+  const back = createRunner(asked, { tools: { p1: tool() } });
+  back.restore(JSON.parse(JSON.stringify(missed.save())));
+  assert.deepEqual(back.task('p1', 'q1').answers, { T: '4' });
+  assert.deepEqual(back.task('p1', 'q1').attempts.at(-1).results[0].feedback, 'Not quite');
+});
+
+test('a Submit replaces the draft with the answers it recorded', () => {
+  const r = createRunner(asked, { tools: { p1: tool() } });
+  r.start('Ada');
+  r.draft('p1', 'q1', { T: '2' });
+  r.submit('p1', 'q1', { T: '2.5' });
+  assert.deepEqual(r.task('p1', 'q1').answers, { T: '2.5' });
+});

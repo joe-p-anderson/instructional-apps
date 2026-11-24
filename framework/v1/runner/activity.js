@@ -1,3 +1,5 @@
+import { questionKinds } from './questions.js';
+
 // The Activity definition shape, checked when a runner is created.
 //
 // {
@@ -51,16 +53,10 @@ export function validateActivity(activity) {
         if (!q.id) fail(`a Question in Task "${task.id}" is missing its id`);
         if (questionIds.has(q.id)) fail(`duplicate ${where}`);
         questionIds.add(q.id);
-        if (!['numeric', 'choice', 'text'].includes(q.kind)) fail(`${where} kind must be numeric, choice or text`);
+        const kind = Object.hasOwn(questionKinds, q.kind) ? questionKinds[q.kind] : null;
+        if (!kind) fail(`${where} kind must be one of ${Object.keys(questionKinds).join(', ')}`);
         if (q.points !== undefined && typeof q.points !== 'number') fail(`${where} points must be a number`);
-        if (q.kind === 'numeric') {
-          if (typeof q.answer !== 'number') fail(`${where} needs a numeric answer`);
-          if (typeof q.tol !== 'number' && typeof q.relTol !== 'number') fail(`${where} needs tol or relTol`);
-        }
-        if (q.kind === 'choice') {
-          if (!Array.isArray(q.choices) || q.choices.length < 2) fail(`${where} needs at least two choices`);
-          if (!q.choices.some((c) => c.id === q.correct)) fail(`${where} correct must name one of its choices`);
-        }
+        kind.validate(q, (msg) => fail(`${where} ${msg}`));
       }
     }
   }

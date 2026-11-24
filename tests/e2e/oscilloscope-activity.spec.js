@@ -81,21 +81,16 @@ test('dragging through the target without Submitting does not pass; a Submit at 
   await open(page);
   await enterName(page);
   const p1 = part(page, 1);
-  const plot = p1.locator('.fw-display > div');
-  await expect(plot.locator('.main-svg').first()).toBeVisible();
-  await page.waitForFunction(() => {
-    const div = document.querySelector('#fw-panel-phase .fw-display > div');
-    return div._fullLayout && Math.abs(div._fullLayout.width - div.clientWidth) < 2;
-  });
+  // Wait until the scope Display is laid out, then find the Δt marker at (T − Δt, Va).
+  await page.waitForFunction(() => window.activityHost.instances.phase.displays[0].toScreen(0, 0));
 
   // Drag the Δt marker from Δt = 0.25 s to 1.25 s, passing through 0.5 s (φ = π/2).
   const p = await page.evaluate(() => {
-    const div = document.querySelector('#fw-panel-phase .fw-display > div');
-    const fl = div._fullLayout;
-    const r = div.getBoundingClientRect();
-    const { Dt, f, Va } = window.activityHost.instances.phase.state.snapshot();
-    return { x: r.left + fl._size.l + fl.xaxis.d2p(1 / f - Dt), y: r.top + fl._size.t + fl.yaxis.d2p(Va),
-      pxPerSecond: fl.xaxis.d2p(1) - fl.xaxis.d2p(0) };
+    const instance = window.activityHost.instances.phase;
+    const scope = instance.displays[0];
+    const { Dt, f, Va } = instance.state.snapshot();
+    const at = scope.toScreen(1 / f - Dt, Va);
+    return { ...at, pxPerSecond: scope.toScreen(1, 0).x - scope.toScreen(0, 0).x };
   });
   await page.mouse.move(p.x, p.y);
   await page.mouse.down();

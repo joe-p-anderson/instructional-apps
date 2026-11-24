@@ -14,7 +14,7 @@
 
 import { defineTool } from './tool.js';
 import { h } from './ui-kit.js';
-import { createStore, standaloneKey, shareHash, readShareHash } from './persistence.js';
+import { browserStorage, standaloneStore, shareHash, readShareHash } from './persistence.js';
 
 /** Header + tab strip + panel area. Returns elements to fill. */
 export function createFrame(root, { title, subtitle }) {
@@ -78,7 +78,7 @@ export function mountStandalone(tool, root, { setups = {}, subtitle = 'Standalon
   for (const mode of tool.modes) {
     const instance = tool.mount(tabs.panels[mode.id], mode.id, setups[mode.id]);
     for (const id of instance.controls.ids()) { const c = instance.controls.get(id); c.show(); c.unlock(); }
-    const store = createStore(standaloneKey(tool.id, mode.id), storage);
+    const store = standaloneStore(tool.id, mode.id, storage);
     const fromLink = shared?.mode === mode.id;
     const saved = fromLink ? shared.state : store.load();
     if (saved) { try { instance.restore(saved); } catch { /* unusable save: keep the Setup */ } }
@@ -97,10 +97,6 @@ export function mountStandalone(tool, root, { setups = {}, subtitle = 'Standalon
     return location.origin + location.pathname + location.search
       + shareHash({ mode: host.activeMode, state: host.instances[i].serialize() });
   }
-}
-
-function browserStorage() {
-  try { return globalThis.localStorage ?? null; } catch { return null; }
 }
 
 /** "Copy share link" button plus a read-only box showing the link, so it can be copied by hand too. */

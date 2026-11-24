@@ -23,18 +23,32 @@ function tickingClock(start = '2026-11-24T15:00:00.000Z') {
   return () => { const d = new Date(t); t += 60_000; return d; };
 }
 
-/** A Report where the student missed then passed Task 1.1 and answered Task 1.2. */
-export async function sampleReport(name = 'Ada Lovelace') {
+function demoRun(name, startedAt) {
   const tools = {
     p1: stubTool({ state: { x: { value: 0, unit: 'V' } }, displays: ['scope'] }),
     p2: stubTool({ state: { y: { value: 0 } } }),
   };
-  const runner = createRunner(activity, { tools, clock: tickingClock() });
+  const runner = createRunner(activity, { tools, clock: tickingClock(startedAt) });
   runner.start(name);
+  return { runner, tools };
+}
+
+/** A Report where the student missed then passed Task 1.1 and answered Task 1.2.
+ *  Runs started at the same time (the default) have identical Attempt times. */
+export async function sampleReport(name = 'Ada Lovelace', { startedAt } = {}) {
+  const { runner, tools } = demoRun(name, startedAt);
   runner.submit('p1', 'set');
   tools.p1.setState({ x: 1 });
   runner.submit('p1', 'set');
   runner.submit('p1', 'why', { why: 'Because the phase lags.' });
+  return runner.report();
+}
+
+/** A partial Report where the student passed Task 1.1 on the first try, at x = 1. */
+export async function firstTryReport(name, { startedAt } = {}) {
+  const { runner, tools } = demoRun(name, startedAt);
+  tools.p1.setState({ x: 1 });
+  runner.submit('p1', 'set');
   return runner.report();
 }
 

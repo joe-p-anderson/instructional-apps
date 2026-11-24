@@ -9,7 +9,7 @@
 // untrusted, so it is only ever inserted as text (h() children), never as HTML.
 import { h } from '../ui-kit.js';
 import { typeset } from '../vendor.js';
-import { openReport, readSubmissions, openClass } from './core.js';
+import { openReport, readUploads, openClass } from './core.js';
 import { isZip } from './zip.js';
 import { gradesCsv } from './grades-csv.js';
 
@@ -71,7 +71,7 @@ export function mountReportViewer(root) {
     }
     let cls;
     try {
-      cls = openClass(await readSubmissions(read));
+      cls = openClass(await readUploads(read));
     } catch (err) {
       output.replaceChildren();
       showError(`${read.map((f) => f.name).join(', ')}: ${err.message}`);
@@ -118,14 +118,23 @@ export function mountReportViewer(root) {
 
 // Columns of the class table. Flags come from the core's flag checks (flags.js);
 // a warning (name mismatch) is styled apart from a flag, and each shows its reason on hover.
+// Each row's flags are a list named "Flags"; an item is named by its label (a warning's with
+// " (warning)" added) and described by its reason.
 const CLASS_COLUMNS = [
   ['Student', (row, onOpen) => h('button', { class: 'fw-class-name', type: 'button', onclick: () => onOpen(row) }, row.name)],
   ['Tasks passed', (row) => `${row.tasksPassed} / ${row.taskCount}`],
   ['Attempts', (row) => String(row.attemptCount)],
   ['Points', (row) => `${row.earned} / ${row.possible}`],
-  ['Flags', (row) => row.flags.map((f) => h('span', {
-    class: f.severity === 'warning' ? 'fw-class-flag fw-class-warning' : 'fw-class-flag', title: f.message ?? '',
-  }, f.label ?? String(f.kind ?? f)))],
+  ['Flags', (row) => (row.flags.length === 0 ? null : h('ul', { class: 'fw-class-flags', 'aria-label': 'Flags' },
+    row.flags.map((f) => {
+      const label = f.label ?? String(f.kind ?? f);
+      const warning = f.severity === 'warning';
+      return h('li', {
+        class: warning ? 'fw-class-flag fw-class-warning' : 'fw-class-flag',
+        title: f.message ?? '',
+        'aria-label': warning ? `${label} (warning)` : label,
+      }, label);
+    })))],
 ];
 
 function classView(cls, onOpen) {
