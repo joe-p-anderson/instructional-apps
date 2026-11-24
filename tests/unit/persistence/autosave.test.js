@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createStore, standaloneKey } from '../../../framework/v1/persistence.js';
+import { createStore, standaloneStore, runStore } from '../../../framework/v1/persistence.js';
 
 function memoryStorage() {
   const m = new Map();
@@ -13,17 +13,29 @@ function memoryStorage() {
 
 test('a saved value loads back from the same storage', () => {
   const storage = memoryStorage();
-  createStore(standaloneKey('oscilloscope', 'dual-trace'), storage).save({ Va: 1, f: 0.25 });
-  assert.deepEqual(createStore(standaloneKey('oscilloscope', 'dual-trace'), storage).load(), { Va: 1, f: 0.25 });
+  standaloneStore('oscilloscope', 'dual-trace', storage).save({ Va: 1, f: 0.25 });
+  assert.deepEqual(standaloneStore('oscilloscope', 'dual-trace', storage).load(), { Va: 1, f: 0.25 });
 });
 
 test('Standalone State is kept separately for each Tool and Mode', () => {
   const storage = memoryStorage();
-  createStore(standaloneKey('oscilloscope', 'dual-trace'), storage).save({ Va: 1 });
-  createStore(standaloneKey('oscilloscope', 'xy'), storage).save({ Va: 3 });
-  assert.deepEqual(createStore(standaloneKey('oscilloscope', 'dual-trace'), storage).load(), { Va: 1 });
-  assert.deepEqual(createStore(standaloneKey('oscilloscope', 'xy'), storage).load(), { Va: 3 });
-  assert.equal(createStore(standaloneKey('other-tool', 'dual-trace'), storage).load(), null);
+  standaloneStore('oscilloscope', 'dual-trace', storage).save({ Va: 1 });
+  standaloneStore('oscilloscope', 'xy', storage).save({ Va: 3 });
+  assert.deepEqual(standaloneStore('oscilloscope', 'dual-trace', storage).load(), { Va: 1 });
+  assert.deepEqual(standaloneStore('oscilloscope', 'xy', storage).load(), { Va: 3 });
+  assert.equal(standaloneStore('other-tool', 'dual-trace', storage).load(), null);
+});
+
+test("each Activity's Run is kept separately, and apart from Standalone State", () => {
+  const storage = memoryStorage();
+  runStore('lab-a', storage).save({ run: 'a' });
+  runStore('lab-b', storage).save({ run: 'b' });
+  standaloneStore('lab-a', 'lab-a', storage).save({ Va: 1 });
+  assert.deepEqual(runStore('lab-a', storage).load(), { run: 'a' });
+  assert.deepEqual(runStore('lab-b', storage).load(), { run: 'b' });
+  runStore('lab-a', storage).clear();
+  assert.equal(runStore('lab-a', storage).load(), null);
+  assert.deepEqual(standaloneStore('lab-a', 'lab-a', storage).load(), { Va: 1 });
 });
 
 test('nothing saved, a corrupt entry, or a cleared store loads as null', () => {

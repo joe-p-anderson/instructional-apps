@@ -6,19 +6,26 @@
 //   shareHash(value)     -> '#s=...'
 //   readShareHash(hash)  -> value, or null when the hash is not a readable share link
 //
-// Autosave stores JSON in a Storage-like object (localStorage in the browser):
-//   createStore(key, storage) -> { load(), save(value), clear() }
+// Autosave stores JSON in a Storage-like object (localStorage in the browser by default):
+//   standaloneStore(toolId, modeId, storage?) -> the store for one Tool's Mode in Standalone mode
+//   runStore(activityId, storage?)            -> the store for an Activity's Run
+//                                                (see runner.save()/restore())
+//   createStore(key, storage)                 -> a store under any other key
+//   each store is { load(), save(value), clear() }
 //   load() returns null when nothing usable is saved. No method ever throws, so a
 //   private window, blocked storage or a full quota just means no autosave.
-//   standaloneKey(toolId, modeId) -> the key for one Tool's Mode in Standalone mode.
-//   runKey(activityId)            -> the key for an Activity's Run (see runner.save()/restore()).
+//   browserStorage() -> localStorage, or null where it is unavailable.
 
-export function standaloneKey(toolId, modeId) {
-  return `fw1:standalone:${toolId}:${modeId}`;
+export function browserStorage() {
+  try { return globalThis.localStorage ?? null; } catch { return null; }
 }
 
-export function runKey(activityId) {
-  return `fw1:run:${activityId}`;
+export function standaloneStore(toolId, modeId, storage = browserStorage()) {
+  return createStore(`fw1:standalone:${toolId}:${modeId}`, storage);
+}
+
+export function runStore(activityId, storage = browserStorage()) {
+  return createStore(`fw1:run:${activityId}`, storage);
 }
 
 export function createStore(key, storage) {

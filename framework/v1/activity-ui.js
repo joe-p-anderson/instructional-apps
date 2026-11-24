@@ -14,7 +14,7 @@
 // Prompts, titles, Question prompts and Hints are trusted HTML from the Activity author and may
 // contain \( \) math, typeset with MathJax.
 
-import { createStore, runKey } from './persistence.js';
+import { browserStorage, runStore } from './persistence.js';
 import { createRunner } from './runner/index.js';
 import { reportFilename } from './report.js';
 import { createFrame, createTabs } from './tool-host.js';
@@ -47,7 +47,7 @@ export function mountActivity(tool, activity, root, { conditionTypes, storage = 
   host.select = tabs.select;
 
   // ── Autosave: the whole Run after every Start, Submit and Tool State change ──
-  const store = createStore(runKey(activity.id), storage);
+  const store = runStore(activity.id, storage);
   const autosave = () => { if (host.runner.run) store.save(host.runner.save()); };
   let restored = false;
   try { restored = host.runner.restore(store.load()); } catch { /* unusable save: new Run */ }
@@ -270,8 +270,4 @@ function stripTags(html) {
   const div = document.createElement('div');
   div.innerHTML = html;
   return div.textContent;
-}
-
-function browserStorage() {
-  try { return globalThis.localStorage ?? null; } catch { return null; }
 }
