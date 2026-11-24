@@ -24,6 +24,9 @@
 // A new format version adds a reader that maps its Reports onto the same view.
 import { verifyReport } from '../report.js';
 import { isZip, readZip } from './zip.js';
+import { flagClass } from './flags.js';
+
+export { namesMatch } from './flags.js';
 
 const readers = {
   1: readV1,
@@ -120,6 +123,7 @@ export function openClass(submissions) {
     });
   }
   rows.sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
+  flagClass(rows);
   return { rows, errors };
 }
 

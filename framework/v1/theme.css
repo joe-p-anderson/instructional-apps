@@ -360,6 +360,7 @@ html.fw-root:has(.fw-viewer), html.fw-root:has(.fw-viewer) body { height: auto; 
 .fw-class-table th { font-variant: small-caps; letter-spacing: 0.04em; color: var(--fw-text-dim); }
 .fw-class-name { font: inherit; color: var(--fw-blue); background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; text-align: left; }
 .fw-class-flag { display: inline-block; margin-right: 6px; color: var(--fw-red); }
+.fw-class-flag.fw-class-warning { color: var(--fw-yellow); font-style: italic; }
 .fw-class-errors { margin-top: 12px; color: var(--fw-red); font-size: 14px; }
 .fw-class-errors h3 { font-size: 16px; margin: 0 0 4px; }
 .fw-viewer-back { padding: 0 20px 8px; }
