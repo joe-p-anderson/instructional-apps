@@ -63,3 +63,25 @@ test('many Reports dropped together also open as a class table', async ({ page }
   await expect(page.getByRole('table', { name: 'Class' }).getByRole('row')).toHaveCount(3);
   await expect(page.getByRole('button', { name: 'Bo Diddley' })).toBeVisible();
 });
+
+test('the class table exports a grades CSV of the recomputed points, built in the browser', async ({ page }) => {
+  const requests = [];
+  page.on('request', (r) => requests.push(r));
+  await page.goto(VIEWER);
+  await page.getByLabel('Open a Report').setInputFiles({
+    name: 'Lab 3 Download.zip', mimeType: 'application/zip', buffer: await bulkDownload(),
+  });
+  requests.length = 0;
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Export grades CSV' }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe('Demo Lab grades.csv');
+  const chunks = [];
+  for await (const c of await download.createReadStream()) chunks.push(c);
+  expect(Buffer.concat(chunks).toString('utf8')).toBe(
+    'Submission Id,Student,Demo Lab Points Grade,End-of-Line Indicator\r\n'
+    + '143560-1,Ada Lovelace,4,#\r\n'
+    + '143560-2,Grace Hopper,4,#\r\n');
+  expect(requests.filter((r) => !r.url().startsWith('blob:'))).toEqual([]);
+});
