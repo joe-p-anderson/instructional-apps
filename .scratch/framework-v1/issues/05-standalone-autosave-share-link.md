@@ -6,8 +6,12 @@ Spec: docs/specs/0001-framework-v1.md (vocabulary from GLOSSARY.md; respects ADR
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Standalone State autosaves to browser storage, separately per Tool and Mode, and restores on reload
-- [ ] A share link encodes the State, following spacetime's `#s=` precedent; opening it reproduces the State
-- [ ] Playwright: a reload restores Standalone State; a share link reproduces it
+- [x] Standalone State autosaves to browser storage, separately per Tool and Mode, and restores on reload
+- [x] A share link encodes the State, following spacetime's `#s=` precedent; opening it reproduces the State
+- [x] Playwright: a reload restores Standalone State; a share link reproduces it
+
+## Comments
+
+- Merged into `framework-v1` from branch `ticket-05` (commit ad61931).

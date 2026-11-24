@@ -228,3 +228,9 @@ html.fw-root, html.fw-root body {
 
 .fw-controls::-webkit-scrollbar { width: 5px; }
 .fw-controls::-webkit-scrollbar-thumb { background: var(--fw-border); }
+
+/* Standalone share link (tool-host.js) */
+.fw-share { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.fw-share-link { width: 16em; min-width: 0; font: inherit; font-size: 13px; padding: 3px 6px;
+  border: 1px solid var(--fw-border-dk); background: var(--fw-bg); color: inherit; }
+.fw-share-status { font-size: 13px; font-style: italic; min-width: 4em; }
