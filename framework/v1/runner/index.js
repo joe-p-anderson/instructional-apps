@@ -4,16 +4,19 @@
 //   runner.start(name)            // name gate; begins the Run
 //   runner.parts()                // Parts with each Task's status: open | locked | passed
 //   runner.task(partId, taskId)   // status, misses, hint, attempts
-//   runner.submit(partId, taskId) // judge the Part's current State; returns the Attempt
+//   runner.submit(partId, taskId, answers?) // judge State + Question answers; returns the Attempt
+//   runner.score()                // points earned/possible per Task, Part and total (see scoring.js)
 //
 // Each Part has its own Tool instance (Tool contract: state.snapshot/describe/onChange,
 // controls.get(id) with get/set/lock/unlock/show/hide, displays[].snapshot).
-import { evaluateCondition, createConditionRegistry } from './conditions.js';
+import { createConditionRegistry } from './conditions.js';
 import { validateActivity } from './activity.js';
-import { evaluateQuestions } from './questions.js';
+import { judgeTask, scoreActivity } from './scoring.js';
 
 export { builtinConditionTypes, createConditionRegistry, evaluateCondition } from './conditions.js';
 export { validateActivity } from './activity.js';
+export { evaluateQuestions } from './questions.js';
+export { judgeTask, scoreActivity } from './scoring.js';
 
 export function createRunner(activity, { tools = {}, clock = () => new Date(), conditionTypes } = {}) {
   validateActivity(activity);
@@ -105,6 +108,15 @@ export function createRunner(activity, { tools = {}, clock = () => new Date(), c
       };
     },
 
+    // Points earned and possible, recomputed from the recorded Attempts.
+    score() {
+      const attempts = Object.fromEntries(activity.parts.map((part) => [
+        part.id,
+        Object.fromEntries(part.tasks.map((task) => [task.id, progress.get(part.id).get(task.id).attempts])),
+      ]));
+      return scoreActivity(activity, attempts, { conditionTypes });
+    },
+
     submit(partId, taskId, answers = {}) {
       requireRun();
       const part = findPart(partId);
@@ -115,16 +127,13 @@ export function createRunner(activity, { tools = {}, clock = () => new Date(), c
 
       const tool = tools[part.id];
       const state = tool.state.snapshot();
-      const results = task.condition
-        ? evaluateCondition(task.condition, state, { info: tool.state.describe(), registry })
-        : [];
-      results.push(...evaluateQuestions(task.questions, answers));
+      const { results, passed } = judgeTask(task, state, answers, { info: tool.state.describe(), registry });
       const attempt = {
         at: clock().toISOString(),
         state,
         answers: structuredClone(answers),
         results,
-        passed: results.every((r) => r.pass !== false),
+        passed,
       };
       const record = progress.get(part.id).get(task.id);
       record.attempts.push(attempt);
