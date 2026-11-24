@@ -20,6 +20,7 @@ import { createFingerprint, sealReport, REPORT_FORMAT_VERSION, FRAMEWORK_VERSION
 import { validateActivity } from './activity.js';
 import { judgeTask, scoreActivity } from './scoring.js';
 import { decodeActivity } from './keys.js';
+import { isGraded } from './questions.js';
 
 export { builtinConditionTypes, createConditionRegistry, evaluateCondition } from './conditions.js';
 export { validateActivity } from './activity.js';
@@ -170,6 +171,9 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
             id: task.id,
             title: task.title ?? '',
             ...scored.parts[p].tasks[t],
+            // Points as defined (never answer keys), so a reader can rescore from the Attempts.
+            points: task.points ?? 0,
+            questions: (task.questions ?? []).map((q) => ({ id: q.id, graded: isGraded(q), points: q.points ?? 0 })),
             attempts: structuredClone(progress.get(part.id).get(task.id).attempts),
           })),
         })),

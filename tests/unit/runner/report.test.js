@@ -85,6 +85,15 @@ test('points earned and possible appear for each Task, each Part and in total', 
   assert.deepEqual(points(report), [4, 8]);
 });
 
+test("each Task records its own points and its Questions' points, so a reader can rescore it", async () => {
+  const { runner } = setup();
+  runner.start('Ada');
+  const report = await runner.report();
+  const [set, why] = report.parts[0].tasks;
+  assert.deepEqual([set.points, set.questions], [2, []]);
+  assert.deepEqual([why.points, why.questions], [1, [{ id: 'why', graded: false, points: 1 }]]);
+});
+
 test("passing Attempts carry PNG snapshots of the Part's Displays; misses carry none", async () => {
   const { runner, tools } = setup();
   runner.start('Ada');
