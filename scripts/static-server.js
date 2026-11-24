@@ -1,13 +1,12 @@
-// Tiny static file server for tests only (Playwright's webServer).
-// The apps themselves are served as-is by GitHub Pages; this just mimics that locally.
-// Usage: node scripts/static-server.js [port]
+// Tiny static file server for tests only. Playwright starts it in-process from
+// tests/e2e/global-setup.js. The apps themselves are served as-is by GitHub Pages;
+// this just mimics that locally. CLI use: node scripts/static-server.js [port]
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const port = Number(process.argv[2] || process.env.PORT || 4173);
 
 const types = {
   '.html': 'text/html; charset=utf-8',
@@ -20,7 +19,7 @@ const types = {
   '.woff2': 'font/woff2',
 };
 
-createServer(async (req, res) => {
+async function handle(req, res) {
   try {
     const urlPath = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     let file = normalize(join(root, urlPath));
@@ -35,4 +34,21 @@ createServer(async (req, res) => {
   } catch {
     res.writeHead(404).end('Not found');
   }
-}).listen(port, () => console.log(`static server on http://localhost:${port}`));
+}
+
+/** Start the server on `port` (0 = any free port). Resolves to { port, close() }. */
+export function startStaticServer(port = 0) {
+  const server = createServer(handle);
+  return new Promise((resolveStart, reject) => {
+    server.on('error', reject);
+    server.listen(port, () => resolveStart({
+      port: server.address().port,
+      close: () => new Promise((done) => { server.closeAllConnections(); server.close(() => done()); }),
+    }));
+  });
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const { port } = await startStaticServer(Number(process.argv[2] || process.env.PORT || 4173));
+  console.log(`static server on http://localhost:${port}`);
+}

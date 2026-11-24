@@ -1,6 +1,7 @@
-// Third-party libraries, loaded from pinned CDN versions (no build, no install).
+// Third-party libraries, vendored at pinned versions in ./vendor/ (no build, no install,
+// no network needed). Licences: Plotly (MIT), MathJax (Apache-2.0).
 
-export const PLOTLY_URL = 'https://cdn.plot.ly/plotly-2.26.0.min.js';
+export const PLOTLY_URL = new URL('./vendor/plotly-2.26.0.min.js', import.meta.url).href;
 
 const pending = new Map();
 
@@ -25,7 +26,8 @@ export async function loadPlotly() {
   return globalThis.Plotly;
 }
 
-export const MATHJAX_URL = 'https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js';
+// tex-svg is self-contained (no separate font files), unlike tex-chtml.
+export const MATHJAX_URL = new URL('./vendor/mathjax-3.2.2-tex-svg.js', import.meta.url).href;
 
 /** Resolves to the MathJax global (inline math \( \), display math \[ \]), loading it once. */
 export async function loadMathJax() {

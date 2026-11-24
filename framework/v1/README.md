@@ -12,7 +12,7 @@ Static ES modules and CSS, served as-is (no build, no install). Breaking changes
 | `persistence.js` | Autosave (`createStore(key, storage)`, `standaloneKey(toolId, modeId)`) and `#s=` share links (`shareHash`/`readShareHash`). No DOM. |
 | `runner/` | Activity runner core (pure logic, no DOM). |
 | `activity-ui.js` | Activity runner UI: `mountActivity(tool, activity, root)`, a thin DOM layer over the core (name gate, Part tabs each with its own Tool instance, Task cards with Submit/feedback/Hint, per-Part progress). |
-| `vendor.js` | Pinned CDN loaders (`loadPlotly()`, `loadMathJax()`, `typeset(elements)`). |
+| `vendor.js` | Loaders for the vendored, pinned libraries in `vendor/` (`loadPlotly()`, `loadMathJax()`, `typeset(elements)`). |
 
 ## Opening an Activity
 

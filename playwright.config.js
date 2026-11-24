@@ -1,14 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
 import { createServer } from 'node:net';
 
-// Each run gets its own static server on its own port, so parallel worktrees
-// never test another worktree's files. PW_PORT pins the port when needed.
-// The config is evaluated in worker processes too, so the chosen port is passed
-// down through the environment.
-async function freePort() {
+// Each run serves this checkout on its own free port (see global-setup.js), so
+// parallel worktrees never test one another's files. PW_PORT pins the port.
+// The config is evaluated again in each worker, so the chosen port is passed on
+// through the environment.
+function freePort() {
   return new Promise((resolve, reject) => {
     const srv = createServer();
-    srv.unref();
     srv.on('error', reject);
     srv.listen(0, () => {
       const { port } = srv.address();
@@ -22,6 +21,7 @@ const port = Number(process.env.PW_PORT);
 
 export default defineConfig({
   testDir: 'tests/e2e',
+  globalSetup: './tests/e2e/global-setup.js',
   reporter: 'list',
   use: { baseURL: `http://localhost:${port}` },
   projects: [{
@@ -29,9 +29,4 @@ export default defineConfig({
     // A typical laptop screen: the layout must fit without horizontal scrolling.
     use: { ...devices['Desktop Chrome'], viewport: { width: 1366, height: 768 } },
   }],
-  webServer: {
-    command: `node scripts/static-server.js ${port}`,
-    url: `http://localhost:${port}/package.json`,
-    reuseExistingServer: false,
-  },
 });
