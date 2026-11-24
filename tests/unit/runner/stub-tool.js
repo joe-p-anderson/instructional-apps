@@ -39,6 +39,8 @@ export function stubTool({ state = {}, controls = [], displays = ['plot'] } = {}
       ids: () => [...registry.keys()],
     },
     displays: displays.map((id) => ({ id, snapshot: () => `data:image/png;base64,${id}` })),
+    serialize: () => ({ ...values }),
+    restore(saved) { Object.assign(values, saved); emit(); },
     // test-only: simulate the student moving the simulation
     setState(patch) { Object.assign(values, patch); emit(); },
   };

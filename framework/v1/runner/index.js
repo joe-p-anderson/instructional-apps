@@ -6,6 +6,9 @@
 //   runner.task(partId, taskId)   // status, misses, hint, attempts
 //   runner.submit(partId, taskId, answers?) // judge State + Question answers; returns the Attempt
 //   runner.score()                // points earned/possible per Task, Part and total (see scoring.js)
+//   runner.save()                 // JSON-able Run: name, fingerprint, Attempts, per-Part Tool State
+//   runner.restore(saved)         // resume a saved Run in a fresh runner; Attempts for Task ids
+//                                 //   that no longer exist are dropped. Returns false if unusable.
 //
 // Each Part has its own Tool instance (Tool contract: state.snapshot/describe/onChange,
 // controls.get(id) with get/set/lock/unlock/show/hide, displays[].snapshot).
@@ -118,6 +121,48 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
         Object.fromEntries(part.tasks.map((task) => [task.id, progress.get(part.id).get(task.id).attempts])),
       ]));
       return scoreActivity(activity, attempts, { conditionTypes });
+    },
+
+    save() {
+      return {
+        activity: { id: activity.id, version: activity.version },
+        run: run && { ...run },
+        parts: Object.fromEntries(activity.parts.map((part) => [part.id, {
+          state: tools[part.id].serialize?.() ?? null,
+          attempts: Object.fromEntries(part.tasks.map((task) => [task.id,
+            structuredClone(progress.get(part.id).get(task.id).attempts)])),
+        }])),
+      };
+    },
+
+    restore(saved) {
+      if (run) throw new Error('This Run has already started.');
+      const r = saved?.run;
+      if (saved?.activity?.id !== activity.id || typeof r?.name !== 'string' || !r.name.trim()
+        || typeof r.fingerprint !== 'string' || typeof r.startedAt !== 'string') return false;
+      for (const part of activity.parts) {
+        const savedPart = saved.parts?.[part.id];
+        if (!savedPart) continue;
+        if (savedPart.state != null) {
+          try { tools[part.id].restore?.(savedPart.state); } catch { /* keep the Setup */ }
+        }
+        for (const task of part.tasks) {
+          const attempts = savedPart.attempts?.[task.id];
+          if (!Array.isArray(attempts)) continue;
+          const record = progress.get(part.id).get(task.id);
+          record.attempts = structuredClone(attempts);
+          record.passed = attempts.some((a) => a?.passed);
+        }
+      }
+      run = Object.freeze({ name: r.name, fingerprint: r.fingerprint, startedAt: r.startedAt });
+      // Replay exposure in Task order up to the first Task not yet passed.
+      for (const part of activity.parts) {
+        for (const [i, task] of part.tasks.entries()) {
+          applyExposure(part, task);
+          if (statusOf(part, i) !== 'passed') break;
+        }
+      }
+      return true;
     },
 
     submit(partId, taskId, answers = {}) {
