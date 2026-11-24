@@ -19,7 +19,7 @@ import { createConditionRegistry } from './conditions.js';
 import { createFingerprint, sealReport, REPORT_FORMAT_VERSION, FRAMEWORK_VERSION } from '../report.js';
 import { validateActivity } from './activity.js';
 import { judgeTask, scoreActivity } from './scoring.js';
-import { decodeActivity } from './keys.js';
+import { decodeActivity, decodeHint } from './keys.js';
 import { isGraded } from './questions.js';
 
 export { builtinConditionTypes, createConditionRegistry, evaluateCondition } from './conditions.js';
@@ -257,5 +257,5 @@ const missesOf = (record) => record.attempts.filter((a) => !a.passed).length;
 
 function hintFor(task, record) {
   if (!task.hint) return null;
-  return missesOf(record) >= task.hint.after ? task.hint.text : null;
+  return missesOf(record) >= task.hint.after ? decodeHint(task.hint.text) : null;
 }

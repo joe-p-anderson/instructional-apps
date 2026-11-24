@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createRunner } from '../../../framework/v1/runner/index.js';
+import { createRunner, encodeKey } from '../../../framework/v1/runner/index.js';
 import { stubTool } from './stub-tool.js';
 
 const activity = {
@@ -77,4 +77,15 @@ test('a Hint becomes available once the miss count reaches its threshold', () =>
   r.submit('p1', 't1');
   assert.equal(r.task('p1', 't1').hint, 'Drag the Δt marker.');
   assert.equal(r.task('p1', 't2').hint, null);
+});
+
+test('an encoded Hint is revealed as its decoded text, and not before', () => {
+  const encoded = structuredClone(activity);
+  encoded.parts[0].tasks[0].hint = { after: 1, text: encodeKey('Try \\(\\Delta t = 0.5\\) s.') };
+  const tool = stubTool({ state: { phi: { value: 0 }, T: { value: 0 } }, controls: ['dt', 'freq', 'amp'] });
+  const r = createRunner(encoded, { tools: { p1: tool } });
+  r.start('Ada');
+  assert.equal(r.task('p1', 't1').hint, null);
+  assert.equal(r.submit('p1', 't1').hint, 'Try \\(\\Delta t = 0.5\\) s.');
+  assert.equal(r.task('p1', 't1').hint, 'Try \\(\\Delta t = 0.5\\) s.');
 });

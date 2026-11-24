@@ -94,10 +94,10 @@ test('Part 2 targets T = 3 ± 0.05 s, then pk-pk = 4 ± 0.05 V', () => {
   assert.equal(runner.submit(part2.id, t22).passed, true);
 });
 
-test('the Activity source keeps its Condition targets encoded, not in plain text', async () => {
+test('the Activity source keeps its Condition targets and target-revealing Hints encoded, not in plain text', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../../../tools/oscilloscope/activities/phase-period-amplitude.js', import.meta.url), 'utf8');
-  for (const leak of ['target', 'Math.PI', 'π/2', 'π/4', '3.00 s', '4.00 V', 'tol']) {
+  for (const leak of ['target', 'Math.PI', 'π/2', 'π/4', '3.00 s', '4.00 V', 'tol', '= 0.5\\\\) s', '0.33', 'V_a = 2']) {
     assert.ok(!source.includes(leak), `source contains "${leak}"`);
   }
   for (const task of activity.parts.flatMap((p) => p.tasks).filter((t) => t.condition)) {

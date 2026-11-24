@@ -7,7 +7,8 @@
 //   decodeActivity(def)    // a copy of an Activity with every encoded key decoded
 //
 // An author may encode any value inside an Activity: a whole Condition (which also
-// hides its targetLabel), or one field such as a Question's answer, tol or correct.
+// hides its targetLabel), or one field such as a Question's answer, tol or correct,
+// or a Hint's text (decoded only when the Hint is revealed).
 // Use framework/v1/authoring/encode-keys.html, or encodeKey() in its console.
 
 const PREFIX = 'enc1:';
@@ -37,14 +38,25 @@ export function decodeKey(key) {
 }
 
 // Walk the definition, decoding encoded keys; functions (custom Conditions and
-// Condition types) are kept as they are.
+// Condition types) are kept as they are. A Hint's encoded text stays encoded until
+// the Hint is revealed (decodeHint).
 export function decodeActivity(value) {
   if (isEncodedKey(value)) return decodeActivity(decodeKey(value));
   if (Array.isArray(value)) return value.map(decodeActivity);
   if (value && typeof value === 'object') {
-    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, decodeActivity(v)]));
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, k === 'hint' ? decodeHintShape(v) : decodeActivity(v)]));
   }
   return value;
+}
+
+// The text of a Hint being revealed: decoded if it was encoded.
+export const decodeHint = (text) => (isEncodedKey(text) ? decodeKey(text) : text);
+
+function decodeHintShape(hint) {
+  const decoded = isEncodedKey(hint) ? decodeKey(hint) : hint;
+  if (!decoded || typeof decoded !== 'object' || Array.isArray(decoded)) return decodeActivity(decoded);
+  const { text, ...rest } = decoded;
+  return { ...decodeActivity(rest), ...(text === undefined ? {} : { text }) };
 }
 
 function xor(bytes) {

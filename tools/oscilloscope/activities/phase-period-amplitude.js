@@ -1,8 +1,9 @@
 // Activity: phase shift / period and amplitude, on the oscilloscope Tool.
 // Ported from the Tasks in Finished/oscilloscope_lab.html. Pure data (no DOM): the
 // runner core and Node tests import it directly. Prompts and Questions may use \( \) math.
-// Conditions are encoded answer keys (framework/v1/authoring/encode-keys.html); decode
-// one in Node or the console with decodeKey() from framework/v1/runner/keys.js.
+// Conditions, and Hints that would give an answer away, are encoded answer keys
+// (framework/v1/authoring/encode-keys.html); decode one in Node or the console with
+// decodeKey() from framework/v1/runner/keys.js.
 
 const ALL = ['Va', 'f', 'Dt', 'Va-marker', 'f-marker', 'Dt-marker'];
 
@@ -26,7 +27,7 @@ export default {
           show: ALL,
           condition: 'enc1:HVVeAlBUBkNJVxEEREZJVhETAAILAAJRVFcOF0NSXBZydmQXCQQICFBBAVRFTw9DSUVPXBhIRwAEABUAGjhBCQAVGRpRquUPc2SwqbgQAR9TQBxWQ0EHQw4',
           points: 1,
-          hint: { after: 3, text: 'With \\(f = 0.5\\) Hz, a quarter period is \\(\\Delta t = 0.5\\) s.' },
+          hint: { after: 3, text: 'enc1:RCBEAlkAPz1bE0FRDVRLQTkuW0UmDgxLBFlKVRIXEUUzZCJFQllfVUYeXlZtfEs9LzEEAFkFRQBFT1JVQEF8N0xZSA5R' },
         },
         {
           id: 'phase-pi-4',
@@ -66,7 +67,7 @@ export default {
           hide: ['Dt', 'Dt-marker'],
           condition: 'enc1:HVVeAlBUBkNJVzVOAUYRFRcVFxFMThNHRw1UTFFfVQ5xcX4CRFFCVgMDYRdTRQ9DSVdSQh1URQdHDw',
           points: 1,
-          hint: { after: 3, text: 'Type \\(f = 0.33\\) Hz into the number box: the f marker snaps to tenths.' },
+          hint: { after: 3, text: 'enc1:RCNUBlQAPz1bE0FRDVRLR1YuLkxOPFpLDBdPT1MRDUVhKidNUlVCEQQYVUwRVAsEUxNBAUwWDhEXUgELDwRTSxEWG1QWCxFIMmpw' },
         },
         {
           id: 'pkpk-4',
@@ -76,7 +77,7 @@ export default {
           lock: ['f', 'f-marker'],
           condition: 'enc1:HVVeAlBUBkNJVxEHXQ9HWEcGExcJEVRJX00XAgcKCQJ7dHwQBRwSRQcFShNFbAIDFhlDVg9QS0RVUiRHEw',
           points: 1,
-          hint: { after: 3, text: 'Peak-to-peak is twice the amplitude: \\(V_a = 2\\) V.' },
+          hint: { after: 3, text: 'enc1:RCdIF1oNFw5eBQQNRkQMB0UGBQwNEQAfDRwbQR4VCUk1MTZFChBsbU4hchcRHUNTLylITHtKRw' },
         },
       ],
     },
