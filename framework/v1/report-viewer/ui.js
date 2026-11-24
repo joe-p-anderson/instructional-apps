@@ -11,6 +11,7 @@ import { h } from '../ui-kit.js';
 import { typeset } from '../vendor.js';
 import { openReport, readSubmissions, openClass } from './core.js';
 import { isZip } from './zip.js';
+import { gradesCsv } from './grades-csv.js';
 
 export function mountReportViewer(root) {
   const input = h('input', {
@@ -126,6 +127,8 @@ const CLASS_COLUMNS = [
 
 function classView(cls, onOpen) {
   return h('section', { class: 'fw-class', 'aria-label': 'Class view' },
+    h('div', { class: 'fw-class-actions fw-viewer-chrome' },
+      h('button', { class: 'fw-button', type: 'button', onclick: () => exportGrades(cls.rows) }, 'Export grades CSV')),
     h('table', { class: 'fw-class-table', 'aria-label': 'Class' },
       h('thead', {}, h('tr', {}, CLASS_COLUMNS.map(([label]) => h('th', { scope: 'col' }, label)))),
       h('tbody', {}, cls.rows.map((row) => h('tr', {},
@@ -134,6 +137,17 @@ function classView(cls, onOpen) {
       : h('div', { class: 'fw-class-errors' },
         h('h3', {}, 'Files that could not be read'),
         h('ul', {}, cls.errors.map((e) => h('li', {}, `${e.uploader ? `${e.uploader}: ` : ''}${e.path}: ${e.message}`)))));
+}
+
+// The grades CSV is built in the browser (./grades-csv.js) and saved as a local file; nothing is uploaded.
+function exportGrades(rows) {
+  const item = rows[0]?.view.activity.title || 'Activity';
+  const url = URL.createObjectURL(new Blob([gradesCsv(rows, { item })], { type: 'text/csv' }));
+  const link = h('a', { href: url, download: `${item.replace(/[\\/:*?"<>|]/g, '_')} grades.csv` });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 function studentView(view) {
