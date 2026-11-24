@@ -8,7 +8,13 @@
 //   onLock  optional (locked: boolean) => void, extra work on lock/unlock (e.g. redraw a marker)
 //   onHide  optional (hidden: boolean) => void, extra work on hide/show
 
-const OPERABLE = 'input, button, select, textarea';
+/** Wrap Controls (array or { id: Control }) as the contract's registry: { get(id), ids() }. */
+export function controlRegistry(controls) {
+  const map = new Map((Array.isArray(controls) ? controls : Object.values(controls)).map((c) => [c.id, c]));
+  return { get: (id) => map.get(id), ids: () => [...map.keys()] };
+}
+
+const OPERABLE ='input, button, select, textarea';
 
 export function createControl({ id, label = id, el = null, get, set, onLock, onHide }) {
   let locked = false;

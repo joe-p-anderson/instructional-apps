@@ -67,7 +67,7 @@ export function mountStandalone(tool, root, { setups = {}, subtitle = 'Standalon
 
   for (const mode of tool.modes) {
     const instance = tool.mount(tabs.panels[mode.id], mode.id, setups[mode.id]);
-    for (const c of Object.values(instance.controls)) { c.show(); c.unlock(); }
+    for (const id of instance.controls.ids()) { const c = instance.controls.get(id); c.show(); c.unlock(); }
     host.instances.push(instance);
   }
   host.select = tabs.select;

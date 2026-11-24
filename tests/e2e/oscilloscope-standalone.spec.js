@@ -29,7 +29,7 @@ test('Standalone mode shows every Control, unlocked', async ({ page }) => {
   // reports itself shown and unlocked through the Tool contract.
   const controls = await page.evaluate(() => {
     const instance = window.toolHost.instances[0];
-    return Object.values(instance.controls).map((c) => ({
+    return instance.controls.ids().map((id) => instance.controls.get(id)).map((c) => ({
       id: c.id,
       locked: c.isLocked(),
       hidden: c.isHidden(),
@@ -46,7 +46,7 @@ test('live metrics publish φ, T and pk-pk as State with units', async ({ page }
   // Default Setup: Va = 2 V, f = 0.5 Hz, Δt = 0.25 s  →  φ = 2π·0.5·0.25 = π/4, T = 2 s, pk-pk = 4 V
   const { state, info } = await page.evaluate(() => {
     const i = window.toolHost.instances[0];
-    return { state: i.getState(), info: i.stateInfo };
+    return { state: i.state.snapshot(), info: i.state.describe() };
   });
   expect(state.phi).toBeCloseTo(Math.PI / 4, 6);
   expect(state.T).toBeCloseTo(2, 6);
@@ -76,9 +76,9 @@ test('the Tool mounts several times on one page with independent State', async (
     const a = tool.mount(document.body.appendChild(document.createElement('div')), 'dual-trace', { f: 0.25 });
     const b = tool.mount(document.body.appendChild(document.createElement('div')), 'dual-trace', { f: 0.5 });
     let bChanges = 0;
-    b.onChange(() => { bChanges += 1; });
-    a.controls.Va.set(1);
-    const s = { a: a.getState(), b: b.getState() };
+    b.state.onChange(() => { bChanges += 1; });
+    a.controls.get('Va').set(1);
+    const s = { a: a.state.snapshot(), b: b.state.snapshot() };
     a.destroy();
     b.destroy();
     return { aVa: s.a.Va, bVa: s.b.Va, aT: s.a.T, bT: s.b.T, bChanges };
@@ -90,13 +90,13 @@ test('State serializes and restores', async ({ page }) => {
   await open(page);
   const restored = await page.evaluate(() => {
     const i = window.toolHost.instances[0];
-    i.controls.f.set(0.4);
-    i.controls.Dt.set(1.5);
+    i.controls.get('f').set(0.4);
+    i.controls.get('Dt').set(1.5);
     const saved = JSON.parse(JSON.stringify(i.serialize()));
-    i.controls.f.set(0.9);
-    i.controls.Dt.set(0);
+    i.controls.get('f').set(0.9);
+    i.controls.get('Dt').set(0);
     i.restore(saved);
-    return i.getState();
+    return i.state.snapshot();
   });
   expect(restored.f).toBeCloseTo(0.4, 9);
   expect(restored.Dt).toBeCloseTo(1.5, 9);
@@ -116,14 +116,14 @@ test('the Δt marker is a Control that can be locked like a slider', async ({ pa
     const div = document.querySelector('.fw-display > div');
     const fl = div._fullLayout;
     const r = div.getBoundingClientRect();
-    const { Dt, f, Va } = window.toolHost.instances[0].getState();
+    const { Dt, f, Va } = window.toolHost.instances[0].state.snapshot();
     return {
       x: r.left + fl._size.l + fl.xaxis.d2p(1 / f - Dt),
       y: r.top + fl._size.t + fl.yaxis.d2p(Va),
       pxPerSecond: fl.xaxis.d2p(1) - fl.xaxis.d2p(0),
     };
   });
-  const dt = () => page.evaluate(() => window.toolHost.instances[0].getState().Dt);
+  const dt = () => page.evaluate(() => window.toolHost.instances[0].state.snapshot().Dt);
   const dragLeftOneSecond = async () => {
     const p = await markerAt();
     await page.mouse.move(p.x, p.y);
@@ -137,7 +137,7 @@ test('the Δt marker is a Control that can be locked like a slider', async ({ pa
   expect(await dt()).toBeCloseTo(1.25, 1);
 
   // Locked: the same drag leaves Δt alone.
-  await page.evaluate(() => window.toolHost.instances[0].controls['Dt-marker'].lock());
+  await page.evaluate(() => window.toolHost.instances[0].controls.get('Dt-marker').lock());
   const before = await dt();
   await dragLeftOneSecond();
   expect(await dt()).toBe(before);

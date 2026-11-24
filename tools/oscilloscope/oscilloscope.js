@@ -4,11 +4,11 @@
 // Ported from Finished/oscilloscope_lab.html.
 //
 // Setup: { Va, f, Dt } (any subset; defaults below).
-// State: Va (V), f (Hz), Dt (s), phi (rad), T (s), pkpk (V), ratio (Δt/T).
+// State (state.snapshot()): Va (V), f (Hz), Dt (s), phi (rad), T (s), pkpk (V), ratio (Δt/T).
 // Controls: sliders 'Va', 'f', 'Dt'; draggable plot markers 'Va-marker', 'f-marker', 'Dt-marker'.
 // Displays: 'scope'.
 
-import { createControl } from '../../framework/v1/control.js';
+import { controlRegistry, createControl } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
 import { h, metric, section, slider } from '../../framework/v1/ui-kit.js';
 import { loadPlotly } from '../../framework/v1/vendor.js';
@@ -207,17 +207,17 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
   update();
 
   return {
-    stateInfo: STATE_INFO,
-    getState,
-    onChange: (fn) => changes.on(fn),
-    controls,
-    displays: {
-      scope: {
-        id: 'scope',
-        label: 'Oscilloscope',
-        snapshot: () => Plotly.toImage(plotDiv, { format: 'png', width: 620, height: 300 }),
-      },
+    state: {
+      snapshot: getState,
+      describe: () => structuredClone(STATE_INFO),
+      onChange: (fn) => changes.on(fn),
     },
+    controls: controlRegistry(controls),
+    displays: [{
+      id: 'scope',
+      label: 'Oscilloscope',
+      snapshot: () => Plotly.toImage(plotDiv, { format: 'png', width: 620, height: 300 }),
+    }],
     serialize: () => ({ Va: params.Va, f: params.f, Dt: params.Dt }),
     restore(saved = {}) {
       for (const k of ['Va', 'f', 'Dt']) if (Number.isFinite(saved[k])) sliders[k].set(saved[k]);

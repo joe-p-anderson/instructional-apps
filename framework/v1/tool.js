@@ -14,11 +14,12 @@
 // state: a page may mount the same Tool many times (one instance per Part).
 //
 // ToolInstance:
-//   stateInfo                     { [name]: { label, unit } }    static description of the State
-//   getState()                    { [name]: number|boolean|string }  plain snapshot, safe to JSON
-//   onChange(fn) -> unsubscribe   fn(snapshot) fires whenever the State changes
-//   controls                      { [controlId]: Control }  registry, keyed by Control id
-//   displays                      { [displayId]: Display }
+//   state.snapshot()              { [name]: number|boolean|string }  plain snapshot, safe to JSON
+//   state.describe()              { [name]: { label, unit } }  description of each State value
+//   state.onChange(fn) -> unsub   fn(snapshot) fires whenever the State changes
+//   controls.get(id) -> Control   registry keyed by Control id (see controlRegistry in control.js)
+//   controls.ids() -> string[]
+//   displays                      Display[]
 //   serialize()                   JSON-able object that restore() accepts
 //   restore(saved)                put the instance back into a serialized State (fires onChange)
 //   resize()        (optional)    re-layout after the container became visible or changed size

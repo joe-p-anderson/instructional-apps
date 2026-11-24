@@ -9,6 +9,7 @@ Static ES modules and CSS, served as-is (no build, no install). Breaking changes
 | `ui-kit.js` | Standard Controls: `slider` (with number box and reset), `toggle`, `select`, `button`; plus `metric` readout, `section`, `h()` element helper. |
 | `theme.css` | The v1 cream-and-serif theme and layout classes (`.fw-*`). |
 | `tool-host.js` | `mountStandalone(tool, root)`: Standalone mode, one tab per Mode, every Control unlocked. Also exports `createFrame`/`createTabs` for the Activity runner UI. |
+| `runner/` | Activity runner core (pure logic, no DOM). |
 | `vendor.js` | Pinned CDN loaders (`loadPlotly()`). |
 
 ## Tool contract in brief
@@ -19,11 +20,14 @@ Static ES modules and CSS, served as-is (no build, no install). Breaking changes
 
 // instance
 {
-  stateInfo,                 // { phi: { label: 'Phase shift φ', unit: 'rad' }, ... }
-  getState(),                // { phi: 0.785, T: 2, ... }  plain snapshot
-  onChange(fn),              // fn(snapshot) on every State change; returns unsubscribe
-  controls,                  // { [id]: { id, label, get, set, lock, unlock, isLocked, hide, show, isHidden } }
-  displays,                  // { [id]: { id, label, snapshot(): Promise<PNG data URL> } }
+  state: {
+    snapshot(),              // { phi: 0.785, T: 2, ... }  plain snapshot
+    describe(),              // { phi: { label: 'Phase shift φ', unit: 'rad' }, ... }
+    onChange(fn),            // fn(snapshot) on every State change; returns unsubscribe
+  },
+  controls: { get(id), ids() },  // Control: { id, label, get, set, lock, unlock, isLocked, hide, show, isHidden }
+  displays: [{ id, label, snapshot() }],  // snapshot(): Promise<PNG data URL>
+
   serialize(), restore(saved),
   resize?(), destroy?(),
 }
