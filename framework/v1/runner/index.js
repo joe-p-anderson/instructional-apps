@@ -1,8 +1,11 @@
 // Activity runner core: pure logic, no DOM.
-import { evaluateCondition } from './conditions.js';
+import { evaluateCondition, createConditionRegistry } from './conditions.js';
 
-export function createRunner(activity, { tools = {}, clock = () => new Date() } = {}) {
+export { builtinConditionTypes, createConditionRegistry, evaluateCondition } from './conditions.js';
+
+export function createRunner(activity, { tools = {}, clock = () => new Date(), conditionTypes } = {}) {
   let run = null;
+  const registry = createConditionRegistry(activity.conditionTypes, conditionTypes);
 
   // Per-Task progress, keyed by Part id then Task id.
   const progress = new Map(
@@ -54,6 +57,18 @@ export function createRunner(activity, { tools = {}, clock = () => new Date() } 
       }));
     },
 
+    task(partId, taskId) {
+      const part = findPart(partId);
+      const task = findTask(part, taskId);
+      const record = progress.get(part.id).get(task.id);
+      return {
+        id: task.id,
+        title: task.title,
+        status: statusOf(part, part.tasks.indexOf(task)),
+        attempts: structuredClone(record.attempts),
+      };
+    },
+
     submit(partId, taskId) {
       requireRun();
       const part = findPart(partId);
@@ -64,7 +79,9 @@ export function createRunner(activity, { tools = {}, clock = () => new Date() } 
 
       const tool = tools[part.id];
       const state = tool.state.snapshot();
-      const results = task.condition ? evaluateCondition(task.condition, state) : [];
+      const results = task.condition
+        ? evaluateCondition(task.condition, state, { info: tool.state.describe(), registry })
+        : [];
       const attempt = {
         at: clock().toISOString(),
         state,
