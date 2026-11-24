@@ -25,6 +25,7 @@
 import { verifyReport } from '../report.js';
 import { isZip, readZip } from './zip.js';
 import { flagClass } from './flags.js';
+import { earnedFromResults } from '../runner/scoring.js';
 
 export { namesMatch } from './flags.js';
 
@@ -165,32 +166,22 @@ function readV1(report) {
 }
 
 // Rescore one Task from its own Attempts (spec, Scoring), never from its stored
-// earned/passed. The Report Viewer has no Activity definition, so it judges by
-// each Attempt's recorded results and answers, with the points the Report records:
-//   - an Attempt passed if none of its results failed; the Task's points are
-//     earned if any Attempt passed;
-//   - a graded Question's points once a result for it passed in any Attempt;
-//   - a free-text Question's points once any Attempt gave a non-empty answer.
-// A Report without per-Question points counts all its possible points as the Task's.
+// earned/passed. The Report Viewer has no Activity definition, so it applies the
+// runner's scoring rules (earnedFromResults) to each Attempt's recorded results and
+// answers, with the points the Report records. An Attempt passed if it has results
+// and none of them failed. A Report without per-Question points counts all its
+// possible points as the Task's.
 function rescoreTaskV1(task) {
-  const attempts = (task.attempts ?? []).filter((a) => a && typeof a === 'object');
+  const attempts = (task.attempts ?? []).filter((a) => a && typeof a === 'object').map((a) => ({
+    passed: Array.isArray(a.results) && a.results.every((r) => r?.pass !== false),
+    results: Array.isArray(a.results) ? a.results : [],
+    answers: a.answers ?? {},
+  }));
   const questions = (Array.isArray(task.questions) ? task.questions : [])
     .map((q) => ({ id: q?.id, graded: q?.graded !== false, points: num(q?.points) }));
-  const own = Number.isFinite(task.points) ? task.points : num(task.possible);
-  const passed = attempts.some(attemptPassed);
-  let earned = passed ? own : 0;
-  for (const q of questions) {
-    const earns = q.graded
-      ? attempts.some((a) => resultsOf(a).some((r) => r?.kind === 'question' && r.id === q.id && r.pass === true))
-      : attempts.some((a) => nonEmpty(a.answers?.[q.id]));
-    if (earns) earned += q.points;
-  }
-  return { passed, earned, possible: own + questions.reduce((n, q) => n + q.points, 0) };
+  const points = Number.isFinite(task.points) ? task.points : num(task.possible);
+  return earnedFromResults({ points, questions }, attempts);
 }
-
-const resultsOf = (a) => (Array.isArray(a.results) ? a.results : null) ?? [];
-const attemptPassed = (a) => Array.isArray(a.results) && a.results.every((r) => r?.pass !== false);
-const nonEmpty = (v) => v !== undefined && v !== null && String(v).trim() !== '';
 
 function readAttemptV1(attempt, i) {
   const results = attempt.results ?? [];

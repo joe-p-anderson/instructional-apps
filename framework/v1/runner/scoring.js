@@ -38,18 +38,27 @@ function scoreTask(task, attempts, registry) {
     const answers = a?.answers ?? {};
     return { answers, ...safeJudge(task, a?.state ?? {}, answers, registry) };
   });
-  const passed = judged.some((j) => j.passed);
-  const questions = task.questions ?? [];
-  let earned = passed ? task.points ?? 0 : 0;
-  let possible = task.points ?? 0;
-  for (const q of questions) {
-    possible += q.points ?? 0;
-    const earns = isGraded(q)
-      ? judged.some((j) => j.results.some((r) => r.kind === 'question' && r.id === q.id && r.pass))
-      : judged.some((j) => nonEmpty(j.answers[q.id]));
-    if (earns) earned += q.points ?? 0;
+  const questions = (task.questions ?? []).map((q) => ({ id: q.id, graded: isGraded(q), points: q.points ?? 0 }));
+  return { id: task.id, ...earnedFromResults({ points: task.points ?? 0, questions }, judged) };
+}
+
+// The scoring rules above, applied to judged Attempts. Shared with the Report Viewer,
+// which has no Activity definition and so passes each Attempt's recorded results.
+//   task:     { points, questions: [{ id, graded, points }] }
+//   attempts: [{ passed, results: [{ kind, id, pass }], answers: { [questionId]: value } }]
+//   returns   { passed, earned, possible }
+export function earnedFromResults(task, attempts) {
+  const passed = attempts.some((a) => a.passed);
+  let earned = passed ? task.points : 0;
+  let possible = task.points;
+  for (const q of task.questions) {
+    possible += q.points;
+    const earns = q.graded
+      ? attempts.some((a) => a.results.some((r) => r?.kind === 'question' && r.id === q.id && r.pass === true))
+      : attempts.some((a) => nonEmpty(a.answers?.[q.id]));
+    if (earns) earned += q.points;
   }
-  return { id: task.id, passed, earned, possible };
+  return { passed, earned, possible };
 }
 
 // A recorded State that no longer fits the Condition (e.g. a missing name) is a miss.
