@@ -19,3 +19,4 @@ Spec: docs/specs/0001-framework-v1.md (vocabulary from GLOSSARY.md; respects ADR
 - Authors can encode any value in an Activity: a whole Condition (which also hides `targetLabel`) or a single Question field (`answer`, `tol`, `correct`).
 - Authoring helper: `framework/v1/authoring/encode-keys.html`. The author pastes a JS expression and copies the key. `encodeKey()` and `decodeKey()` are also on `window` for console use.
 - The oscilloscope Activity's four Conditions are now encoded. Its existing unit and e2e tests pass unchanged.
+- Merged branch `ticket-08` into `framework-v1` via a non-fast-forward merge commit (1036d59). No conflicts. `npm test` (59) and `npm run test:e2e` (19) pass.
