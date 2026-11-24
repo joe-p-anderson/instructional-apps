@@ -6,7 +6,7 @@
 // Setup: { Va, f, Dt } (any subset; defaults below).
 // State (state.snapshot()): Va (V), f (Hz), Dt (s), phi (rad), T (s), pkpk (V), ratio (Δt/T).
 // Controls: sliders 'Va', 'f', 'Dt'; draggable plot markers 'Va-marker', 'f-marker', 'Dt-marker'.
-// Displays: 'scope'.
+// Displays: 'scope' (with toScreen(t, V): the client position of a plot point).
 
 import { controlRegistry, createControl } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
@@ -175,6 +175,13 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
       ya: fl.yaxis,
     };
   }
+  // Display contract: client pixel position of the data point (x s, y V), once laid out.
+  function toScreen(x, y) {
+    const fl = plotDiv._fullLayout;
+    if (!fl || Math.abs(fl.width - plotDiv.clientWidth) >= 2) return null;
+    const rect = plotDiv.getBoundingClientRect();
+    return { x: rect.left + fl._size.l + fl.xaxis.d2p(x), y: rect.top + fl._size.t + fl.yaxis.d2p(y) };
+  }
   let dragging = null;
   function onPointerDown(evt) {
     if (!plotDiv._fullLayout) return;
@@ -217,6 +224,7 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
       id: 'scope',
       label: 'Oscilloscope',
       snapshot: () => Plotly.toImage(plotDiv, { format: 'png', width: 620, height: 300 }),
+      toScreen,
     }],
     serialize: () => ({ Va: params.Va, f: params.f, Dt: params.Dt }),
     restore(saved = {}) {

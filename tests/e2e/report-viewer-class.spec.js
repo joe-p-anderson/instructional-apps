@@ -66,13 +66,17 @@ test('the Flags column shows flags and name-mismatch warnings, each with its rea
     ])),
   });
   const rows = page.getByRole('table', { name: 'Class' }).getByRole('row');
-  const tampered = rows.nth(1).locator('.fw-class-flag');
+  const flags = (row) => row.getByRole('list', { name: 'Flags' }).getByRole('listitem');
+  const tampered = flags(rows.nth(1));
+  await expect(tampered).toHaveCount(1);
+  await expect(tampered).toHaveAccessibleName('Tampered');
   await expect(tampered).toHaveText('Tampered');
-  await expect(tampered).toHaveAttribute('title', /fails its checksum/);
-  const mismatch = rows.nth(2).locator('.fw-class-flag');
+  await expect(tampered).toHaveAccessibleDescription(/fails its checksum/);
+  const mismatch = flags(rows.nth(2));
+  await expect(mismatch).toHaveCount(1);
   await expect(mismatch).toHaveText('Name mismatch');
-  await expect(mismatch).toHaveClass(/fw-class-warning/);
-  await expect(mismatch).toHaveAttribute('title', /Bo Diddley.*Grace Hopper/);
+  await expect(mismatch).toHaveAccessibleName('Name mismatch (warning)'); // a warning, not a flag
+  await expect(mismatch).toHaveAccessibleDescription(/Bo Diddley.*Grace Hopper/);
   await expect(rows.nth(2).getByRole('cell').nth(3)).toHaveText('4 / 5'); // still scored
 });
 

@@ -104,24 +104,15 @@ test('State serializes and restores', async ({ page }) => {
 
 test('the Δt marker is a Control that can be locked like a slider', async ({ page }) => {
   await open(page);
-  await expect(page.locator('.fw-display .main-svg').first()).toBeVisible();
-  // Wait until the plot has been laid out at the size of its box.
-  await page.waitForFunction(() => {
-    const div = document.querySelector('.fw-display > div');
-    return div._fullLayout && Math.abs(div._fullLayout.width - div.clientWidth) < 2;
-  });
+  // Wait until the scope Display has been laid out at the size of its box.
+  await page.waitForFunction(() => window.toolHost.instances[0].displays[0].toScreen(0, 0));
 
   // Screen position of the Δt marker, which sits at (T − Δt, Va).
   const markerAt = () => page.evaluate(() => {
-    const div = document.querySelector('.fw-display > div');
-    const fl = div._fullLayout;
-    const r = div.getBoundingClientRect();
-    const { Dt, f, Va } = window.toolHost.instances[0].state.snapshot();
-    return {
-      x: r.left + fl._size.l + fl.xaxis.d2p(1 / f - Dt),
-      y: r.top + fl._size.t + fl.yaxis.d2p(Va),
-      pxPerSecond: fl.xaxis.d2p(1) - fl.xaxis.d2p(0),
-    };
+    const instance = window.toolHost.instances[0];
+    const scope = instance.displays[0];
+    const { Dt, f, Va } = instance.state.snapshot();
+    return { ...scope.toScreen(1 / f - Dt, Va), pxPerSecond: scope.toScreen(1, 0).x - scope.toScreen(0, 0).x };
   });
   const dt = () => page.evaluate(() => window.toolHost.instances[0].state.snapshot().Dt);
   const dragLeftOneSecond = async () => {
