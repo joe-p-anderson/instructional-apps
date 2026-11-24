@@ -5,12 +5,14 @@
 //   row and a progress indicator to each Part, and shows a name gate before Part 1.
 //   All judging, ordering and Control exposure come from the core; this layer only renders
 //   what runner.parts()/runner.task() report and forwards Start and Submit.
+//   Once the Run starts, a Download Report button saves runner.report() as a JSON file.
 //   Returns { runner, instances: { [partId]: ToolInstance }, select(partId), render(), activePart }.
 //
 // Prompts, titles, Question prompts and Hints are trusted HTML from the Activity author and may
 // contain \( \) math, typeset with MathJax.
 
 import { createRunner } from './runner/index.js';
+import { reportFilename } from './report.js';
 import { createFrame, createTabs } from './tool-host.js';
 import { defineTool } from './tool.js';
 import { h } from './ui-kit.js';
@@ -42,7 +44,8 @@ export function mountActivity(tool, activity, root, { conditionTypes } = {}) {
 
   // ── Name gate: the Part tabs stay hidden until a name starts the Run ──
   const student = h('div', { class: 'fw-student', hidden: true });
-  frame.header.append(student);
+  const download = reportButton(host);
+  frame.header.append(student, download);
   frame.tablist.hidden = true;
   frame.panels.hidden = true;
 
@@ -68,6 +71,7 @@ export function mountActivity(tool, activity, root, { conditionTypes } = {}) {
     gate.remove();
     student.textContent = host.runner.run.name;
     student.hidden = false;
+    download.hidden = false;
     frame.tablist.hidden = false;
     frame.panels.hidden = false;
     render();
@@ -179,6 +183,26 @@ export function mountActivity(tool, activity, root, { conditionTypes } = {}) {
       for (const t of part.tasks) view.cards[t.id].update();
     }
   }
+}
+
+// Download the Run's Report so far (allowed at any time after the Run starts).
+function reportButton(host) {
+  const button = h('button', { type: 'button', class: 'fw-button fw-download', hidden: true }, 'Download Report');
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      const report = await host.runner.report();
+      const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
+      const link = h('a', { href: url, download: reportFilename(report), hidden: true });
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } finally {
+      button.disabled = false;
+    }
+  });
+  return button;
 }
 
 function stripTags(html) {

@@ -236,7 +236,7 @@ html.fw-root, html.fw-root body {
 .fw-share-status { font-size: 13px; font-style: italic; min-width: 4em; }
 
 /* ── Activity runner UI: name gate, Task cards, Part progress ── */
-.fw-app .fw-tabs[hidden], .fw-app .fw-tabpanel-area[hidden], .fw-student[hidden], .fw-task-hint[hidden] { display: none !important; }
+.fw-app .fw-tabs[hidden], .fw-app .fw-tabpanel-area[hidden], .fw-student[hidden], .fw-download[hidden], .fw-task-hint[hidden] { display: none !important; }
 .fw-student { font-size: 16px; color: var(--fw-text-dim); font-style: italic; white-space: nowrap; }
 
 .fw-gate {
