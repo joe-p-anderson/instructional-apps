@@ -234,3 +234,77 @@ html.fw-root, html.fw-root body {
 .fw-share-link { width: 16em; min-width: 0; font: inherit; font-size: 13px; padding: 3px 6px;
   border: 1px solid var(--fw-border-dk); background: var(--fw-bg); color: inherit; }
 .fw-share-status { font-size: 13px; font-style: italic; min-width: 4em; }
+
+/* ── Activity runner UI: name gate, Task cards, Part progress ── */
+.fw-app .fw-tabs[hidden], .fw-app .fw-tabpanel-area[hidden], .fw-student[hidden], .fw-task-hint[hidden] { display: none !important; }
+.fw-student { font-size: 16px; color: var(--fw-text-dim); font-style: italic; white-space: nowrap; }
+
+.fw-gate {
+  margin: 48px auto;
+  width: min(440px, calc(100% - 32px));
+  padding: 20px 24px;
+  border: 1.5px solid var(--fw-border-dk);
+  background: var(--fw-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fw-gate-title { margin: 0; font-size: 20px; font-variant: small-caps; letter-spacing: 0.04em; }
+.fw-gate-label { margin-top: 10px; font-size: 16px; }
+.fw-gate-row { display: flex; gap: 8px; }
+.fw-name-input, .fw-question-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--fw-bg);
+  border: 1px solid var(--fw-border-dk);
+  color: var(--fw-text);
+  font-family: var(--fw-font);
+  font-size: 16px;
+  padding: 4px 6px;
+  outline: none;
+}
+.fw-name-input:focus, .fw-question-input:focus { border-color: var(--fw-blue); }
+.fw-gate-error { color: var(--fw-red); font-size: 15px; font-style: italic; min-height: 1em; }
+
+.fw-part-tasks {
+  flex-shrink: 0;
+  border-top: 2px solid var(--fw-border-dk);
+  background: var(--fw-surface);
+  display: flex;
+  flex-direction: column;
+  max-height: 250px;
+}
+.fw-progress { display: flex; align-items: center; gap: 10px; padding: 4px 14px; border-bottom: 1px solid var(--fw-border); font-size: 14px; color: var(--fw-text-dim); }
+.fw-progress-bar { width: 140px; height: 8px; accent-color: var(--fw-green); }
+.fw-tasks { display: flex; overflow: auto; min-height: 0; }
+.fw-task-card {
+  flex: 1;
+  min-width: 240px;
+  padding: 10px 14px;
+  border-right: 1px solid var(--fw-border);
+  transition: opacity 0.25s;
+}
+.fw-task-card:last-child { border-right: none; }
+.fw-task-card[data-status="locked"] { opacity: 0.32; }
+.fw-task-heading { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 5px; }
+.fw-task-check {
+  width: 18px; height: 18px; flex-shrink: 0; margin-top: 2px;
+  border: 1.5px solid var(--fw-border-dk);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: #fff;
+}
+.fw-task-card[data-status="passed"] .fw-task-check { background: var(--fw-green); border-color: var(--fw-green); }
+.fw-task-title { margin: 0; font-size: 16px; font-weight: bold; font-variant: small-caps; letter-spacing: 0.04em; }
+.fw-task-prompt, .fw-question, .fw-task-submit, .fw-task-hint { margin-left: 26px; }
+.fw-task-prompt { font-size: 15px; color: var(--fw-text-dim); font-style: italic; margin-bottom: 7px; line-height: 1.5; }
+.fw-question { margin-bottom: 8px; display: flex; flex-direction: column; gap: 4px; }
+.fw-question-prompt { font-size: 15px; color: var(--fw-red); font-style: italic; line-height: 1.4; }
+.fw-question-input { width: 100%; resize: vertical; }
+.fw-question-number { width: 120px; flex: none; }
+.fw-choice { display: flex; gap: 6px; font-size: 15px; }
+.fw-task-submit { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.fw-task-feedback { font-size: 15px; font-style: italic; }
+.fw-task-feedback.fw-ok { color: var(--fw-green); }
+.fw-task-feedback.fw-fail { color: var(--fw-red); }
+.fw-task-hint { font-size: 14px; color: var(--fw-yellow); font-style: italic; line-height: 1.4; }
+.fw-button:disabled { opacity: 0.5; cursor: not-allowed; }
