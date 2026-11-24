@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { openClass, namesMatch } from '../../../framework/v1/report-viewer/core.js';
-import { sampleReport, quizReport } from './fixtures.js';
+import { sampleReport, quizReport, firstTryReport } from './fixtures.js';
 import { sealReport } from '../../../framework/v1/report.js';
 
 const sub = (uploader, report, path = `${uploader}.json`) => ({ path, uploader, text: JSON.stringify(report) });
@@ -38,8 +38,8 @@ test('a Run fingerprint shared across uploaders flags both Reports; one uploader
 });
 
 test('an identical Attempt history across uploaders is flagged, even from different Runs', async () => {
-  // The fixture clock makes two Runs with the same Submits identical to the second,
-  // as a history copied into a fresh Run would be.
+  // Two Runs with the same Submits, including a miss, as a history copied into a
+  // fresh Run would be.
   const ada = await sampleReport('Ada Lovelace');
   const cy = await sampleReport('Cy Young');
   assert.notEqual(ada.fingerprint, cy.fingerprint);
@@ -50,6 +50,22 @@ test('an identical Attempt history across uploaders is flagged, even from differ
   assert.match(flagsOf(cls, 'Ada Lovelace')[0].message, /Cy Young/);
   assert.deepEqual(kinds(cls, 'Cy Young'), ['identical-history']);
   assert.deepEqual(kinds(cls, 'Di Fossey'), []);
+});
+
+test('a copied Attempt history replayed at other times is still flagged as identical', async () => {
+  const ada = await sampleReport('Ada Lovelace');
+  const replayed = await sampleReport('Cy Young', { startedAt: '2026-11-24T16:30:00.000Z' });
+  const cls = openClass([sub('Ada Lovelace', ada), sub('Cy Young', replayed)]);
+  assert.deepEqual(kinds(cls, 'Ada Lovelace'), ['identical-history']);
+  assert.deepEqual(kinds(cls, 'Cy Young'), ['identical-history']);
+});
+
+test('students who all pass on the first try with the same values are not flagged as identical', async () => {
+  const cls = openClass([
+    sub('Ada Lovelace', await firstTryReport('Ada Lovelace')),
+    sub('Cy Young', await firstTryReport('Cy Young', { startedAt: '2026-11-24T16:30:00.000Z' })),
+  ]);
+  assert.deepEqual(cls.rows.map((r) => r.flags), [[], []]);
 });
 
 test('an Activity id or version that differs from the class majority is flagged', async () => {
