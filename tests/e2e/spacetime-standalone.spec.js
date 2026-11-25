@@ -322,12 +322,13 @@ test('the Tool mounts twice on one page with independent State', async ({ page }
     a.controls.get('tool-event').set(true);
     a.controls.get('v').set(0.8);
     const out = { a: a.state.snapshot(), b: b.state.snapshot(), bChanges,
-      bEvent: b.controls.get('tool-event').get(), aEvent: a.controls.get('tool-event').get() };
+      bEvent: b.controls.get('tool-event').get(), aEvent: a.controls.get('tool-event').get(),
+      styles: [...document.querySelectorAll('style')].filter((el) => el.textContent.includes('.st-tool')).length };
     a.destroy();
     b.destroy();
     return out;
   });
-  expect(result).toMatchObject({ bChanges: 0, aEvent: true, bEvent: false });
+  expect(result).toMatchObject({ bChanges: 0, aEvent: true, bEvent: false, styles: 1 });
   expect(result.a.v).toBeCloseTo(0.8, 9);
   expect(result.b).toMatchObject({ v: -0.3, events: 1 });
 });

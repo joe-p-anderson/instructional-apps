@@ -126,9 +126,14 @@ const CSS = `
 }
 `;
 
+// Documents that already carry the stylesheet: one <style> per document, however many instances.
+const styled = new WeakSet();
 function ensureStyles(doc) {
-  if (doc.getElementById('spacetime-styles')) return;
-  doc.head.append(h('style', { id: 'spacetime-styles' }, CSS));
+  if (styled.has(doc)) return;
+  styled.add(doc);
+  const style = doc.createElement('style');
+  style.textContent = CSS;
+  doc.head.append(style);
 }
 
 const STATE_INFO = {
