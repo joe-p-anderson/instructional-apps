@@ -2,7 +2,7 @@
 
 Spec: .scratch/theme-refresh/spec.md (decision 1).
 
-**Status:** needs-triage
+**Status:** resolved
 
 **What to build:** Fold prototype theme A (`framework/v1/prototype-themes/a.css`) into `framework/v1/theme.css`, and rewrite it properly rather than copying it.
 
@@ -16,3 +16,7 @@ Spec: .scratch/theme-refresh/spec.md (decision 1).
 - [x] Buttons, tabs and reset buttons show a visible `:focus-visible` outline.
 - [x] The theme exposes plot tokens (`--fw-plot-*`: trace/grid/axis/background colours and plot font) in `theme.css`, with a small framework helper to read them. The oscilloscope reads its palette (`C` in `oscilloscope.js`) and Plotly font from these tokens instead of hard-coding them, so the Plotly font matches the new typeface. (See spec, Resolved questions.)
 - [x] Playwright: no visible framework text below 4.5:1 on the oscilloscope Activity page (reuse the contrast audit from the review).
+
+## Comments
+
+2026-11-25: Implemented on integration branch `theme-refresh` (tip 93ec290, includes code-review fixes). `npm test` 230/230, `npm run test:e2e` 109/109.

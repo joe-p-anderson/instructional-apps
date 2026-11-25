@@ -4,7 +4,7 @@ Spec: .scratch/theme-refresh/spec.md (decisions 2 and 3).
 
 **Blocked by:** 01
 
-**Status:** needs-triage
+**Status:** resolved
 
 **What to build:** A Tool declares one of three panel layouts. The framework's frame applies it in both Standalone mode and the Activity runner. The prototype CSS is in `framework/v1/prototype-themes/layout-1.css` (`side`) and `layout-3.css` (`banner`).
 
@@ -17,3 +17,7 @@ Spec: .scratch/theme-refresh/spec.md (decisions 2 and 3).
 - [x] The oscilloscope declares `side`.
 - [x] Playwright: each layout fits 1366×768 with no page scroll, and the current Task's Submit is visible without scrolling.
 - [x] Settle the spec's open questions on Activity overrides and Standalone `banner` before building. (Settled in the spec's Resolved questions: layout fixed per Tool; Standalone `banner` keeps the full-width Display with Controls below.)
+
+## Comments
+
+2026-11-25: Implemented on integration branch `theme-refresh` (tip 93ec290, includes code-review fixes). `npm test` 230/230, `npm run test:e2e` 109/109.

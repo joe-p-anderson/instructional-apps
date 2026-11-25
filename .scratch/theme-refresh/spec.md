@@ -2,7 +2,7 @@
 
 Vocabulary follows GLOSSARY.md. Builds on framework v1 (Spec 0001) and respects ADR 0003 (major-versioned framework folder).
 
-Status: needs-triage
+Status: resolved
 
 ## Background
 
