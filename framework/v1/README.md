@@ -33,6 +33,22 @@ Each Activity is a pure-data module plus a tiny HTML page beside it, so the URL 
 `tools/oscilloscope/activities/phase-period-amplitude.html` loads `phase-period-amplitude.js` and calls
 `mountActivity(oscilloscope, activity, root)`. Prompts may use `\( \)` math (MathJax).
 
+## Conditions
+
+A Task's `condition` is judged against the State only on Submit (`runner/conditions.js`). Every form except a function is plain data, so a whole Condition can be encoded with `authoring/encode-keys.html`.
+
+| Condition | Passes when | Miss feedback |
+| --- | --- | --- |
+| `{ state, target, tol, targetLabel? }` | the value is within `tol` of `target` | `T = 2.50 s; need 3.00 ± 0.05 s` |
+| `{ state, equals, targetLabel? }` | the value is exactly `equals` | `Coupling = DC; need AC` |
+| `{ type: 'range', state, above?, below?, targetLabel? }` | the value is strictly above `above` and/or strictly below `below` (give one or both) | the bound it missed: `\|E₀\| = 0 V/m; need > 0` |
+| `{ type: 'anyOf', conditions: [...] }` | at least one component passes; components may be any Condition, including registered types, functions and lists | each component's feedback: `Any one of: Coupled = false; need true — or — T = 2 s; need < 1` |
+| `{ type, ...options }` | the registered evaluator says so (`conditionTypes` on the Activity, or passed to `createRunner`/`mountActivity`) | the evaluator's `feedback` |
+| `(state, info) => boolean \| { pass, feedback }` | the function says so (escape hatch; can't be encoded) | its `feedback` |
+| `[condition, ...]` | every component passes; one result is recorded per component | per component |
+
+`targetLabel` replaces the generated "need …" text. A registered evaluator is `(condition, state, info, { evaluate }) => { pass, feedback? }`; `evaluate(inner)` judges a nested Condition.
+
 ## Tool contract in brief
 
 ```js

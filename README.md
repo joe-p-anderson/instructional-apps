@@ -1,8 +1,8 @@
 # Instructional apps
 
-Static instructional apps for physics courses. Open any page directly or serve the repo as static files; nothing needs building. The framework is documented in [framework/v1/README.md](framework/v1/README.md) and the vocabulary in [GLOSSARY.md](GLOSSARY.md).
+Static instructional apps, served as-is (no build). Tools are built on [framework v1](framework/v1/README.md).
 
-## Tools (framework v1)
+## Tools
 
-- [Oscilloscope](tools/oscilloscope/): dual-trace scope for phase, period and amplitude.
-- [Least Squares Fitting](tools/least-squares/): linearize a physical model, fit a straight line on the (m, b) parameter plane, and judge it by SSE, R², residuals and error bars.
+- [Vernier caliper](tools/vernier/): practise reading a 0.05 mm vernier caliper (outside, inside and depth measurements).
+- [Least squares fitting](tools/least-squares/): linearize a physical model, fit a straight line by dragging its (m, b) handle, and judge it by SSE, R², residuals and error bars.
