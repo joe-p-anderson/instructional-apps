@@ -91,7 +91,8 @@ test('a reload restores progress and answers, and the Report opens in the Report
   const again = part(page, 2);
   await expect(again.getByRole('region', { name: 'Task 2.1' })).toHaveAttribute('data-status', 'passed');
   await expect(again.getByRole('region', { name: 'Task 2.2' })).toHaveAttribute('data-status', 'open');
-  await expect(again.getByRole('textbox', { name: /potential field inside a conductor/ })).toHaveValue('V is constant: E = 0 inside.');
+  // Task 2.1 is passed, and the side layout shows a passed Task's title only: its answer is restored but hidden.
+  await expect(again.getByRole('textbox', { name: /potential field inside a conductor/, includeHidden: true })).toHaveValue('V is constant: E = 0 inside.');
   await expect(again.getByRole('checkbox', { name: 'Measure at infinity' })).toBeChecked();
 
   const [file] = await Promise.all([

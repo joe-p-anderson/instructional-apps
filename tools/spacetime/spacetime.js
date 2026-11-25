@@ -42,6 +42,16 @@ import { conditionTypes, diagramState } from './conditions.js';
 const CSS = `
 .st-tool { grid-template-columns: 230px minmax(0, 1fr) 290px; position: relative; outline: none; }
 .st-tool .fw-controls { font-size: 15px; }
+/* In an Activity's side layout (README, "Panel layouts") the Task column takes 330 px, so the
+   objects panel moves under the Controls and the diagram keeps the middle width. */
+.fw-layout-side .fw-tabpanel:has(> .fw-part-tasks) .st-tool {
+  grid-template-columns: 250px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr);
+}
+.fw-layout-side .fw-tabpanel:has(> .fw-part-tasks) .st-tool > .fw-controls { grid-column: 1; grid-row: 1; border-bottom: 2px solid var(--fw-border-dk); }
+.fw-layout-side .fw-tabpanel:has(> .fw-part-tasks) .st-tool > .fw-displays { grid-column: 2; grid-row: 1 / span 2; }
+.fw-layout-side .fw-tabpanel:has(> .fw-part-tasks) .st-tool > .st-side {
+  grid-column: 1; grid-row: 2; border-left: none; border-right: 2px solid var(--fw-border-dk);
+}
 .st-tool .fw-section { padding: 8px 10px; }
 .st-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
 .st-tools .fw-button { font-size: 15px; padding: 3px 6px; text-align: left; }
