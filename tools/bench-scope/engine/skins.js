@@ -7,7 +7,8 @@
 //   recordLength               samples per trace across the full graticule width
 //   sdivSequence               the Horizontal Scale steps (s/div), fastest first, 1 µs .. 1 s
 //   onlyControls               control-map names (or "<knob>:push") that only this model has
-//   xyMenu                     where XY lives: { button (control that opens the menu), item }
+//   xyMenu                     where XY lives: { button (control that opens the menu), item };
+//                              display.js opens only the menu behind this skin's button
 //   style                      on-screen look, used only by render.js:
 //     plot                     { x, y, w, h } graticule rectangle in screen pixels
 //     colors                   background, grid, text, per-channel trace colours

@@ -20,6 +20,7 @@
 // State: trigSource, trigSlope, trigLevel (V), trigMode.
 
 import { acquiredRange, acquiredTrace } from './acquire.js';
+import { isXY } from './display.js';
 import { choiceItem, infoItem } from './menus.js';
 import { clamp, oneOf, si } from './util.js';
 import { shownVPerDiv } from './vertical.js';
@@ -121,6 +122,7 @@ export const trigger = {
   }),
   frame(ctx, frame) {
     const { settings, profile } = ctx;
+    if (isXY(settings)) return; // no trigger in XY
     const t = settings.trigger;
     const ch = srcCh(settings);
     const h = settings.horizontal;

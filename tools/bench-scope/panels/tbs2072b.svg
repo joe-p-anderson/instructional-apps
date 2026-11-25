@@ -358,8 +358,8 @@
 <rect x="1999.8" y="479.8" width="33.0" height="16.5" rx="3" fill="#9a9a9a" stroke="none" stroke-width="0" />
 <text x="2016.3" y="488.0" font-family="Arial, Helvetica, sans-serif" font-size="9.9" font-weight="normal" fill="#fff" text-anchor="middle" dominant-baseline="central" >Push</text>
 <text x="2037.8" y="488.0" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#888" text-anchor="start" dominant-baseline="central" >to Center</text>
-<g id="tbs-acquire" class="osc-control" data-control="acquire" data-kind="button" data-active="false" data-label="Acquire" data-cx="2046" data-cy="526">
-<title>Acquire (not available in this simulation)</title>
+<g id="tbs-acquire" class="osc-control" data-control="acquire" data-kind="button" data-active="true" data-label="Acquire" data-cx="2046" data-cy="526">
+<title>Acquire</title>
 <rect x="1996.0" y="508.0" width="100.0" height="44.0" rx="7" fill="#7d7d7d" stroke="none" stroke-width="0" />
 <rect x="1996.0" y="504.0" width="100.0" height="44.0" rx="7" fill="#d9d9d9" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
 <text x="2046" y="526.0" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Acquire</text>

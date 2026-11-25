@@ -248,7 +248,7 @@ def build_tbs():
     p.text(1936, 717, "Position", 17, weight="bold")
     p.knob("hor-position", 1936, 762, 36, "Horizontal position", push="center")
     p.push_hint(1936, 808, "to Center", 11)
-    p.button("acquire", 1936, 846, 100, 44, "Acquire", False, 17)
+    p.button("acquire", 1936, 846, 100, 44, "Acquire", True, 17)
     p.text(1936, 890, "Scale", 17, weight="bold")
     p.knob("hor-scale", 1936, 950, 52, "Horizontal sec/div", notches=10, detent=36)
 
@@ -344,7 +344,7 @@ def build_tds():
                     ("measure", 1597, "Measure", True), ("acquire", 1717, "Acquire", False),
                     ("help", 1840, "Help", False)]),
         (510, 467, [("ref", 1357, "Ref", False), ("utility", 1477, "Utility", False),
-                    ("cursors", 1597, "Cursor", True), ("display", 1717, "Display", False),
+                    ("cursors", 1597, "Cursor", True), ("display", 1717, "Display", True),
                     ("default-setup", 1840, "Default Setup", False), ("single", 1960, "Single", True)]),
     ]
     for by, ly, items in rows:

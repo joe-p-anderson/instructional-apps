@@ -10,7 +10,8 @@
 // new readout shows up before it gets a slot.
 // The softkey menu (frame.menu) is drawn last, over the graticule, in style.menu: the title at
 // style.menu.titleY, then one box per softkey slot with the item's label and its current value
-// (highlighted). Colours: style.colors.menu / menuText.
+// (highlighted); disabled items are greyed. Colours: style.colors.menu / menuText.
+// In XY format frame.xy (CH1 → x, CH2 → y) is drawn as one line in the CH1 colour.
 
 /** Where each readout id goes on each skin's screen: [x, y, align]. */
 const READOUT_SLOTS = {
@@ -75,8 +76,9 @@ function drawMenu(g, menu, style) {
     g.strokeRect(m.x + 1.5, y + 1.5, m.w - 3, slotH - 3);
     if (!it) return;
     const mid = y + slotH / 2;
+    g.globalAlpha = it.disabled ? 0.4 : 1; // greyed: an item the simulation doesn't offer
     g.fillStyle = fg;
-    g.fillText(it.label, m.x + m.w / 2, mid - lineH * 0.55 + 1);
+    g.fillText(it.label, m.x + m.w / 2, mid - lineH * 0.55 + 1, m.w - 6); // squeezed if too long
     if (it.value) {
       const w = Math.min(m.w - 6, g.measureText(it.value).width + 8);
       g.fillStyle = fg;
@@ -84,6 +86,7 @@ function drawMenu(g, menu, style) {
       g.fillStyle = colors.menu ?? '#203040';
       g.fillText(it.value, m.x + m.w / 2, mid + lineH * 0.6 + 1);
     }
+    g.globalAlpha = 1;
   });
   g.textAlign = 'left';
 }
@@ -132,6 +135,13 @@ export function renderScreen(g, frame, profile) {
       const Y = toY(tr.y[i]);
       if (i) g.lineTo(X, Y); else g.moveTo(X, Y);
     }
+    g.stroke();
+  }
+  // XY: CH1 across, CH2 up, one line in the CH1 colour (as on the Tek screens).
+  if (frame.xy) {
+    g.strokeStyle = colors.ch1 ?? colors.text;
+    g.beginPath();
+    frame.xy.x.forEach((x, i) => { if (i) g.lineTo(toX(x), toY(frame.xy.y[i])); else g.moveTo(toX(x), toY(frame.xy.y[i])); });
     g.stroke();
   }
   g.restore();
