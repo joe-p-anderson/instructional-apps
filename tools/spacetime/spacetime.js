@@ -5,7 +5,9 @@
 // Setup: { v, names: { K, Kp }, grid: { K, Kp }, showKp, objs } (any subset; objs in the saved
 //   diagram format, see physics.js). Defaults: v = 0, Earth/Ship, both grids, K′ panel shown,
 //   no objects.
-// State (state.snapshot()): v (c), gamma, events, worldlines, rods (counts).
+// State (state.snapshot()): v (c), gamma, events, worldlines, rods (counts), diagram (the
+//   normalized object list as one JSON string; see conditions.js).
+// Condition types (export conditionTypes): st-event, st-worldline, st-rod (see conditions.js).
 // Controls (coarse, none per object):
 //   'tool-select', 'tool-event', 'tool-worldline', 'tool-rod', 'tool-join'
 //       the drawing tools; get() is true for the active one, set(true) picks it. A locked or
@@ -34,6 +36,7 @@ import {
 } from './physics.js';
 import { FRAMES, SYM, eqLine, esc, fmt, fmtIn, parseNum } from './format.js';
 import { COLORS, drawPanel, panelGeometry } from './draw.js';
+import { conditionTypes, diagramState } from './conditions.js';
 
 const CSS = `
 .st-tool { grid-template-columns: 230px minmax(0, 1fr) 290px; position: relative; outline: none; }
@@ -133,6 +136,7 @@ const STATE_INFO = {
   events: { label: 'Number of events', unit: '' },
   worldlines: { label: 'Number of worldlines', unit: '' },
   rods: { label: 'Number of rods', unit: '' },
+  diagram: { label: 'Diagram', unit: '' },
 };
 
 const TOOLS = [
@@ -996,7 +1000,8 @@ function mount(container, modeId = 'diagram', setup = {}) {
   // ── State and render ──
   function getState() {
     const count = (kind) => S.objs.filter((o) => o.kind === kind).length;
-    return { v: S.v, gamma: gamma(S.v), events: count('event'), worldlines: count('wl'), rods: count('rod') };
+    return { v: S.v, gamma: gamma(S.v), events: count('event'), worldlines: count('wl'), rods: count('rod'),
+      diagram: diagramState(S) };
   }
   function notify(force = false) {
     const saved = JSON.stringify(S);
@@ -1091,6 +1096,9 @@ function mount(container, modeId = 'diagram', setup = {}) {
     },
   };
 }
+
+// The Condition types an Activity on this Tool registers (st-event, st-worldline, st-rod).
+export { conditionTypes };
 
 export default defineTool({
   id: 'spacetime',

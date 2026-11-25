@@ -157,6 +157,41 @@ test('a reload keeps the diagram, and a share link reproduces it elsewhere', asy
   await other.close();
 });
 
+test('the State carries the drawn diagram, in step with every change, for the Condition types', async ({ page }) => {
+  await open(page);
+  const changes = [];
+  await page.exposeFunction('recordDiagram', (d) => changes.push(d));
+  await page.evaluate(() => window.toolHost.instances[0].state.onChange((s) => window.recordDiagram(s.diagram)));
+  expect(JSON.parse((await snapshot(page)).diagram)).toEqual([]);
+  expect(await page.evaluate(() => window.toolHost.instances[0].state.describe().diagram.label)).toBe('Diagram');
+
+  await drawEvent(page, 3, 5);
+  await page.getByRole('button', { name: 'Worldline', exact: true }).click();
+  const a = await at(page, 0, 0), b = await at(page, 3, 5);
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move(b.x, b.y, { steps: 6 });
+  await page.mouse.up();
+
+  const s = await snapshot(page);
+  expect(JSON.parse(s.diagram)).toEqual((await saved(page)).objs);
+  await expect.poll(() => changes.at(-1)).toBe(s.diagram);
+
+  const judged = await page.evaluate(async (state) => {
+    const { conditionTypes } = await import('/tools/spacetime/spacetime.js');
+    return [
+      conditionTypes['st-event']({ x: 3, t: 5, tol: 0.15 }, state),
+      conditionTypes['st-worldline']({ u: 0.6, uTol: 0.05, x: 1.5, t: 2.5, tol: 0.15 }, state),
+      conditionTypes['st-worldline']({ u: -0.6, uTol: 0.05, x: 1.5, t: 2.5, tol: 0.15 }, state),
+    ].map((r) => r.pass);
+  }, s);
+  expect(judged).toEqual([true, true, false]);
+
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect.poll(async () => JSON.parse((await snapshot(page)).diagram).length).toBe(1);
+  expect(changes.at(-1)).toBe((await snapshot(page)).diagram);
+});
+
 test('the Display snapshot is a PNG of both diagrams, and Save PNG downloads it', async ({ page }) => {
   await open(page);
   const size = await page.evaluate(async () => {
