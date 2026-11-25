@@ -167,16 +167,14 @@ test('two instances on one page are independent, and only a visible one animates
     let bChanges = 0;
     b.state.onChange(() => { bChanges += 1; });
     a.controls.get('Q').set(2);
-    const electrons = (root) => {
-      const plot = root.querySelector('.js-plotly-plot');
-      return JSON.stringify(plot.data.at(-2).x);
-    };
-    const a0 = electrons(shown);
-    const b0 = electrons(hidden);
+    // The animated charges move between two Display snapshots only on the visible instance.
+    const picture = (instance) => instance.displays[0].snapshot();
+    const a0 = await picture(a);
+    const b0 = await picture(b);
     await new Promise((r) => setTimeout(r, 500));
     const out = {
-      aMoved: electrons(shown) !== a0,
-      bMoved: electrons(hidden) !== b0,
+      aMoved: (await picture(a)) !== a0,
+      bMoved: (await picture(b)) !== b0,
       aQ: a.state.snapshot().Q,
       bQ: b.state.snapshot().Q,
       bChanges,
