@@ -3,8 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRunner, encodeKey } from '../../../framework/v1/runner/index.js';
-import { conditionTypes } from '../../../tools/spacetime/spacetime.js';
-import { diagramState } from '../../../tools/spacetime/conditions.js';
+import { conditionTypes, diagramState } from '../../../tools/spacetime/conditions.js';
 import { stubTool } from '../runner/stub-tool.js';
 
 const ev = (id, x, t, home = 'K') => ({ id, kind: 'event', home, x, t, label: '', color: '#D55E00' });

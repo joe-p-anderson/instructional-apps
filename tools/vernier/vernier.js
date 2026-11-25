@@ -14,7 +14,7 @@
 
 import { controlRegistry, createControl } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
-import { h, metric, section, select } from '../../framework/v1/ui-kit.js';
+import { button, escapeHtml, h, metric, section, select, themeVars } from '../../framework/v1/ui-kit.js';
 import { RANGES, drawReading, judge } from './reading.js';
 
 // The Inkscape drawing, loaded once and cloned per instance.
@@ -58,13 +58,12 @@ const STATE_INFO = {
   streak: { label: 'Streak', unit: '' },
 };
 
-const C = { main: '#1B4F8A', match: '#E8720C', good: '#2A6E2A', bad: '#B81C1C', dim: '#5C4F38',
-  wood: '#d8b77a', hatch: '#e3c99a', hatchLine: '#9a7a45', edge: '#5a4626' };
+// Colours of the measured objects; the marks and feedback use theme colours (themeVars).
+const C = { wood: '#d8b77a', hatch: '#e3c99a', hatchLine: '#9a7a45', edge: '#5a4626' };
 
 const fmt = (v) => v.toFixed(2);
 const isOneOf = (list, v) => list.some((o) => o.value === v);
 const randomSeed = () => Math.floor(Math.random() * 2 ** 31);
-const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /** Clone the drawing with every id prefixed, so several instances can share a page. */
 function cloneDrawing(prefix) {
@@ -142,19 +141,14 @@ function mount(container, modeId = 'caliper', setup = {}) {
   const readingCtl = createControl({ id: 'reading', label: 'Reading (mm)', el: readingBox,
     get: () => input.value, set: (v) => { input.value = String(v ?? ''); }, onLock: refreshEnabled });
 
-  function actionButton(id, name, onClick, primary = false) {
-    const btn = h('button', { type: primary ? 'submit' : 'button', class: 'fw-button' }, name);
-    if (!primary) btn.addEventListener('click', onClick);
-    const ctl = createControl({ id, label: name, el: btn, get: () => null, set: onClick, onLock: refreshEnabled });
-    return { btn, ctl };
-  }
-  const checkBtn = actionButton('check', 'Check', check, true);
-  const revealBtn = actionButton('reveal', 'Show answer', reveal);
-  const nextBtn = actionButton('next', 'Next', nextReading);
+  // Lock disables a button (ui-kit); refreshEnabled also disables Check and Show answer once answered.
+  const checkBtn = button({ id: 'check', name: 'Check', onClick: () => check(), onLock: refreshEnabled });
+  const revealBtn = button({ id: 'reveal', name: 'Show answer', onClick: () => reveal(), onLock: refreshEnabled });
+  const nextBtn = button({ id: 'next', name: 'Next', onClick: () => nextReading(), onLock: refreshEnabled });
 
   const form = h('form', { style: 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px',
     onsubmit: (e) => { e.preventDefault(); check(); } },
-  readingBox, checkBtn.btn, revealBtn.btn, nextBtn.btn);
+  readingBox, checkBtn.el, revealBtn.el, nextBtn.el);
 
   const counters = {
     correct: metric({ name: 'Correct' }),
@@ -175,18 +169,17 @@ function mount(container, modeId = 'caliper', setup = {}) {
           + 'up exactly with a main-scale mark; multiply its division number by 0.05 mm and add.'))),
     h('div', { class: 'fw-displays' },
       task,
-      h('div', { class: 'fw-display', style: 'background:#fff;padding:6px' }, svg),
+      h('div', { class: 'fw-display', style: 'background:var(--fw-paper);padding:6px' }, svg),
       form,
       feedback));
   container.append(root);
 
   const controls = { type: typeSelect, zoom: zoomSelect, reading: readingCtl,
-    check: checkBtn.ctl, reveal: revealBtn.ctl, next: nextBtn.ctl };
+    check: checkBtn, reveal: revealBtn, next: nextBtn };
 
   // ── Drawing ──
-  function themeColor(name, fallback) {
-    return getComputedStyle(root).getPropertyValue(name).trim() || fallback;
-  }
+  const theme = () => themeVars(root, { main: '--fw-blue', match: '--fw-orange', good: '--fw-green',
+    bad: '--fw-red', surface: '--fw-surface', paper: '--fw-paper' });
 
   function drawCaliper() {
     const t = `translate(${SLIDER_X0 + reading.mm})`;
@@ -210,8 +203,7 @@ function mount(container, modeId = 'caliper', setup = {}) {
 
     marks.replaceChildren();
     if (!s.answered) return;
-    const mainCol = themeColor('--fw-blue', C.main);
-    const matchCol = themeColor('--fw-orange', C.match);
+    const { main: mainCol, match: matchCol } = theme();
     const line = (x, y1, y2, color) => el('line', { x1: x, x2: x, y1, y2, stroke: color, 'stroke-width': 0.42,
       'stroke-linecap': 'round' }, marks);
     line(MAIN_ZERO + reading.main, -58.2, -53.8, mainCol);
@@ -251,19 +243,21 @@ function mount(container, modeId = 'caliper', setup = {}) {
 
   function breakdownHtml() {
     const { main, line, match, mm } = reading;
+    const T = theme();
     const swatch = (color) => `<span style="display:inline-block;width:0.9em;height:0.25em;vertical-align:middle;`
       + `margin-right:4px;background:${color}"></span>`;
     return `<div class="vernier-breakdown" style="margin-top:6px;padding:8px 10px;border-left:3px solid `
-      + `${themeColor('--fw-blue', C.main)};background:var(--fw-surface,#FAF8F2)">`
-      + `${swatch(themeColor('--fw-blue', C.main))}Main scale: last mark at or before vernier 0 is <b>${main} mm</b><br>`
-      + `${swatch(themeColor('--fw-orange', C.match))}Vernier line <b>${line}</b> lines up (with the ${match} mm mark): `
+      + `${T.main};background:${T.surface}">`
+      + `${swatch(T.main)}Main scale: last mark at or before vernier 0 is <b>${main} mm</b><br>`
+      + `${swatch(T.match)}Vernier line <b>${line}</b> lines up (with the ${match} mm mark): `
       + `${line} &times; 0.05 = <b>${fmt(line * 0.05)} mm</b><br>`
       + `Reading: ${main} + ${fmt(line * 0.05)} = <b>${fmt(mm)} mm</b></div>`;
   }
 
   function feedbackHtml() {
-    const good = `color:${themeColor('--fw-green', C.good)};font-weight:bold`;
-    const bad = `color:${themeColor('--fw-red', C.bad)};font-weight:bold`;
+    const T = theme();
+    const good = `color:${T.good};font-weight:bold`;
+    const bad = `color:${T.bad};font-weight:bold`;
     if (s.outcome === 'correct') return `<span style="${good}">Correct: ${fmt(reading.mm)} mm.</span>`;
     if (s.outcome === 'wrong') {
       return `<span style="${bad}">Not quite. You entered ${fmt(s.entered)} mm.</span>${breakdownHtml()}`;
@@ -274,9 +268,8 @@ function mount(container, modeId = 'caliper', setup = {}) {
 
   function refreshEnabled() {
     input.disabled = readingCtl.isLocked() || s.answered;
-    checkBtn.btn.disabled = checkBtn.ctl.isLocked() || s.answered;
-    revealBtn.btn.disabled = revealBtn.ctl.isLocked() || s.answered;
-    nextBtn.btn.disabled = nextBtn.ctl.isLocked();
+    checkBtn.el.disabled = checkBtn.isLocked() || s.answered;
+    revealBtn.el.disabled = revealBtn.isLocked() || s.answered;
   }
 
   function render() {
@@ -309,12 +302,12 @@ function mount(container, modeId = 'caliper', setup = {}) {
     if (outcome === 'correct') { s.correct += 1; s.streak += 1; } else s.streak = 0;
     message = '';
     render();
-    if (!nextBtn.btn.disabled && root.contains(document.activeElement)) nextBtn.btn.focus({ preventScroll: true });
+    if (!nextBtn.el.disabled && root.contains(document.activeElement)) nextBtn.el.focus({ preventScroll: true });
     emit();
   }
 
   function check() {
-    if (s.answered || checkBtn.ctl.isLocked()) return;
+    if (s.answered || checkBtn.isLocked()) return;
     const result = judge(input.value, reading.twentieths);
     if (result.status === 'invalid') {
       message = result.message;
@@ -325,7 +318,7 @@ function mount(container, modeId = 'caliper', setup = {}) {
   }
 
   function reveal() {
-    if (s.answered || revealBtn.ctl.isLocked()) return;
+    if (s.answered || revealBtn.isLocked()) return;
     finish('revealed');
   }
 
@@ -363,7 +356,7 @@ function mount(container, modeId = 'caliper', setup = {}) {
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = theme().paper;
     ctx.fillRect(0, 0, width, height);
     ctx.drawImage(img, 0, 0, width, height);
     return canvas.toDataURL('image/png');

@@ -9,8 +9,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createRunner, decodeKey, isEncodedKey } from '../../../framework/v1/runner/index.js';
 import activity from '../../../tools/spacetime/activities/lab10.js';
-import { conditionTypes } from '../../../tools/spacetime/spacetime.js';
-import { diagramState } from '../../../tools/spacetime/conditions.js';
+import { conditionTypes, diagramState } from '../../../tools/spacetime/conditions.js';
 import { stubTool } from '../runner/stub-tool.js';
 
 // Every Control the spacetime Tool registers (see tools/spacetime/spacetime.js).

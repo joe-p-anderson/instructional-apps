@@ -24,10 +24,6 @@ export function fmtIn(n) {
   return s;
 }
 
-export function esc(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-
 /** A typed number: '0.6', '-2', '−2', '3/5', '1e-3'. NaN if it is not one. */
 export function parseNum(str) {
   if (typeof str !== 'string') return NaN;

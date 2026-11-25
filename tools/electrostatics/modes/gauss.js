@@ -16,7 +16,7 @@ import { createEmitter } from '../../../framework/v1/tool.js';
 import { h, metric, section, slider } from '../../../framework/v1/ui-kit.js';
 import { WINDOW, clamp, fieldGrid, gaussFlux, sigmaRing } from '../conductor.js';
 import { e0Joystick } from '../controls.js';
-import { PLOT_CONFIG, Plotly, boundaryTrace, conductorLayout, heatmapTrace, plotDisplay, quiverTrace, sigmaTrace, themeColors, toolStyles } from '../plot.js';
+import { PLOT_CONFIG, Plotly, boundaryTrace, conductorLayout, heatmapTrace, plotDisplay, quiverTrace, sigmaTrace, plotColors, toolStyles } from '../plot.js';
 
 export const id = 'gauss';
 export const title = 'Gauss’s law';
@@ -115,7 +115,7 @@ export function mount(container, setup = {}) {
   const handleXY = () => [p.r * Math.cos(p.handleAngle) + p.xc, p.r * Math.sin(p.handleAngle) + p.yc];
 
   function traces() {
-    const C = themeColors(root);
+    const C = plotColors(root);
     gauss = gaussFlux({ lambda: p.lambda, E0x: p.E0x, E0y: p.E0y, xc: p.xc, yc: p.yc, r: p.r });
     // Faithful to the old app: its glBuildTraces called buildHeatmapQuiver with seven arguments
     // for six parameters, so `cyl` got 0 and the |E| fill and arrows used the 1/r² (point
@@ -143,7 +143,7 @@ export function mount(container, setup = {}) {
 
   function redraw() {
     const t = traces();
-    if (ready) Plotly.react(plotDiv, t, conductorLayout(themeColors(root)), PLOT_CONFIG);
+    if (ready) Plotly.react(plotDiv, t, conductorLayout(plotColors(root)), PLOT_CONFIG);
   }
 
   function update() {
@@ -153,7 +153,7 @@ export function mount(container, setup = {}) {
     changes.emit(s);
   }
 
-  Plotly.newPlot(plotDiv, traces(), conductorLayout(themeColors(root)), PLOT_CONFIG);
+  Plotly.newPlot(plotDiv, traces(), conductorLayout(plotColors(root)), PLOT_CONFIG);
   ready = true;
   const plot = plotDisplay(plotDiv, { id: 'gauss', label: 'Gauss’s law' });
 

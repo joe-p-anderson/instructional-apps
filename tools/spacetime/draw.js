@@ -1,10 +1,12 @@
 // One spacetime diagram panel as SVG markup. No DOM: drawPanel returns a string.
 
 import { byId, convert, eventK, eventsOf, isSpacelike, rodInfo, toFrame, worldlinesOf, worldlineSegments } from './physics.js';
-import { SYM, eqLine, eqRod, esc, fmt, other } from './format.js';
+import { escapeHtml as esc, themeVars } from '../../framework/v1/ui-kit.js';
+import { SYM, eqLine, eqRod, fmt, other } from './format.js';
 
-// v1 theme colours (theme.css): ink for K, blue for K′, orange for selection.
-export const COLORS = { K: '#5C4F38', Kp: '#1B4F8A', paper: '#FAF8F2', sel: '#E8720C', bad: '#B81C1C' };
+// The v1 theme variables the diagram is drawn with (theme.css): ink for K, blue for K′, orange
+// for the selection. Read them with themeVars(el, COLOR_VARS) and pass them as ui.colors.
+export const COLOR_VARS = { K: '--fw-text-dim', Kp: '--fw-blue', paper: '--fw-surface', sel: '--fw-orange', bad: '--fw-red' };
 const FONT = "Georgia, 'Times New Roman', serif";
 
 /** Clip the line q + s e, s in [s0, s1], to rectangle R. Returns [sa, sb] or null. */
@@ -35,10 +37,13 @@ export function panelGeometry(V, w, h) {
 
 /**
  * SVG content (no outer <svg>) for frame P's panel of diagram D at w × h pixels.
- * ui: { sel, connectIds, tool, preview } (selection, Join picks, active tool, drawing preview).
+ * ui: { sel, connectIds, tool, preview, primed, colors } (selection, Join picks, active tool, drawing
+ * preview; primed false leaves the K′ tick numbers off the K panel, keeping its K′ axes and their
+ * names; colors: the COLOR_VARS values, defaulting to the v1 palette).
  */
 export function drawPanel(P, D, w, h, ui = {}) {
-  const { sel = null, connectIds = [], tool = 'select', preview = null } = ui;
+  const { sel = null, connectIds = [], tool = 'select', preview = null, primed = true } = ui;
+  const COLORS = ui.colors ?? themeVars(null, COLOR_VARS);
   const v = D.v;
   const V = D.view;
   const { s, R } = panelGeometry(V, w, h);
@@ -70,7 +75,7 @@ export function drawPanel(P, D, w, h, ui = {}) {
     lo = Math.ceil(Math.min(...cs.map((c) => c[1])) / step); hi = Math.floor(Math.max(...cs.map((c) => c[1])) / step);
     if (hi - lo < 900) for (let n = lo; n <= hi; n++) if (n) seg(conv(G, P, [0, n * step]), ex, -Infinity, Infinity, attr);
   }
-  // Axes, tick numbers and axis names (always shown)
+  // Axes, tick numbers and axis names (K′ tick numbers on the K panel only with primed readouts)
   for (const G of order) {
     if (G !== P && Math.abs(v) < 1e-9) continue; // frames coincide: one set of axes
     const col = COLORS[G], o = conv(G, P, [0, 0]);
@@ -79,7 +84,7 @@ export function drawPanel(P, D, w, h, ui = {}) {
       if (!c) continue;
       seg(o, dir, -Infinity, Infinity, `stroke="${col}" stroke-width="${G === P ? 1.8 : 1.5}"`);
       const n0 = Math.ceil(c[0] / ls), n1 = Math.floor(c[1] / ls);
-      if (n1 - n0 < 300) {
+      if (n1 - n0 < 300 && (primed || G === P || G !== 'Kp')) {
         for (let n = n0; n <= n1; n++) {
           if (!n) continue;
           const p = [o[0] + n * ls * dir[0], o[1] + n * ls * dir[1]];

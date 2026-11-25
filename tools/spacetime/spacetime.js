@@ -15,7 +15,8 @@
 //   'v' (slider with number box), 'gamma' (number box), 'flip' (button)
 //   'grid-K', 'grid-Kp' (toggles), 'kp-panel' (toggle; hidden also hides the K′ diagram)
 //   'primed' (toggle "x′, t′ readouts"; hidden or off hides every x′/t′ readout and input in the
-//       sidebar, including an event's K′ coordinate entry; a rod's frame select stays)
+//       sidebar, including an event's K′ coordinate entry, and the K′ tick numbers on the K
+//       diagram, whose K′ axes stay; a rod's frame select stays)
 //   'measurements' (the measurements panel of the sidebar; get() is the number of measurements)
 //   'undo', 'redo', 'export-json', 'import-json' (set(json string or object) imports it),
 //   'new' (back to the Setup's diagram, undoable), 'reset-view', 'save-png' (downloads the snapshot)
@@ -28,14 +29,14 @@
 
 import { controlRegistry, createControl } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
-import { h, section, slider } from '../../framework/v1/ui-kit.js';
+import { button, escapeHtml as esc, h, section, slider, themeVars, toggle } from '../../framework/v1/ui-kit.js';
 import {
   DEFAULT_VIEW, PALETTE, VMAX, blankDiagram, byId, convert, eventK, eventsOf, exportDiagram, gamma,
   interval, isSpacelike, normalize, properTime, rodEnd, rodInfo, segmentProperTime, toFrame,
   velocityIn, worldlineCut, worldlinesOf, worldlineSegments,
 } from './physics.js';
-import { FRAMES, SYM, eqLine, esc, fmt, fmtIn, parseNum } from './format.js';
-import { COLORS, drawPanel, panelGeometry } from './draw.js';
+import { FRAMES, SYM, eqLine, fmt, fmtIn, parseNum } from './format.js';
+import { COLOR_VARS, drawPanel, panelGeometry } from './draw.js';
 import { conditionTypes, diagramState } from './conditions.js';
 
 const CSS = `
@@ -125,9 +126,14 @@ const CSS = `
 }
 `;
 
+// Documents that already carry the stylesheet: one <style> per document, however many instances.
+const styled = new WeakSet();
 function ensureStyles(doc) {
-  if (doc.getElementById('spacetime-styles')) return;
-  doc.head.append(h('style', { id: 'spacetime-styles' }, CSS));
+  if (styled.has(doc)) return;
+  styled.add(doc);
+  const style = doc.createElement('style');
+  style.textContent = CSS;
+  doc.head.append(style);
 }
 
 const STATE_INFO = {
@@ -187,7 +193,7 @@ function mount(container, modeId = 'diagram', setup = {}) {
     caps[P] = h('span');
     figs[P] = h('figure', { class: 'st-panel', 'data-frame': P },
       h('figcaption', {},
-        h('b', { style: `color:${COLORS[P]}` }, SYM[P].tag), caps[P],
+        h('b', { style: `color:var(${COLOR_VARS[P]})` }, SYM[P].tag), caps[P],
         h('span', { class: 'st-ax' }, `(${SYM[P].x}, ${SYM[P].t})`)),
       h('div', { class: 'st-svgwrap' }, svgs[P], hints[P]));
   }
@@ -205,19 +211,14 @@ function mount(container, modeId = 'diagram', setup = {}) {
   const add = (c) => { controls[c.id] = c; return c; };
   const rerender = () => render();
 
-  function buttonControl({ id, name, html, title, onClick }) {
-    let presses = 0;
-    const btn = h('button', { type: 'button', class: 'fw-button', 'aria-label': name, title, html: html ?? esc(name) });
-    const press = () => { if (c.isLocked()) return; presses += 1; onClick(); };
-    btn.addEventListener('click', press);
-    const c = createControl({ id, label: name, el: btn, get: () => presses, set: press, onLock: rerender, onHide: rerender });
-    return add(c);
-  }
+  const buttonControl = ({ id, name, html, title, onClick }) =>
+    add(button({ id, name, label: html, title, onClick: () => onClick(), onLock: rerender, onHide: rerender }));
+  // A ui-kit toggle whose value lives in the diagram (undo, restore), not in the checkbox:
+  // get() reads the diagram and sync() (each render) mirrors it into the checkbox.
   function toggleControl({ id, name, html, get, set }) {
-    const input = h('input', { type: 'checkbox', 'aria-label': name });
-    const el = h('label', { class: 'fw-toggle' }, input, h('span', { class: 'fw-control-name', html: html ?? esc(name) }));
-    input.addEventListener('change', () => set(input.checked));
-    const c = createControl({ id, label: name, el, get, set: (val) => set(Boolean(val)), onLock: rerender, onHide: rerender });
+    const c = toggle({ id, name, label: html, value: get(), onChange: set, onLock: rerender, onHide: rerender });
+    const input = c.el.querySelector('input');
+    c.get = get;
     c.sync = () => { input.checked = get(); };
     return add(c);
   }
@@ -447,27 +448,29 @@ function mount(container, modeId = 'diagram', setup = {}) {
     const scale = 2, gap = 16, head = 32;
     const W = stacked ? Math.max(...g.map((a) => a.w)) + 2 * gap : g.reduce((s, a) => s + a.w, 0) + (g.length + 1) * gap;
     const H = stacked ? g.reduce((s, a) => s + a.h + head, 0) + 2 * gap : Math.max(...g.map((a) => a.h)) + head + gap;
+    const colors = themeVars(root, COLOR_VARS);
+    const ink = themeVars(root, { paper: '--fw-paper', text: '--fw-text', frame: '--fw-border-dk' });
     const c = doc.createElement('canvas');
     c.width = W * scale; c.height = H * scale;
     const ctx = c.getContext('2d');
     ctx.scale(scale, scale);
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = ink.paper;
     ctx.fillRect(0, 0, W, H);
     let x = gap, y = 0;
     for (let i = 0; i < frames.length; i++) {
       const P = frames[i], { w, h: hh } = g[i];
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${hh}" viewBox="0 0 ${w} ${hh}">${drawPanel(P, S, w, hh)}</svg>`;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${hh}" viewBox="0 0 ${w} ${hh}">${drawPanel(P, S, w, hh, { primed: showPrimed(), colors })}</svg>`;
       const img = await new Promise((res, rej) => {
         const im = new Image();
         im.onload = () => res(im);
         im.onerror = rej;
         im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
       });
-      ctx.fillStyle = '#1A1008';
+      ctx.fillStyle = ink.text;
       ctx.font = '600 15px Georgia, serif';
       ctx.fillText(`${SYM[P].tag} · ${S.names[P]}${i === frames.length - 1 ? `   (v = ${fmt(S.v, 3)}c, γ = ${fmt(gamma(S.v), 3)})` : ''}`, x, y + 21);
       ctx.drawImage(img, x, y + head, w, hh);
-      ctx.strokeStyle = '#8B7D5E';
+      ctx.strokeStyle = ink.frame;
       ctx.strokeRect(x + 0.5, y + head + 0.5, w - 1, hh - 1);
       if (stacked) y += hh + head + gap; else x += w + gap;
     }
@@ -1023,7 +1026,7 @@ function mount(container, modeId = 'diagram', setup = {}) {
     const w = svg.clientWidth, hh = svg.clientHeight;
     if (!w || !hh) { delete geom[P]; return; }
     svg.setAttribute('viewBox', `0 0 ${w} ${hh}`);
-    svg.innerHTML = drawPanel(P, S, w, hh, { sel, connectIds, tool, preview });
+    svg.innerHTML = drawPanel(P, S, w, hh, { sel, connectIds, tool, preview, primed: showPrimed(), colors: themeVars(root, COLOR_VARS) });
     geom[P] = panelGeometry(S.view, w, hh);
   }
   function doRender() {
@@ -1039,13 +1042,8 @@ function mount(container, modeId = 'diagram', setup = {}) {
     setIf(gInput, fmtIn(gamma(S.v)));
     for (const id of ['grid-K', 'grid-Kp', 'kp-panel', 'primed']) controls[id].sync();
     for (const F of FRAMES) { caps[F].textContent = S.names[F]; gridName[F].textContent = S.names[F]; }
-    for (const t of TOOLS) {
-      toolButtons[t.key].setAttribute('aria-pressed', String(tool === t.key));
-      toolButtons[t.key].disabled = controls[t.id].isLocked();
-    }
-    // A Control whose element is the button itself: lock disables it (undo/redo also when empty).
-    for (const id of ['flip', 'new', 'reset-view', 'export-json', 'save-png']) controls[id].el.disabled = controls[id].isLocked();
-    importBtn.disabled = controls['import-json'].isLocked();
+    for (const t of TOOLS) toolButtons[t.key].setAttribute('aria-pressed', String(tool === t.key));
+    // Lock disables the buttons (control.js); undo and redo are also disabled when there is nothing to do.
     controls.undo.el.disabled = controls.undo.isLocked() || !undoStack.length;
     controls.redo.el.disabled = controls.redo.isLocked() || !redoStack.length;
     const empty = !S.objs.length;

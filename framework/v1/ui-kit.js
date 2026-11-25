@@ -2,7 +2,8 @@
 //
 // Every Control factory returns a Control (see tool.js) whose `el` the Tool places in its layout.
 // `name` is the plain-text accessible name (e.g. 'Va'); `label` is optional trusted HTML shown
-// to the student (e.g. 'V<sub>a</sub>'), defaulting to the name.
+// to the student (e.g. 'V<sub>a</sub>'), defaulting to the name. `toggle` and `button` also take
+// optional `onLock(locked)` / `onHide(hidden)` for extra work on lock or hide (see control.js).
 
 import { createControl } from './control.js';
 
@@ -26,7 +27,8 @@ function nameLabel(name, label, unit) {
     unit ? h('span', { class: 'fw-unit' }, ' ', unit) : null);
 }
 
-function escapeHtml(s) {
+/** Escape text for HTML or XML markup (& < > " ' as numeric character references). */
+export function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
@@ -82,14 +84,14 @@ export function slider({ id, name = id, label, unit = '', min, max, step = 'any'
   return createControl({ id, label: name, el, get: () => current, set });
 }
 
-/** Checkbox toggle. toggle({ id, name, label, value = false, onChange }) */
-export function toggle({ id, name = id, label, value = false, onChange = () => {} }) {
+/** Checkbox toggle. toggle({ id, name, label, value = false, onChange, onLock, onHide }) */
+export function toggle({ id, name = id, label, value = false, onChange = () => {}, onLock, onHide }) {
   const input = h('input', { type: 'checkbox', 'aria-label': name });
   input.checked = Boolean(value);
   const el = h('label', { class: 'fw-toggle' }, input, nameLabel(name, label));
   const set = (v) => { input.checked = Boolean(v); onChange(input.checked); };
   input.addEventListener('change', () => onChange(input.checked));
-  return createControl({ id, label: name, el, get: () => input.checked, set });
+  return createControl({ id, label: name, el, get: () => input.checked, set, onLock, onHide });
 }
 
 /** Drop-down select. select({ id, name, label, options: [{ value, label }], value, onChange }) */
@@ -109,15 +111,17 @@ export function select({ id, name = id, label, options, value = options[0]?.valu
 }
 
 /**
- * Push button. button({ id, name, label, onClick })
- * get() returns how many times it has been pressed; set() presses it.
+ * Push button. button({ id, name, label, title, onClick, onLock, onHide })
+ * get() returns how many times it has been pressed; set() presses it. A locked button is
+ * disabled, and neither a click nor set() presses it.
  */
-export function button({ id, name = id, label, onClick = () => {} }) {
+export function button({ id, name = id, label, title, onClick = () => {}, onLock, onHide }) {
   let presses = 0;
-  const btn = h('button', { type: 'button', class: 'fw-button', 'aria-label': name, html: label ?? escapeHtml(name) });
-  const press = () => { presses += 1; onClick(presses); };
+  const btn = h('button', { type: 'button', class: 'fw-button', 'aria-label': name, title, html: label ?? escapeHtml(name) });
+  const press = () => { if (ctl.isLocked()) return; presses += 1; onClick(presses); };
   btn.addEventListener('click', press);
-  return createControl({ id, label: name, el: btn, get: () => presses, set: press });
+  const ctl = createControl({ id, label: name, el: btn, get: () => presses, set: press, onLock, onHide });
+  return ctl;
 }
 
 /**
@@ -128,6 +132,28 @@ export function metric({ name, label, format = String }) {
   const value = h('span', { class: 'fw-metric-value', role: 'status', 'aria-label': name }, '—');
   const el = h('div', { class: 'fw-metric' }, h('span', { html: label ?? escapeHtml(name) }), ': ', value);
   return { el, update(v) { value.textContent = format(v); } };
+}
+
+// The :root values of theme.css, used while an element is not in a page (keep the two in step).
+const PALETTE = {
+  '--fw-page': '#D8D0BC', '--fw-bg': '#F2EFE4', '--fw-surface': '#FAF8F2', '--fw-paper': '#FFFFFF',
+  '--fw-border': '#C8BFA0', '--fw-border-dk': '#8B7D5E', '--fw-blue': '#1B4F8A', '--fw-blue-dk': '#13376A',
+  '--fw-red': '#B81C1C', '--fw-orange': '#E8720C', '--fw-yellow': '#C8900A', '--fw-green': '#2A6E2A',
+  '--fw-text': '#1A1008', '--fw-text-dim': '#5C4F38', '--fw-text-muted': '#9C8C70', '--fw-grid': '#DDD5C0',
+  '--fw-font': "'Baskerville Old Face', 'Baskervville', 'Libre Baskerville', Baskerville, Georgia, serif",
+};
+
+/**
+ * Theme variables as computed at `el`, for drawing colours that CSS can't reach (canvas, SVG
+ * rendered to PNG, Plotly). themeVars(el, { accent: '--fw-blue', ink: '--fw-text' })
+ * -> { accent: '#1B4F8A', ink: '#1A1008' }. A variable the page doesn't set, or every one while
+ * el is not in a page, falls back to the v1 palette.
+ */
+export function themeVars(el, names) {
+  const css = el?.isConnected ? el.ownerDocument.defaultView.getComputedStyle(el) : null;
+  const out = {};
+  for (const [key, name] of Object.entries(names)) out[key] = css?.getPropertyValue(name).trim() || PALETTE[name] || '';
+  return out;
 }
 
 /** Titled section of the Controls column. */

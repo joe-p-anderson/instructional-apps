@@ -2,6 +2,7 @@
 // |E| heatmap, quiver arrows and the conductor boundary. Colours come from the v1 theme
 // variables (read from the element the plot lives in).
 
+import { themeVars } from '../../framework/v1/ui-kit.js';
 import { loadPlotly } from '../../framework/v1/vendor.js';
 import { RADIUS, WINDOW, linspace } from './conductor.js';
 
@@ -17,23 +18,14 @@ export function toolStyles() {
 
 export const PLOT_CONFIG = { displayModeBar: false, scrollZoom: false, responsive: true };
 
-const FALLBACK = {
-  blue: '#1B4F8A', red: '#B81C1C', yellow: '#C8900A', text: '#1A1008', dim: '#5C4F38',
-  muted: '#9C8C70', surface: '#FAF8F2', bg: '#F2EFE4', grid: '#DDD5C0', border: '#C8BFA0', borderDk: '#8B7D5E',
-};
 const VARS = {
   blue: '--fw-blue', red: '--fw-red', yellow: '--fw-yellow', text: '--fw-text', dim: '--fw-text-dim',
   muted: '--fw-text-muted', surface: '--fw-surface', bg: '--fw-bg', grid: '--fw-grid', border: '--fw-border',
   borderDk: '--fw-border-dk',
 };
 
-/** Theme colours as seen from `el` (falls back to the v1 palette before it is in the page). */
-export function themeColors(el) {
-  const css = el?.isConnected ? getComputedStyle(el) : null;
-  const out = {};
-  for (const [k, v] of Object.entries(VARS)) out[k] = css?.getPropertyValue(v).trim() || FALLBACK[k];
-  return out;
-}
+/** The plot's theme colours as seen from `el` (the v1 palette before it is in the page). */
+export const plotColors = (el) => themeVars(el, VARS);
 
 /** The square conductor plot with an |E| colour bar. */
 export function conductorLayout(C, { cmax = 1e4, colorTitle = '|E| (V/m)' } = {}) {
