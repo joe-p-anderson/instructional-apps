@@ -159,19 +159,28 @@ export function polarE0(E0x, E0y) {
 }
 
 // ── Gauss's law: flux through a circular Gaussian surface ──
-const GAUSS_SAMPLES = 101;
+const GAUSS_SAMPLES = 100;
 
 /**
- * E·n̂ (V/m) round a circular Gaussian surface centred at (xc, yc) cm with radius r cm, for a
- * conductor carrying λ nC/m with induced charges on in an applied field (E0x, E0y), and the
- * enclosed charge Qenc = ε₀ ∮ E·n̂ dl in nC/m. As in the old app, the field is the 1/r line-charge
- * one (cyl), the GAUSS_SAMPLES angles run 0 to 2π inclusive and the mean divides by all of them.
- * So the t = 0 sample counts twice, biasing Qenc by ε₀·flux[0]·2πr/n: kept, as the old app showed it.
+ * The field the Gauss's-law Mode works with: a conductor carrying λ nC/m (a line charge, so the
+ * field falls off as 1/r) with induced charges on in an applied field (E0x, E0y). The plot and
+ * the flux both use it, so the picture matches Q_enc. (The old app drew its heatmap with the 1/r²
+ * point-charge field by mistake: a seven-argument call to a six-parameter function.)
+ */
+export function gaussField({ lambda = 0, E0x = 0, E0y = 0 } = {}) {
+  return { Q: lambda, E0x, E0y, induce: true, cyl: true };
+}
+
+/**
+ * E·n̂ (V/m) round a circular Gaussian surface centred at (xc, yc) cm with radius r cm, in the
+ * gaussField, and the enclosed charge Qenc = ε₀ ∮ E·n̂ dl in nC/m. The GAUSS_SAMPLES angles are
+ * evenly spaced over [0, 2π), so each point of the surface counts once. (The old app sampled
+ * 0 to 2π inclusive, counting t = 0 twice and biasing Qenc when E₀ pointed along it.)
  * Returns { t (rad), flux, Qenc }.
  */
 export function gaussFlux({ lambda = 0, E0x = 0, E0y = 0, xc = 0, yc = 0, r = 2 } = {}, n = GAUSS_SAMPLES) {
-  const t = linspace(0, 2 * Math.PI, n);
-  const params = { Q: lambda, E0x, E0y, induce: true, cyl: true };
+  const t = Array.from({ length: n }, (_, i) => 2 * Math.PI * i / n);
+  const params = gaussField({ lambda, E0x, E0y });
   const flux = t.map((a) => {
     const [ex, ey] = fieldAt(r * Math.cos(a) + xc, r * Math.sin(a) + yc, params);
     return ex * Math.cos(a) + ey * Math.sin(a);

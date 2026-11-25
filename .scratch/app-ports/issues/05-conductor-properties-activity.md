@@ -37,4 +37,4 @@ The old single-file conductor_properties app is deleted.
 
 ## Comments
 
-- 2026-11-25: Implemented on the `app-ports` integration branch (merge 807e020); code-review fixes in 7c50e19. Deviation: gl-t1 passes at the old default Setup (r = 2 cm at the centre already has outer extent < 5 cm), as in the old app; the test records it as passing at default. Part instruction text is folded into each Task prompt.
+- 2026-11-25: Implemented on the `app-ports` integration branch (merge 807e020); code-review fixes in 7c50e19. The old Gauss default (r = 2 cm at the centre) passed gl-t1 with no work, so the Part's Setup now starts the surface outside the conductor (centre (8, 0), r = 2); every Task now misses at its default Setup. Part instruction text is folded into each Task prompt.

@@ -87,7 +87,8 @@ export default {
       id: 'gauss',
       title: 'Part 3: Gauss’s Law',
       mode: 'gauss',
-      setup: { lambda: 1, E0x: 0, E0y: 0, xc: 0, yc: 0, r: 2 },
+      // The surface starts outside the conductor, so neither Task passes before the student moves it.
+      setup: { lambda: 1, E0x: 0, E0y: 0, xc: 8, yc: 0, r: 2 },
       tasks: [
         {
           id: 'gl-t1',

@@ -25,4 +25,4 @@ Spec: docs/specs/0003-app-ports.md (vocabulary from GLOSSARY.md; respects ADRs 0
 
 ## Comments
 
-- 2026-11-25: Implemented on the `app-ports` integration branch (merge 980cd8f); code-review fixes in 7c50e19. Kept two old-app quirks for faithfulness, each flagged in a code comment: the Gauss heatmap uses 1/r² scaling, and Q_enc samples t = 0 twice.
+- 2026-11-25: Implemented on the `app-ports` integration branch (merge 980cd8f); code-review fixes in 7c50e19. Two old-app bugs, first kept for faithfulness, were then fixed: the heatmap and arrows now use the same 1/r line-charge field as Q_enc (the old app drew 1/r²), and Q_enc samples 100 distinct angles instead of counting t = 0 twice.

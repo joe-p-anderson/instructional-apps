@@ -20,7 +20,7 @@ const MODES = {
     controls: ['Q', 'P1', 'P2', 'lockToSurface', 'measureAtInfinity'],
   },
   gauss: {
-    state: { lambda: 1, E0x: 0, E0y: 0, xc: 0, yc: 0, r: 2, dist: 0, outer: 2, inner: -2, Qenc: 0 },
+    state: { lambda: 1, E0x: 0, E0y: 0, xc: 8, yc: 0, r: 2, dist: 8, outer: 10, inner: 6, Qenc: 0 },
     controls: ['lambda', 'E0', 'center', 'radius'],
   },
 };
@@ -45,8 +45,6 @@ const byMode = (mode) => activity.parts.find((p) => p.mode === mode);
 const ANSWERS = (task) => Object.fromEntries((task.questions ?? []).map((q) => [q.id, 'Modus tollens.']));
 
 // Each Task, a State patch that passes it, and patches that must still miss.
-// gl-t1 is the one exception at the default Setup: the old default Gaussian surface
-// (r = 2 cm at the centre) already lies inside the conductor, so it passes there, as in the old app.
 const CASES = [
   { mode: 'electric-field', task: 0, pass: { E0x: 300, E0mag: 300 }, misses: [] },
   { mode: 'electric-field', task: 1, pass: { Q: 1, theta: 0.4 }, misses: [{ Q: 1 }, { theta: 0.4 }, { Q: -1, theta: 0.4 }] },
@@ -56,7 +54,7 @@ const CASES = [
   },
   { mode: 'potential', task: 0, pass: { r1: 2, r2: 20, measureAtInfinity: true }, misses: [{ measureAtInfinity: true }] },
   { mode: 'potential', task: 1, pass: { lockToSurface: true }, misses: [] },
-  { mode: 'gauss', task: 0, pass: { dist: 1, outer: 4, inner: 2 }, misses: [{ outer: 6, inner: 2 }], passesAtDefault: true },
+  { mode: 'gauss', task: 0, pass: { dist: 1, outer: 4, inner: 2 }, misses: [{ outer: 6, inner: 2 }] },
   { mode: 'gauss', task: 1, pass: { dist: 5, outer: 7, inner: 3 }, misses: [{ outer: 4, inner: 0 }, { outer: 12, inner: 8 }] },
 ];
 
@@ -83,7 +81,7 @@ test('the Activity is "Conductor Properties" for PHY 4300, one Part per electros
 test('each Part starts from the old default Setup', () => {
   assert.deepEqual(byMode('electric-field').setup, { Q: 0, E0x: 0, E0y: 0, theta: 0, induce: false, showCharges: true });
   assert.deepEqual(byMode('potential').setup, { Q: 1, x1: -6, y1: -6, x2: 7, y2: 7, lockToSurface: false, measureAtInfinity: false });
-  assert.deepEqual(byMode('gauss').setup, { lambda: 1, E0x: 0, E0y: 0, xc: 0, yc: 0, r: 2 });
+  assert.deepEqual(byMode('gauss').setup, { lambda: 1, E0x: 0, E0y: 0, xc: 8, yc: 0, r: 2 });
 });
 
 test('every Control of every Mode stays shown and unlocked', () => {
@@ -120,18 +118,10 @@ test('the prompts and free-text Questions are the old ones, word for word', () =
 for (const c of CASES) {
   const part = byMode(c.mode);
   const task = part.tasks[c.task];
-  const atDefault = c.passesAtDefault ? 'passes' : 'misses';
-  test(`${task.id} ${atDefault} at the default Setup, misses off target and passes at ${JSON.stringify(c.pass)}`, () => {
-    if (c.passesAtDefault) {
-      const fresh = start();
-      openTask(fresh.runner, fresh.tools, part, c.task);
-      assert.equal(fresh.runner.submit(part.id, task.id, ANSWERS(task)).passed, true, 'missed at the default Setup');
-    }
+  test(`${task.id} misses at the default Setup, misses off target and passes at ${JSON.stringify(c.pass)}`, () => {
     const { runner, tools } = start();
     openTask(runner, tools, part, c.task);
-    if (!c.passesAtDefault) {
-      assert.equal(runner.submit(part.id, task.id, ANSWERS(task)).passed, false, 'passed at the default Setup');
-    }
+    assert.equal(runner.submit(part.id, task.id, ANSWERS(task)).passed, false, 'passed at the default Setup');
     for (const miss of c.misses) {
       tools[part.id].setState(MODES[part.mode].state);
       tools[part.id].setState(miss);
@@ -174,8 +164,6 @@ test('each Task shows its Hint from the spec after 3 misses', () => {
     for (const [i, task] of part.tasks.entries()) {
       const { runner, tools } = start();
       openTask(runner, tools, part, i);
-      const miss = CASES.find((c) => c.mode === part.mode && c.task === i && c.passesAtDefault)?.misses[0];
-      if (miss) tools[part.id].setState(miss);
       for (let n = 0; n < 2; n++) runner.submit(part.id, task.id);
       assert.equal(runner.task(part.id, task.id).hint, null, `${task.id} Hint before 3 misses`);
       runner.submit(part.id, task.id);

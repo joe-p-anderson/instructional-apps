@@ -14,7 +14,7 @@
 import { controlRegistry, createControl } from '../../../framework/v1/control.js';
 import { createEmitter } from '../../../framework/v1/tool.js';
 import { h, metric, section, slider } from '../../../framework/v1/ui-kit.js';
-import { WINDOW, clamp, fieldGrid, gaussFlux, sigmaRing } from '../conductor.js';
+import { WINDOW, clamp, fieldGrid, gaussField, gaussFlux, sigmaRing } from '../conductor.js';
 import { e0Joystick } from '../controls.js';
 import { PLOT_CONFIG, Plotly, boundaryTrace, conductorLayout, heatmapTrace, plotDisplay, quiverTrace, sigmaTrace, plotColors, toolStyles } from '../plot.js';
 
@@ -117,10 +117,7 @@ export function mount(container, setup = {}) {
   function traces() {
     const C = plotColors(root);
     gauss = gaussFlux({ lambda: p.lambda, E0x: p.E0x, E0y: p.E0y, xc: p.xc, yc: p.yc, r: p.r });
-    // Faithful to the old app: its glBuildTraces called buildHeatmapQuiver with seven arguments
-    // for six parameters, so `cyl` got 0 and the |E| fill and arrows used the 1/r² (point
-    // charge) scaling, while Q_enc (gaussFlux) uses the 1/r line-charge field. Kept as rendered.
-    const grid = fieldGrid({ Q: p.lambda, E0x: p.E0x, E0y: p.E0y, induce: true });
+    const grid = fieldGrid(gaussField({ lambda: p.lambda, E0x: p.E0x, E0y: p.E0y }));
     const Emax = Math.max(grid.maxE, 1);
     const handle = (show, [x, y], ring, hovertemplate, locked) => ({
       x: show ? [x] : [], y: show ? [y] : [], mode: 'markers', hovertemplate,

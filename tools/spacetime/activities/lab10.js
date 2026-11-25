@@ -119,7 +119,8 @@ const building = {
       id: 'events-ef',
       title: 'Events \\(E\\) and \\(F\\)',
       prompt: 'Use the <b>Event</b> tool to mark the event \\(E\\) at \\((x, t) = (3, 5)\\) and the event '
-        + '\\(F\\) at \\((x, t) = (5, 5)\\). Then count tilted lines to find each event\'s rocket coordinates '
+        + '\\(F\\) at \\((x, t) = (5, 5)\\), and type each one\'s name in its <b>Label</b> box in the sidebar '
+        + '(the Tool names new events A, B, …). Then count tilted lines to find each event\'s rocket coordinates '
         + '\\((x\', t\')\\). Count, don\'t measure: each step of the tilted grid is 1 ly or 1 yr in the rocket '
         + 'frame, even though it looks longer on the page.',
       condition: 'enc1:PQwPAkhQBkNJVxIYAAETEQsGUElMDAJRVlUZVFFfUAxjMD1MEgoAH1cKAQ0TVBoRFldbTl4QSBETFxwRTFgCE0dDDgxREUcadGhwVF9cEgtWWRwLbA',
@@ -169,7 +170,8 @@ const simultaneity = {
       id: 'marks-bf',
       title: 'Mark \\(B\\) and \\(F\\)',
       prompt: 'Use the <b>Event</b> tool to mark \\(B\\), where the light reaches the back, and \\(F\\), where it '
-        + 'reaches the front. Then count tilted lines to find the rocket time \\(t\'\\) of each.',
+        + 'reaches the front, and type each one\'s name in its <b>Label</b> box in the sidebar (the Tool names '
+        + 'new events A, B, …). Then count tilted lines to find the rocket time \\(t\'\\) of each.',
       condition: 'enc1:PQwPAkhQBkNJVxIYAAETEQsGUElMDAJRSEgXAgdHXxFtZiZPXBIKAUhGUFpKAhcYAxBDVg8XEVkABBcLGlYMSR1bARRfRxECe3B-AkRfXBNcRwNHTH0',
       questions: [
         { id: 'tp-B', kind: 'numeric', prompt: '\\(t\'_B =\\) (yr)', answer: 'enc1:VA', tol: NUMERIC_TOL, points: 1 },
