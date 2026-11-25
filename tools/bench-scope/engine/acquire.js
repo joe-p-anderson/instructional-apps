@@ -1,35 +1,233 @@
-// Acquisition: sample the input signals across the screen and map them to screen
-// coordinates (graticule divisions). Pure, no DOM.
+// Acquisition: capture the input signals across the screen (with noise), place the edge trigger,
+// and run the Run/Stop, Single and Force Trig state. Pure, no DOM.
 //
-// For now the scope is ideally triggered: the trigger point (t = 0, each generator's rising
-// mean crossing) sits at the screen centre plus the horizontal position. Ticket 04 replaces
-// this with the edge trigger, Auto/Normal, Run/Stop and noise.
+// A capture at time `now` (ms) looks for a trigger crossing at or after now/1000 s of signal
+// time. Triggered: the crossing sits at the screen centre plus the horizontal position.
+// No crossing: Auto (or Force Trig) captures at an arbitrary phase (now/1000 s), so successive
+// captures drift; Normal and an armed Single wait and keep showing the last capture.
+//
+// Noise: NOISE_RMS volts of Gaussian noise per sample (TRIGGER_NOISE_RMS on the trigger comparator), from a
+// PRNG seeded by (settings.acquisition.seed, now). The same seed, events and `now` values give
+// identical frames; acquire(0) twice gives the same frame.
+//
+// Run state (not saved; restore resets it to running):
+//   run-stop    press: running ⇄ stopped (from an armed Single: running)
+//   single      press: arm one capture ('single'); after it the scope is 'stopped'
+//   force-trig  press: the next capture happens even without a trigger crossing
+//
+// settings.acquisition: { seed (integer) }. Setup key: seed.
+// State: runState 'running' | 'stopped' | 'single', traceStable (bool).
 
-import { inputSignal } from './source.js';
+import { inputSignal, source } from './source.js';
 import { channelTrace, VERTICAL_CHANNELS } from './vertical.js';
 
 export const CHANNELS = VERTICAL_CHANNELS;
 
+/** Noise at each input, volts rms. */
+export const NOISE_RMS = 0.008;
+/** Noise on the trigger comparator, volts rms (band-limited: less than on the samples). */
+export const TRIGGER_NOISE_RMS = 0.002;
+const DEFAULT_SEED = 1;
+const GRID = 2048; // points per period when searching for crossings
+
+// Live acquisition state per engine, keyed by its settings object: not part of serialize().
+const lives = new WeakMap();
+const freshLive = () => ({ run: 'running', force: false, last: null, lastNow: 0 });
+function liveOf(settings) {
+  if (!lives.has(settings)) lives.set(settings, freshLive());
+  return lives.get(settings);
+}
+
+// --- seeded noise ---------------------------------------------------------------------------
+
+function mix(h, n) {
+  h = Math.imul(h ^ (n | 0), 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  return h ^ (h >>> 16);
+}
+
+/** A PRNG of standard normal values for one capture and stream. */
+function gaussians(seed, now, stream) {
+  const k = Math.round(now * 1000); // µs
+  let a = mix(mix(mix(mix(0x9e3779b9, seed), k % 0x100000000), Math.floor(k / 0x100000000)), stream) >>> 0;
+  const uniform = () => { // mulberry32
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return (((t ^ (t >>> 14)) >>> 0) + 0.5) / 4294967296;
+  };
+  return () => Math.sqrt(-2 * Math.log(uniform())) * Math.cos(2 * Math.PI * uniform());
+}
+
+// --- the trigger ----------------------------------------------------------------------------
+
+/** The source channel's fundamental frequency (Hz), from the source's ground truth. */
+function sourceFreq(settings, ch) {
+  const s = source.state({ settings });
+  return s[`${ch}TrueFreq`] ?? s.ch1TrueFreq;
+}
+
+/** Ideal min and max of the periodic signal v over one period P. */
+function range(v, P) {
+  let min = Infinity;
+  let max = -Infinity;
+  for (let k = 0; k < GRID; k++) {
+    const y = v((P * (k + 0.37)) / GRID);
+    if (y < min) min = y;
+    if (y > max) max = y;
+  }
+  return { min, max };
+}
+
+/** The first `slope` crossing of `level` by the periodic signal v at or after time `from`, or null. */
+function nextCrossing(v, P, level, slope, from) {
+  if (!(P > 0 && Number.isFinite(P))) return null;
+  const sign = slope === 'falling' ? -1 : 1;
+  const above = (t) => sign * (v(t) - level) >= 0;
+  let best = null;
+  let prevT = (P * (0.37 - 1)) / GRID;
+  let prev = above(prevT);
+  for (let k = 0; k <= GRID; k++) {
+    const t = (P * (k + 0.37)) / GRID;
+    const cur = above(t);
+    if (cur && !prev) {
+      let lo = prevT;
+      let hi = t;
+      for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (above(m)) hi = m; else lo = m; }
+      const c = ((hi % P) + P) % P;
+      const abs = c + Math.ceil((from - c) / P) * P;
+      if (best === null || abs < best) best = abs;
+    }
+    prevT = t;
+    prev = cur;
+  }
+  return best;
+}
+
+/** Whether the trigger settings give a valid crossing on the ideal source signal (noise margin). */
+function validCrossing(settings) {
+  const { source: ch, level } = settings.trigger;
+  const v = inputSignal(settings, ch);
+  const f = sourceFreq(settings, ch);
+  if (!v || !(f > 0)) return false;
+  const { min, max } = range(v, 1 / f);
+  return level > min + 3 * NOISE_RMS && level < max - 3 * NOISE_RMS;
+}
+
+// --- capture --------------------------------------------------------------------------------
+
+function sampleX(profile) {
+  const n = profile.recordLength;
+  return Array.from({ length: n }, (_, i) => (i * profile.screen.divX) / (n - 1));
+}
+
+/** Noisy volts per wired channel at the sample times starting at t0. */
+function captureVolts(settings, profile, t0, sPerDiv, now) {
+  const x = sampleX(profile);
+  const volts = {};
+  CHANNELS.forEach((ch, idx) => {
+    const v = inputSignal(settings, ch);
+    if (!v) return;
+    const g = gaussians(settings.acquisition.seed, now, idx + 1);
+    volts[ch] = x.map((xi) => v(t0 + xi * sPerDiv) + NOISE_RMS * g());
+  });
+  return volts;
+}
+
+/** Draw a stored capture with the current vertical settings. */
+function show(settings, profile, cap, status) {
+  const x = sampleX(profile);
+  const traces = {};
+  if (cap) {
+    const idx = x.map((_, i) => i);
+    for (const ch of CHANNELS) {
+      const vs = cap.volts[ch];
+      const trace = vs && channelTrace(settings, profile, ch, (i) => vs[i], x, idx);
+      if (trace) traces[ch] = trace;
+    }
+  }
+  const { sPerDiv, position } = settings.horizontal;
+  const timebase = cap ? { sPerDiv: cap.sPerDiv, t0: cap.t0 } : { sPerDiv, t0: -(profile.screen.divX / 2) * sPerDiv - position };
+  return { status, timebase, traces };
+}
+
 /**
  * The acquisition part of a frame: { status, timebase, traces }.
+ *   status    'triggered' | 'auto' (free-running) | 'waiting' | 'stopped'
  *   timebase  { sPerDiv, t0 }: the time (s) at x = 0, so t = t0 + x · sPerDiv
- *   traces    { [channel]: { x[], y[], vPerDiv, position } } in divisions: x from 0 (left
+ *   traces    { [channel]: { x[], y[], vPerDiv, position, clipped } } in divisions: x from 0 (left
  *             edge) to divX, y from the centre line (up positive), so volts = (y − position) · vPerDiv;
  *             clipped at the screen edges (see vertical.js). Channels that are off are absent.
  */
-export function acquireTraces({ settings, profile }) {
-  const { divX } = profile.screen;
-  const n = profile.recordLength;
-  const { sPerDiv, position: hpos } = settings.horizontal;
-  const t0 = -(divX / 2) * sPerDiv - hpos;
-  const x = Array.from({ length: n }, (_, i) => (i * divX) / (n - 1));
+export function acquireTraces({ settings, profile }, now = 0) {
+  const live = liveOf(settings);
+  live.lastNow = now;
+  if (live.run === 'stopped') return show(settings, profile, live.last, 'stopped');
 
-  const times = x.map((xi) => t0 + xi * sPerDiv);
+  const { sPerDiv, position } = settings.horizontal;
+  const trig = settings.trigger;
+  const from = now / 1000;
+  const v = inputSignal(settings, trig.source);
+  const level = trig.level + TRIGGER_NOISE_RMS * gaussians(settings.acquisition.seed, now, 0)();
+  const crossing = v ? nextCrossing(v, 1 / sourceFreq(settings, trig.source), level, trig.slope, from) : null;
 
-  const traces = {};
-  for (const ch of CHANNELS) {
-    const trace = channelTrace(settings, profile, ch, inputSignal(settings, ch), x, times);
-    if (trace) traces[ch] = trace;
-  }
-  return { status: 'triggered', timebase: { sPerDiv, t0 }, traces };
+  let t0;
+  if (crossing !== null) t0 = crossing - (profile.screen.divX / 2) * sPerDiv - position;
+  else if (live.force || (trig.mode === 'auto' && live.run === 'running')) t0 = from;
+  else return show(settings, profile, live.last, 'waiting');
+
+  const forced = crossing === null && live.force;
+  live.force = false;
+  live.last = { t0, sPerDiv, volts: captureVolts(settings, profile, t0, sPerDiv, now), triggered: crossing !== null };
+  let status = crossing !== null || forced ? 'triggered' : 'auto';
+  if (live.run === 'single') { live.run = 'stopped'; status = 'stopped'; }
+  return show(settings, profile, live.last, status);
 }
+
+/** Min and max volts of a channel in the last capture (or a fresh one at the last `now`). */
+export function acquiredRange(ctx, ch) {
+  const { settings, profile } = ctx;
+  const live = liveOf(settings);
+  let vs = live.last?.volts[ch];
+  if (!vs) {
+    const { sPerDiv, position } = settings.horizontal;
+    vs = captureVolts(settings, profile, -(profile.screen.divX / 2) * sPerDiv - position, sPerDiv, live.lastNow)[ch];
+  }
+  if (!vs) return null;
+  return { min: Math.min(...vs), max: Math.max(...vs) };
+}
+
+function seedFrom(v, fallback) { return Number.isInteger(v) ? v : fallback; }
+
+/** Feature: the acquisition settings (noise seed) and the Run/Stop, Single and Force Trig buttons. */
+export const acquisition = {
+  init(settings, setup) {
+    settings.acquisition = { seed: seedFrom(setup?.seed, DEFAULT_SEED) };
+    lives.set(settings, freshLive());
+  },
+  restore(settings, saved) {
+    settings.acquisition = { seed: seedFrom(saved?.acquisition?.seed, DEFAULT_SEED) };
+    lives.set(settings, freshLive());
+  },
+  press: {
+    'run-stop'({ settings }) {
+      const live = liveOf(settings);
+      live.run = live.run === 'running' ? 'stopped' : 'running';
+    },
+    single({ settings }) { liveOf(settings).run = 'single'; },
+    'force-trig'({ settings }) {
+      const live = liveOf(settings);
+      if (live.run !== 'stopped') live.force = true;
+    },
+  },
+  state({ settings }) {
+    const live = liveOf(settings);
+    const stable = live.run === 'stopped' && live.last ? live.last.triggered : live.run !== 'stopped' && validCrossing(settings);
+    return { runState: live.run, traceStable: stable };
+  },
+  describe: () => ({
+    runState: { label: 'Acquisition run state (running, stopped or single)', unit: '' },
+    traceStable: { label: 'Trace stable (triggered, not free-running)', unit: '' },
+  }),
+};

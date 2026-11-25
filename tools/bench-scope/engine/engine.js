@@ -20,7 +20,9 @@
 //                                     net detents turned so far (not saved).
 //
 // Output:
-//   engine.acquire(now) -> frame      now in ms (e.g. performance.now()); see FRAME below
+//   engine.acquire(now) -> frame      now in ms (e.g. performance.now()); see FRAME below. Each
+//                                     call is one capture (acquire.js): it advances Single and
+//                                     Force Trig, and its noise is seeded by (seed, now)
 //   engine.state()                    flat published State { [key]: number|boolean|string }
 //   engine.describe()                 { [key]: { label, unit } } for every State key
 //   engine.serialize()                JSON-able settings; engine.restore(saved) puts them back
@@ -32,7 +34,8 @@
 //     timebase: { sPerDiv, t0 },                     t = t0 + x · sPerDiv
 //     traces: { ch1: { x[], y[], vPerDiv, position } }   divisions; x 0..divX, y up from centre
 //     readouts: [{ id, text, channel? }],            the renderer places them by id
-//     menu: null | { ... },  cursors: null | { ... },  markers: { ... } }
+//     menu: null | { ... },  cursors: null | { ... },
+//     markers: { triggerLevel: { y, channel }, triggerPoint: { x } } }   divisions, see trigger.js
 //
 // Behaviour is split into feature modules (FEATURES below), each owning one part of the
 // settings. A feature is an object with any of:
@@ -47,15 +50,18 @@
 //                                       detent() for a knob whose rotation follows its value
 // where ctx = { settings, profile }. Add a feature by writing a module and listing it here.
 
-import { acquireTraces } from './acquire.js';
+import { acquireTraces, acquisition } from './acquire.js';
 import { horizontal } from './horizontal.js';
 import { source } from './source.js';
+import { trigger } from './trigger.js';
 import { vertical } from './vertical.js';
 
 const FEATURES = [
   source,
   vertical,
   horizontal,
+  trigger,
+  acquisition,
 ];
 
 const SERIAL_VERSION = 1;

@@ -88,7 +88,7 @@ test('CH2 starts off; its menu button turns it on as a copy of CH1, with its own
   assert.equal(frame.traces.ch2.position, -2);
   const v1 = volts(frame.traces.ch1);
   const v2 = volts(frame.traces.ch2);
-  for (let i = 0; i < v1.length; i++) assert.ok(Math.abs(v1[i] - v2[i]) < 1e-9, `sample ${i}`);
+  for (let i = 0; i < v1.length; i++) assert.ok(Math.abs(v1[i] - v2[i]) < 0.1, `sample ${i}`); // each input has its own noise
   assert.equal(engine.state().ch1VPerDiv, 1, 'CH1 untouched');
 
   engine.press('ch2-menu');
