@@ -82,7 +82,7 @@ for (const skin of SKIN_IDS) {
 
   test(`${skin}: with only CH2 displayed, Autoset triggers on CH2`, () => {
     const engine = scrambled(skin, { gen1Freq: 2000, ch2Source: 'lowpass', ch2Fc: 500 }, { ch2: true });
-    engine.press('ch1-menu'); // CH1 off
+    engine.apply({ type: 'set', control: 'ch1-menu', value: false }); // CH1 off
     engine.press('autoset');
     const st = engine.state();
     assert.equal(st.ch1Display, false);

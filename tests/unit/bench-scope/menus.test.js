@@ -206,6 +206,24 @@ test('TDS Trig View shows the trigger signal in place of the channels while held
   assert.equal(engine.acquire(0).traces.ch1, undefined);
 });
 
+test('Autoset sets DC coupling and works in displayed volts with a 10× probe and invert', () => {
+  const engine = createEngine(tbs(), { gen1Vpp: 2, gen1Offset: 1 });
+  engine.press('ch1-menu');
+  engine.softkey(1); // AC
+  engine.softkey(3); // 10×
+  engine.softkey(4); // invert
+  engine.press('autoset');
+  const s = engine.state();
+  assert.equal(s.ch1Coupling, 'dc');
+  assert.equal(s.ch1VPerDiv, 0.5, 'knob V/div for 2 Vpp at the BNC (4 div)');
+  // Displayed signal: -10 × (1 ± 1 V) = -20..0 V; its 50% level is -10 V and the trace is centred.
+  assert.ok(Math.abs(s.trigLevel + 10) < 0.05, `level ${s.trigLevel}`);
+  assert.ok(engine.state().traceStable);
+  const v = volts(engine.acquire(0).traces.ch1);
+  assert.ok(Math.abs(mean(v) + 10) < 0.5, `centred on -10 V (mean ${mean(v)})`);
+  assert.equal(engine.acquire(0).traces.ch1.clipped, false);
+});
+
 test('invert flips the trace; BW limit visibly lowers the noise', () => {
   const engine = createEngine(tbs(), { gen1Vpp: 0, gen1Offset: 0.04 });
   engine.turn('ch1-scale', 5); // 1 V → 20 mV/div: noise is visible

@@ -12,15 +12,16 @@
 //     - acquisition running; display format YT (display.js).
 //
 // The signal's range and frequency are what the real scope's analysis would find: one period of
-// the ideal input signal and the source's fundamental frequency (as its frequency counter would).
+// the ideal channel signal (after DC coupling, probe and invert: displayed volts, vertical.js) and
+// the source's fundamental frequency (as its frequency counter would).
 
 import { acquisition, NOISE_RMS } from './acquire.js';
 import { display } from './display.js';
 import { horizontal } from './horizontal.js';
-import { inputSignal, source } from './source.js';
+import { source } from './source.js';
 import { trigger } from './trigger.js';
 import { clamp } from './util.js';
-import { POSITION_LIMIT, vertical, VERTICAL_CHANNELS, VDIV_SEQUENCE } from './vertical.js';
+import { channelSignal, POSITION_LIMIT, vertical, VERTICAL_CHANNELS, VDIV_SEQUENCE } from './vertical.js';
 
 /** Divisions the trace should span, and cycles to show (log-nearest step is chosen). */
 export const SPAN_TARGET = 5;
@@ -39,9 +40,9 @@ function nearest(seq, measure, target) {
   return best;
 }
 
-/** { freq, min, max } of a channel's input signal, or null when it has none. */
+/** { freq, min, max } of a channel's signal in displayed volts, or null when it has none. */
 function analyse(settings, ch) {
-  const v = inputSignal(settings, ch);
+  const v = channelSignal(settings, ch);
   const freq = source.state({ settings })[`${ch}TrueFreq`];
   if (!v || !(freq > 0)) return null;
   let min = Infinity;
@@ -70,9 +71,12 @@ function autoset(ctx) {
   if (shown.length === 0) { settings.ch1.display = true; shown = analyse(settings, 'ch1') ? ['ch1'] : []; }
 
   for (const ch of shown) {
-    // Hook for ticket 05 (CH menu coupling): DC coupling, if the setting exists.
-    if ('coupling' in settings[ch]) settings[ch].coupling = 'dc';
-    const { min, max } = analyse(settings, ch);
+    settings[ch].coupling = 'dc';
+    // V/div and Position work at the knob's scale (the BNC): displayed volts over the probe factor.
+    const probe = settings[ch].probe;
+    const a = analyse(settings, ch);
+    const min = a.min / probe;
+    const max = a.max / probe;
     const pp = Math.max(max - min, 1e-6);
     let i = VDIV_SEQUENCE.indexOf(nearest(VDIV_SEQUENCE, (s) => pp / s, SPAN_TARGET));
     // A large DC offset can need more Position than the knob has: step up until it fits.
