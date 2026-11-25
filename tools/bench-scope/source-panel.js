@@ -7,11 +7,13 @@
 //   sync      show new values (after a restore) without re-sending them
 //
 // Control ids: gen1-wave, gen1-freq, gen1-vpp, gen1-offset; ch2-source; ch2-fc, ch2-f0, ch2-q;
-// gen2-wave, gen2-freq, gen2-vpp, gen2-offset, gen2-phase.
+// gen2-wave, gen2-freq, gen2-vpp, gen2-offset, gen2-phase; and the Range selectors of the four
+// frequency dials: gen1-freq-range, ch2-fc-range, ch2-f0-range, gen2-freq-range.
 // Controls that don't apply to the current CH2 source are hidden by a wrapper element, so this
 // composes with an Activity's Control.hide()/show() (which acts on the Control's own element).
 
 import { h, section, select, slider } from '../../framework/v1/ui-kit.js';
+import { freqDial } from './freq-dial.js';
 import { CH2_SOURCE_KEYS, CH2_SOURCES, FILTER_LIMITS, GEN_LIMITS, SOURCE_DEFAULTS, WAVES } from './engine/source.js';
 
 const WAVE_LABELS = { sine: 'Sine', square: 'Square', triangle: 'Triangle' };
@@ -31,8 +33,15 @@ export function createSourcePanel({ values, onPatch }) {
 
   const waveSelect = (id, key, name) => select({ id, name, label: 'Waveform',
     options: WAVES.map((w) => ({ value: w, label: WAVE_LABELS[w] })), value: v(key), onChange: send(key) });
-  const freqSlider = (id, key, name, label, [min, max]) => slider({ id, name, label, unit: 'Hz', min, max,
-    step: 1, log: true, decimals: 0, value: v(key), reset: SOURCE_DEFAULTS[key], onChange: send(key) });
+  // Frequencies use an analog-generator style dial (decade Range selector + linear dial); its
+  // Range selector is registered too, as '<id>-range'.
+  const rangeControls = {};
+  const freqSlider = (id, key, name, label, limits) => {
+    const { control, rangeControl } = freqDial({ id, name, label, limits, value: v(key),
+      reset: SOURCE_DEFAULTS[key], onChange: send(key) });
+    rangeControls[rangeControl.id] = rangeControl;
+    return control;
+  };
   const plain = (id, key, name, label, unit, [min, max], step, decimals = 2) => slider({ id, name, label, unit,
     min, max, step, decimals, value: v(key), reset: SOURCE_DEFAULTS[key], onChange: send(key) });
 
@@ -61,6 +70,7 @@ export function createSourcePanel({ values, onPatch }) {
   const keys = {};
   const wrappers = {};
   for (const [id, key, make] of [...ch1Specs, ...ch2Specs]) { controls[id] = make(); keys[id] = key; }
+  Object.assign(controls, rangeControls);
   for (const [id] of ch2Specs) wrappers[id] = h('div', { class: 'bs-source-slot' }, controls[id].el);
 
   function showRelevant() {
