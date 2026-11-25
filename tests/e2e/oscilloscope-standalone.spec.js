@@ -1,0 +1,135 @@
+import { test, expect } from '@playwright/test';
+
+const PAGE = '/tools/oscilloscope/';
+
+async function open(page) {
+  await page.goto(PAGE);
+  await page.waitForFunction(() => window.toolHost);
+}
+
+test('Standalone mode shows one tab per Mode', async ({ page }) => {
+  await open(page);
+  const tabs = page.getByRole('tab');
+  await expect(tabs).toHaveCount(1);
+  await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
+});
+
+test('Standalone mode shows every Control, unlocked', async ({ page }) => {
+  await open(page);
+
+  // The signal Controls: each slider is paired with a number box and a reset button.
+  for (const name of ['Va', 'f', 'Δt']) {
+    await expect(page.getByRole('slider', { name, exact: true })).toBeVisible();
+    await expect(page.getByRole('slider', { name, exact: true })).toBeEnabled();
+    await expect(page.getByRole('spinbutton', { name, exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: `Reset ${name}` })).toBeEnabled();
+  }
+
+  // Every registered Control (including the draggable markers inside the Display)
+  // reports itself shown and unlocked through the Tool contract.
+  const controls = await page.evaluate(() => {
+    const instance = window.toolHost.instances[0];
+    return instance.controls.ids().map((id) => instance.controls.get(id)).map((c) => ({
+      id: c.id,
+      locked: c.isLocked(),
+      hidden: c.isHidden(),
+    }));
+  });
+  expect(controls.map((c) => c.id).sort()).toEqual(
+    ['Dt', 'Dt-marker', 'Va', 'Va-marker', 'f', 'f-marker'].sort(),
+  );
+  for (const c of controls) expect(c, c.id).toMatchObject({ locked: false, hidden: false });
+});
+
+test('live metrics publish φ, T and pk-pk as State with units', async ({ page }) => {
+  await open(page);
+  // Default Setup: Va = 2 V, f = 0.5 Hz, Δt = 0.25 s  →  φ = 2π·0.5·0.25 = π/4, T = 2 s, pk-pk = 4 V
+  const { state, info } = await page.evaluate(() => {
+    const i = window.toolHost.instances[0];
+    return { state: i.state.snapshot(), info: i.state.describe() };
+  });
+  expect(state.phi).toBeCloseTo(Math.PI / 4, 6);
+  expect(state.T).toBeCloseTo(2, 6);
+  expect(state.pkpk).toBeCloseTo(4, 6);
+  expect(info.phi.unit).toBe('rad');
+  expect(info.T.unit).toBe('s');
+  expect(info.pkpk.unit).toBe('V');
+
+  await page.getByRole('spinbutton', { name: 'f', exact: true }).fill('0.25');
+  await page.getByRole('spinbutton', { name: 'f', exact: true }).press('Enter');
+  await expect(page.getByRole('status', { name: 'T', exact: true })).toContainText('4.000 s');
+});
+
+test('layout fits a laptop screen without horizontal scrolling', async ({ page }) => {
+  await open(page);
+  await expect(page.getByRole('slider', { name: 'Va', exact: true })).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test('the Tool mounts several times on one page with independent State', async ({ page }) => {
+  await open(page);
+  const result = await page.evaluate(async () => {
+    const { default: tool } = await import('/tools/oscilloscope/oscilloscope.js');
+    const a = tool.mount(document.body.appendChild(document.createElement('div')), 'dual-trace', { f: 0.25 });
+    const b = tool.mount(document.body.appendChild(document.createElement('div')), 'dual-trace', { f: 0.5 });
+    let bChanges = 0;
+    b.state.onChange(() => { bChanges += 1; });
+    a.controls.get('Va').set(1);
+    const s = { a: a.state.snapshot(), b: b.state.snapshot() };
+    a.destroy();
+    b.destroy();
+    return { aVa: s.a.Va, bVa: s.b.Va, aT: s.a.T, bT: s.b.T, bChanges };
+  });
+  expect(result).toEqual({ aVa: 1, bVa: 2, aT: 4, bT: 2, bChanges: 0 });
+});
+
+test('State serializes and restores', async ({ page }) => {
+  await open(page);
+  const restored = await page.evaluate(() => {
+    const i = window.toolHost.instances[0];
+    i.controls.get('f').set(0.4);
+    i.controls.get('Dt').set(1.5);
+    const saved = JSON.parse(JSON.stringify(i.serialize()));
+    i.controls.get('f').set(0.9);
+    i.controls.get('Dt').set(0);
+    i.restore(saved);
+    return i.state.snapshot();
+  });
+  expect(restored.f).toBeCloseTo(0.4, 9);
+  expect(restored.Dt).toBeCloseTo(1.5, 9);
+});
+
+test('the Δt marker is a Control that can be locked like a slider', async ({ page }) => {
+  await open(page);
+  // Wait until the scope Display has been laid out at the size of its box.
+  await page.waitForFunction(() => window.toolHost.instances[0].displays[0].toScreen(0, 0));
+
+  // Screen position of the Δt marker, which sits at (T − Δt, Va).
+  const markerAt = () => page.evaluate(() => {
+    const instance = window.toolHost.instances[0];
+    const scope = instance.displays[0];
+    const { Dt, f, Va } = instance.state.snapshot();
+    return { ...scope.toScreen(1 / f - Dt, Va), pxPerSecond: scope.toScreen(1, 0).x - scope.toScreen(0, 0).x };
+  });
+  const dt = () => page.evaluate(() => window.toolHost.instances[0].state.snapshot().Dt);
+  const dragLeftOneSecond = async () => {
+    const p = await markerAt();
+    await page.mouse.move(p.x, p.y);
+    await page.mouse.down();
+    await page.mouse.move(p.x - p.pxPerSecond, p.y, { steps: 5 });
+    await page.mouse.up();
+  };
+
+  // Default Setup Δt = 0.25 s; dragging the marker 1 s left adds 1 s.
+  await dragLeftOneSecond();
+  expect(await dt()).toBeCloseTo(1.25, 1);
+
+  // Locked: the same drag leaves Δt alone.
+  await page.evaluate(() => window.toolHost.instances[0].controls.get('Dt-marker').lock());
+  const before = await dt();
+  await dragLeftOneSecond();
+  expect(await dt()).toBe(before);
+});

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Encode answer keys</title>
+<link rel="stylesheet" href="../theme.css">
+<style>
+  .ek { max-width: 46rem; margin: 2rem auto; padding: 0 1rem; }
+  .ek textarea, .ek output { display: block; width: 100%; box-sizing: border-box; font: 0.95rem/1.4 ui-monospace, monospace; }
+  .ek textarea { min-height: 7rem; padding: 0.5rem; }
+  .ek output { margin-top: 0.75rem; padding: 0.5rem; min-height: 1.5rem; word-break: break-all; border: 1px solid currentColor; border-radius: 4px; }
+  .ek .error { color: #a3261b; }
+</style>
+</head>
+<body>
+<main class="ek">
+  <h1>Encode answer keys</h1>
+  <p>Paste a Condition, or one Question key (an <code>answer</code>, <code>tol</code> or <code>correct</code> value), as a
+    JavaScript expression. Put the encoded string in the Activity in its place. Encoding only deters casual
+    reading of the page source (ADR 0001).</p>
+  <p>Examples: <code>{ state: 'phi', target: Math.PI / 2, tol: 0.05, targetLabel: 'π/2 ≈ 1.571 rad' }</code>,
+    <code>3</code>, <code>'b'</code>. In the console: <code>encodeKey(value)</code> and <code>decodeKey(string)</code>.</p>
+  <label for="ek-input">Value</label>
+  <textarea id="ek-input" spellcheck="false"></textarea>
+  <label for="ek-output">Encoded key</label>
+  <output id="ek-output" for="ek-input" aria-live="polite"></output>
+  <p><button type="button" id="ek-copy">Copy</button></p>
+</main>
+<script type="module">
+  import { encodeKey, decodeKey } from '../runner/keys.js';
+
+  Object.assign(window, { encodeKey, decodeKey });
+  const input = document.getElementById('ek-input');
+  const output = document.getElementById('ek-output');
+
+  function update() {
+    output.classList.remove('error');
+    const text = input.value.trim();
+    if (!text) { output.textContent = ''; return; }
+    try {
+      // Author-only page: the author's own expression, so Math.PI etc. work.
+      const value = Function(`"use strict"; return (${text});`)();
+      output.textContent = encodeKey(value);
+    } catch (err) {
+      output.classList.add('error');
+      output.textContent = err.message;
+    }
+  }
+  input.addEventListener('input', update);
+  document.getElementById('ek-copy').addEventListener('click', () => navigator.clipboard?.writeText(output.textContent));
+</script>
+</body>
+</html>

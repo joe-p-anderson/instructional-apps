@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vernier Caliper Trainer</title>
+<style>
+  :root {
+    --bg: #f6f4ef;
+    --panel: #ffffff;
+    --ink: #1f2328;
+    --muted: #5b6168;
+    --line: #d9d4c8;
+    --accent: #0f6e6e;
+    --accent-ink: #ffffff;
+    --good: #1d7a3a;
+    --bad: #b3261e;
+    --main-mark: #1f5fbf;
+    --match-mark: #d9480f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17191c;
+      --panel: #22252a;
+      --ink: #e8e6e1;
+      --muted: #a3a7ad;
+      --line: #3a3e44;
+      --accent: #3fb3b3;
+      --accent-ink: #0d1414;
+      --good: #5fcf80;
+      --bad: #ff7b72;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17191c;
+    --panel: #22252a;
+    --ink: #e8e6e1;
+    --muted: #a3a7ad;
+    --line: #3a3e44;
+    --accent: #3fb3b3;
+    --accent-ink: #0d1414;
+    --good: #5fcf80;
+    --bad: #ff7b72;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .lede { color: var(--muted); margin: 0 0 16px; }
+  .bar {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    justify-content: space-between; margin-bottom: 12px;
+  }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button {
+    border: 0; background: var(--panel); color: var(--ink);
+    padding: 7px 12px; font: inherit; font-size: 0.92rem; cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  .score { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 0.95rem; }
+  .score b { color: var(--ink); }
+  .stage {
+    background: #ffffff; border: 1px solid var(--line); border-radius: 10px;
+    padding: 8px; overflow: hidden;
+  }
+  .stage svg { display: block; width: 100%; height: auto; }
+  .task { margin: 14px 0 0; font-size: 1.02rem; }
+  form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+  input[type="text"] {
+    width: 9em; padding: 8px 10px; font: inherit; font-variant-numeric: tabular-nums;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink);
+  }
+  .btn {
+    padding: 8px 14px; font: inherit; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn:disabled { opacity: 0.45; cursor: default; }
+  .feedback { margin-top: 12px; min-height: 1.5em; }
+  .feedback .verdict { font-weight: 600; }
+  .feedback .ok { color: var(--good); }
+  .feedback .no { color: var(--bad); }
+  .breakdown {
+    margin-top: 8px; padding: 10px 12px; border-left: 3px solid var(--accent);
+    background: var(--panel); border-radius: 0 8px 8px 0; font-variant-numeric: tabular-nums;
+  }
+  .swatch { display: inline-block; width: 0.9em; height: 0.25em; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
+  .hint { color: var(--muted); font-size: 0.9rem; margin-top: 18px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Vernier caliper trainer</h1>
+  <p class="lede">Read the caliper to the nearest 0.05&nbsp;mm. Each vernier division is worth 0.05&nbsp;mm.</p>
+
+  <div class="bar">
+    <div class="seg" role="group" aria-label="Measurement type" id="modes">
+      <button type="button" data-mode="od">Outside</button>
+      <button type="button" data-mode="id">Inside</button>
+      <button type="button" data-mode="depth">Depth</button>
+      <button type="button" data-mode="random">Random</button>
+    </div>
+    <div class="seg" role="group" aria-label="Zoom" id="zooms">
+      <button type="button" data-zoom="whole">Whole caliper</button>
+      <button type="button" data-zoom="scale">Scale close-up</button>
+    </div>
+    <div class="score" aria-live="polite">Correct <b id="correct">0</b> / <b id="attempts">0</b> &middot; Streak <b id="streak">0</b></div>
+  </div>
+
+  <div class="stage">
+<svg xmlns="http://www.w3.org/2000/svg" width="212.50603mm" height="77.897392mm" viewBox="0 0 212.50603 77.897392" version="1.1" id="svg1" role="img" aria-label="Vernier caliper"><g id="layer1" transform="translate(145.21533,86.96979)"><circle cx="-124.75105" cy="-59.84161" r="0" style="fill:#000000;stroke:none" id="circle414" /><circle cx="-114.75105" cy="-59.84161" r="0" style="fill:#000000;stroke:none" id="circle415" /><circle cx="-104.75105" cy="-59.84161" r="0" style="fill:#000000;stroke:none" id="circle416" /><circle cx="-94.751045" cy="-59.84161" r="0" style="fill:#000000;stroke:none" id="circle417" /><circle cx="-84.751045" cy="-59.84161" r="0" style="fill:#000000;stroke:none" id="circle418" /><circle cx="-74.751045" cy="-59.84161" r="0" style="fill:#000000;stroke:none" id="circle419" /><circle cx="-64.751038" cy="-59.84161" r="0" style="fill:#000000;stroke:none" id="circle420" /><circle cx="-54.751045" cy="-59.84161" r="0" style="fill:#000000;stroke:none" id="circle421" /><circle cx="-44.751045" cy="-59.84161" r="0" style="fill:#000000;stroke:none" id="circle422" /><circle cx="-34.751045" cy="-59.84161" r="0" style="fill:#000000;stroke:none" id="circle423" /><circle cx="-24.751043" cy="-59.84161" r="0" style="fill:#000000;stroke:none" id="circle424" /><circle cx="-14.751043" cy="-59.84161" r="0" style="fill:#000000;stroke:none" id="circle425" /><circle cx="-4.7510433" cy="-59.84161" r="0" style="fill:#000000;stroke:none" id="circle426" /><circle cx="5.2489562" cy="-59.84161" r="0" style="fill:#000000;stroke:none" id="circle427" /><circle cx="15.248956" cy="-59.84161" r="0" style="fill:#000000;stroke:none" id="circle428" /><circle cx="25.248957" cy="-59.84161" r="0" style="fill:#000000;stroke:none" id="circle429" /><circle cx="35.248955" cy="-59.84161" r="0" style="fill:#000000;stroke:none" id="circle430" /><circle cx="45.248955" cy="-59.84161" r="0" style="fill:#000000;stroke:none" id="circle431" /><g id="depth-rod" transform="translate(0.27750375)"><path style="fill:#b3b3b3;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m -90,-58.94 h 156.88089625 v 1.5 h -156.88089625 z" id="depth-rod-bar" /></g><g id="stationary"><path style="fill:#cccccc;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m -128.29567,-86.648632 c 0,0 7.85554,4.928611 7.85554,13.604812 v 9.543818 H 67.158401 v 10.618775 H -127 v 43.6745045 c -5.87932,0.1199679 -9.21362,-5.1107155 -9.21362,-5.1107155 l -8.86942,-33.097782 v -21.63755 h 16.78737 z" id="path1" /><g id="g451" transform="translate(4.13838862,1.1905931)"><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 179,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path183" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 178,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path182" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 177,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path181" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 176,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path180" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 174,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path178" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 173,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path177" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 172,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path176" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 171,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path175" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 169,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path173" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 168,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path172" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 167,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path171" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 166,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path170" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 164,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path168" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 163,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path167" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 162,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path166" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 161,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path165" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 159,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path163" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 158,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path162" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 157,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path161" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 156,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path160" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 154,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path158" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 153,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path157" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 152,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path156" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 151,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path155" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 149,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path153" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 148,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path152" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 147,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path151" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 146,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path150" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 144,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path148" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 143,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path147" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 142,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path146" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 141,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path145" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 139,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path143" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 138,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path142" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 137,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path141" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 136,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path140" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 134,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path138" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 133,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path137" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 132,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path136" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 131,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path135" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 129,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path133" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 128,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path132" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 127,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path131" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 126,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path130" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 124,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path128" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 123,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path127" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 122,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path126" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 121,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path125" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 119,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path123" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 118,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path122" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 117,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path121" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 116,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path120" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 114,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path118" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 113,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path117" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 112,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path116" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 111,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path115" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 109,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path113" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 108,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path112" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 107,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path111" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 106,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path110" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 104,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path108" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 103,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path107" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 102,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path106" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 101,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path105" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 99,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path103" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 98,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path102" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 97,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path101" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 96,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path100" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 94,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path98" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 93,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path97" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 92,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path96" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 91,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path95" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 89,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path93" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 88,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path92" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 87,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path91" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 86,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path90" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 84,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path88" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 83,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path87" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 82,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path86" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 81,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path85" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 79,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path83" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 78,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path82" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 77,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path81" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 76,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path80" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 74,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path78" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 73,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path77" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 72,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path76" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 71,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path75" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 69,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path73" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 68,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path72" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 67,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path71" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 66,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path70" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 64,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path68" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 63,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path67" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 62,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path66" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 61,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path65" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 59,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path63" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 58,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path62" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 57,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path61" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 56,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path60" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 54,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path58" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 53,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path57" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 52,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path56" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 51,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path55" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 49,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path53" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 48,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path52" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 47,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path51" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 46,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path50" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 44,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path48" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 43,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path47" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 42,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path46" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 41,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path45" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 39,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path43" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 38,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path42" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 37,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path41" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 36,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path40" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 34,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path38" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 33,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path37" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 32,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path36" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 31,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path35" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 29,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path33" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 28,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path32" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 27,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path31" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 26,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path30" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 24,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path28" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 23,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path27" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 22,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path26" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 21,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path25" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 19,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path23" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 18,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path22" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 17,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path21" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 16,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path20" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 14,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path18" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 13,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path17" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 12,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path16" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 11,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path15" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 9,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path13" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 8,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path12" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 7,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path11" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 6,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path10" /><path id="path9" style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m -118.69271,-55.002083 v -3.637913 m 10,3.637913 v -3.637913 m 10,3.637913 v -3.637913 m 10,3.637913 v -3.637913 m 10,3.637913 v -3.637913 m 10,3.637913 v -3.637913 m 10,3.637913 v -3.637913 m 10,3.637913 v -3.637913 m 10,3.637913 v -3.637913 m 10,3.637913 v -3.637913 m 10,3.637913 v -3.637913 m 10,3.637913 v -3.637913 m 10,3.637913 v -3.637913 m 10,3.637913 v -3.637913 m 10,3.637913 v -3.637913 m 10,3.637913 v -3.637913 m 10,3.637913 v -3.637913 m 10,3.637913 v -3.637913" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 4,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path8" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 3,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path7" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 2,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path6" /><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 1,1.3229167 v -3" transform="translate(-123.69271,-56.325)" id="path5" /><path id="path4" style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m -123.69271,-55.002085 v -4.310361 m 10,4.310361 v -4.310361 m 10,4.310361 v -4.310361 m 10,4.310361 v -4.310361 m 10,4.310361 v -4.310361 m 10,4.310361 v -4.310361 m 10,4.310361 v -4.310361 m 10,4.310361 v -4.310361 m 10,4.310361 v -4.310361 m 10,4.310361 v -4.310361 m 10,4.310361 v -4.310361 m 10,4.310361 v -4.310361 m 10,4.310361 v -4.310361 m 10,4.310361 v -4.310361 m 10,4.310361 v -4.310361 m 10,4.310361 v -4.310361 m 10,4.310361 v -4.310361 m 10,4.310361 v -4.310361 m 9.91666,4.310361 v -4.310361" /><text x="-123.86222" y="-59.84161" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text432">0</text><text x="-115.04372" y="-58.783276" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text433">1</text><text x="-104.99289" y="-58.783276" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text434">2</text><text x="-94.962746" y="-58.783276" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text435">3</text><text x="-84.872314" y="-58.783276" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text436">4</text><text x="-74.977386" y="-58.783276" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text437">5</text><text x="-64.921394" y="-58.783276" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text438">6</text><text x="-54.982555" y="-58.783276" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text439">7</text><text x="-44.927433" y="-58.783276" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text440">8</text><text x="-34.922268" y="-58.783276" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text441">9</text><text x="-25.992485" y="-58.783276" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text442">10</text><text x="-16.038128" y="-58.783276" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text443">11</text><text x="-6.0519104" y="-58.783276" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text444">12</text><text x="3.9834013" y="-58.783276" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text445">13</text><text x="14.025604" y="-58.783276" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text446">14</text><text x="23.97048" y="-58.783276" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text447">15</text><text x="34.013542" y="-58.783276" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text448">16</text><text x="43.973923" y="-58.783276" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text449">17</text><text x="53.920727" y="-58.783276" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none" id="text450">18</text></g></g><g id="g477" transform="translate(0.27750375)"><g id="g453" transform="translate(-0.04024603,0.00114016)"><path style="fill:#b3b3b3;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="M -127.2775,-9.2071243 V -44.174118 h 2.48719 v -10.826601 h 49.451228 v 11.558127 h -31.419088 c -2.34089,0 -3.96356,0.06761 -4.66751,2.694786 -0.70395,2.627172 -4.69826,17.856008 -6.0501,22.579279 -2.62488,9.1712507 -9.80172,8.9614027 -9.80172,8.9614027 z" id="path451" /><path style="fill:#b3b3b3;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m -75.894959,-68.433607 v 5.335661 h -57.420131 c 0,0 -1.46306,-2.226672 -1.49963,-6.908445 -0.0366,-4.681773 0.58522,-10.899753 6.25455,-16.642241 v 15.25234 h -1.02414 v 3.108992 z" id="path452" /><path style="fill:#666666;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m -102.9311,-46.745666 v 5.486455 h 14.301356 c 0,0 2.962685,3.145565 7.242119,2.999261 4.279432,-0.146306 6.144826,-2.048277 6.144826,-2.048277 v -6.181404 z" id="path453" /><circle cx="-123.73353" cy="-50.948708" r="0" style="fill:#000000;stroke:none" id="circle455" /><circle cx="-119.83353" cy="-50.948708" r="0" style="fill:#000000;stroke:none" id="circle456" /><circle cx="-115.93353" cy="-50.948708" r="0" style="fill:#000000;stroke:none" id="circle457" /><circle cx="-112.03353" cy="-50.948708" r="0" style="fill:#000000;stroke:none" id="circle458" /><circle cx="-108.13353" cy="-50.948708" r="0" style="fill:#000000;stroke:none" id="circle459" /><circle cx="-104.23353" cy="-50.948708" r="0" style="fill:#000000;stroke:none" id="circle460" /><circle cx="-100.33353" cy="-50.948708" r="0" style="fill:#000000;stroke:none" id="circle461" /><circle cx="-96.433525" cy="-50.948708" r="0" style="fill:#000000;stroke:none" id="circle462" /><circle cx="-92.533531" cy="-50.948708" r="0" style="fill:#000000;stroke:none" id="circle463" /><circle cx="-88.63353" cy="-50.948708" r="0" style="fill:#000000;stroke:none" id="circle464" /><circle cx="-84.733528" cy="-50.948708" r="0" style="fill:#000000;stroke:none" id="circle465" /><g id="g476" transform="translate(0.1228511)"><path style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m -122.91443,-53.828822 h 39.041516 m -39.041516,0 v 2 m 1.95,-2 v 1 m 1.95,-1 v 2 m 1.95,-2 v 1 m 1.95,-1 v 2 m 1.95,-2 v 1 m 1.95,-1 v 2 m 1.95,-2 v 1 m 1.95,-1 v 2 m 1.95,-2 v 1 m 1.95,-1 v 2 m 1.95,-2 v 1 m 1.95,-1 v 2 m 1.95,-2 v 1 m 1.95,-1 v 2 m 1.95,-2 v 1 m 1.95,-1 v 2 m 1.95,-2 v 1 m 1.95,-1 v 2 m 1.95,-2 v 1 m 1.95,-1 v 2" id="path454" transform="translate(2.9999998,-1.171897)" /><text x="-120.61008" y="-50.948708" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.46944px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#000000;fill-opacity:1;stroke:none" id="text465">0</text><text x="-116.71008" y="-50.948708" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.46944px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#000000;fill-opacity:1;stroke:none" id="text466">1</text><text x="-112.81009" y="-50.948708" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.46944px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#000000;fill-opacity:1;stroke:none" id="text467">2</text><text x="-108.91009" y="-50.948708" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.46944px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#000000;fill-opacity:1;stroke:none" id="text468">3</text><text x="-105.01009" y="-50.948708" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.46944px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#000000;fill-opacity:1;stroke:none" id="text469">4</text><text x="-101.11008" y="-50.948708" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.46944px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#000000;fill-opacity:1;stroke:none" id="text470">5</text><text x="-97.210083" y="-50.948708" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.46944px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#000000;fill-opacity:1;stroke:none" id="text471">6</text><text x="-93.310081" y="-50.948708" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.46944px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#000000;fill-opacity:1;stroke:none" id="text472">7</text><text x="-89.410088" y="-50.948708" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.46944px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#000000;fill-opacity:1;stroke:none" id="text473">8</text><text x="-85.510086" y="-50.948708" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.46944px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#000000;fill-opacity:1;stroke:none" id="text474">9</text><text x="-81.600937" y="-50.948708" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.46944px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#000000;fill-opacity:1;stroke:none" id="text475">0</text></g></g></g></g></svg>
+  </div>
+
+  <p class="task" id="task"></p>
+  <form id="answer" autocomplete="off">
+    <label for="reading">Reading (mm)</label>
+    <input type="text" id="reading" inputmode="decimal" placeholder="e.g. 23.45">
+    <button class="btn primary" type="submit" id="check">Check</button>
+    <button class="btn" type="button" id="reveal">Show answer</button>
+    <button class="btn" type="button" id="next">Next object</button>
+  </form>
+  <div class="feedback" id="feedback" aria-live="polite"></div>
+
+  <p class="hint">How to read it: the main-scale reading is the last millimetre mark at or to the left of the vernier&nbsp;0.
+    Then find the one vernier line that lines up exactly with a main-scale mark; multiply its division number by 0.05&nbsp;mm and add.</p>
+</main>
+
+<script>
+(() => {
+  const SVGNS = "http://www.w3.org/2000/svg";
+  // Everything below is in the drawing's layer1 coordinates (mm).
+  const LAYER_DX = 145.21533, LAYER_DY = 86.96979; // layer1 -> root viewBox
+  const SLIDER_X0 = 0.27750375;   // translate of the slider and depth rod when the jaws are closed
+  const MAIN_ZERO = -119.55432;   // x of the main-scale 0 mark (= vernier 0 when closed)
+  const PITCH = 1.95;             // vernier line spacing: 20 divisions over 39 mm
+  const BEAM_END = 67.158401;     // right end of the beam, where the depth rod emerges
+  const OD_FACE = -127;           // fixed lower jaw face
+  const ID_FACE = -128.29567;     // fixed upper jaw outer face
+  const RANGES = { od: [1, 140], id: [10, 140], depth: [1, 100] };
+  const NAMES = { od: "outside width of the block", id: "inside width of the tube", depth: "depth of the hole" };
+
+  const svg = document.querySelector(".stage svg");
+  const layer = svg.querySelector("#layer1");
+  const slider = svg.querySelector("#g477");
+  const rod = svg.querySelector("#depth-rod");
+  const $ = (id) => document.getElementById(id);
+
+  svg.removeAttribute("width");
+  svg.removeAttribute("height");
+
+  const el = (tag, attrs, parent) => {
+    const e = document.createElementNS(SVGNS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  };
+
+  // Hatch pattern for sectioned parts.
+  const defs = svg.querySelector("defs") || el("defs", {}, svg);
+  const hatch = el("pattern", { id: "hatch", width: 1.6, height: 1.6, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, defs);
+  el("rect", { width: 1.6, height: 1.6, fill: "#e3c99a" }, hatch);
+  el("line", { x1: 0, y1: 0, x2: 0, y2: 1.6, stroke: "#9a7a45", "stroke-width": 0.35 }, hatch);
+
+  // Objects sit under the caliper; highlights sit on top of everything.
+  const objects = el("g", { id: "object" });
+  layer.insertBefore(objects, rod);
+  const marks = el("g", { id: "marks" }, layer);
+
+  const state = { mode: "od", pick: "od", twentieths: 0, answered: false, zoom: "whole", correct: 0, attempts: 0, streak: 0 };
+  window.state = state;
+
+  const value = () => state.twentieths / 20;
+  const fmt = (v) => v.toFixed(2);
+
+  function setSlider(mm) {
+    const t = `translate(${SLIDER_X0 + mm})`;
+    slider.setAttribute("transform", t);
+    rod.setAttribute("transform", t);
+  }
+
+  function drawObject(mode, r) {
+    objects.replaceChildren();
+    const stroke = { stroke: "#5a4626", "stroke-width": 0.3 };
+    if (mode === "od") {
+      el("rect", { x: OD_FACE, y: -42, width: r, height: 28, fill: "#d8b77a", ...stroke }, objects);
+    } else if (mode === "id") {
+      const w = 6, y = -87.6, h = 16.5;
+      el("rect", { x: ID_FACE - w, y, width: w, height: h, fill: "url(#hatch)", ...stroke }, objects);
+      el("rect", { x: ID_FACE + r, y, width: w, height: h, fill: "url(#hatch)", ...stroke }, objects);
+    } else {
+      const x0 = BEAM_END, x1 = BEAM_END + r, x2 = BEAM_END + r + 10;
+      el("path", {
+        d: `M ${x0},-76 H ${x2} V -40 H ${x0} V -56.19 H ${x1} V -60.19 H ${x0} Z`,
+        fill: "url(#hatch)", ...stroke,
+      }, objects);
+    }
+  }
+
+  // ---- view (two fixed zoom levels, tweened) ----
+  function targetBox() {
+    if (state.zoom === "scale") {
+      const vz = MAIN_ZERO + value();
+      return [vz - 5, -61.6, 49, 12.9];
+    }
+    const right = state.pick === "depth" ? BEAM_END + RANGES.depth[1] + 14 : 70;
+    const top = state.pick === "id" ? -89 : -88;
+    return [-147, top, right + 147, 83];
+  }
+  let current = null, raf = 0;
+  function applyBox(b) {
+    svg.setAttribute("viewBox", `${b[0] + LAYER_DX} ${b[1] + LAYER_DY} ${b[2]} ${b[3]}`);
+  }
+  function updateView(animate) {
+    const to = targetBox();
+    cancelAnimationFrame(raf);
+    if (!animate || !current || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      current = to; applyBox(to); return;
+    }
+    const from = current.slice(), t0 = performance.now(), dur = 260;
+    const step = (now) => {
+      const u = Math.min(1, (now - t0) / dur), e = u * (2 - u);
+      current = from.map((f, i) => f + (to[i] - f) * e);
+      applyBox(current);
+      if (u < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  // ---- reading breakdown ----
+  function parts() {
+    const n = Math.floor(state.twentieths / 20);  // whole mm
+    const k = state.twentieths % 20;              // vernier division that lines up
+    return { n, k, match: n + 2 * k };            // vernier line k sits on main mark n + 2k
+  }
+
+  function showMarks() {
+    const { n, k, match } = parts();
+    marks.replaceChildren();
+    const line = (x, y1, y2, color) =>
+      el("line", { x1: x, x2: x, y1, y2, stroke: color, "stroke-width": 0.42, "stroke-linecap": "round" }, marks);
+    const mainCol = getComputedStyle(document.documentElement).getPropertyValue("--main-mark").trim();
+    const matchCol = getComputedStyle(document.documentElement).getPropertyValue("--match-mark").trim();
+    line(MAIN_ZERO + n, -58.2, -53.8, mainCol);
+    line(MAIN_ZERO + match, -58.2, -53.8, matchCol);
+    line(MAIN_ZERO + value() + PITCH * k, -55.0, -52.6, matchCol);
+  }
+
+  function breakdownHTML() {
+    const { n, k, match } = parts();
+    return `<div class="breakdown">
+      <span class="swatch" style="background:var(--main-mark)"></span>Main scale: last mark at or before vernier 0 is <b>${n} mm</b><br>
+      <span class="swatch" style="background:var(--match-mark)"></span>Vernier line <b>${k}</b> lines up (with the ${match} mm mark): ${k} &times; 0.05 = <b>${fmt(k * 0.05)} mm</b><br>
+      Reading: ${n} + ${fmt(k * 0.05)} = <b>${fmt(value())} mm</b>
+    </div>`;
+  }
+
+  // ---- flow ----
+  function newObject() {
+    const modes = ["od", "id", "depth"];
+    state.pick = state.mode === "random" ? modes[Math.floor(Math.random() * 3)] : state.mode;
+    const [lo, hi] = RANGES[state.pick];
+    state.twentieths = lo * 20 + Math.floor(Math.random() * ((hi - lo) * 20 + 1));
+    state.answered = false;
+    state.zoom = "whole";
+    setPressed("zooms", "zoom", state.zoom);
+    setSlider(value());
+    drawObject(state.pick, value());
+    marks.replaceChildren();
+    $("task").textContent = `Read the ${NAMES[state.pick]}.`;
+    $("feedback").innerHTML = "";
+    $("reading").value = "";
+    $("reading").disabled = false;
+    $("check").disabled = false;
+    $("reveal").disabled = false;
+    updateView(false);
+    $("reading").focus({ preventScroll: true });
+  }
+
+  function finish(ok, html) {
+    state.answered = true;
+    state.attempts++;
+    if (ok) { state.correct++; state.streak++; } else { state.streak = 0; }
+    $("correct").textContent = state.correct;
+    $("attempts").textContent = state.attempts;
+    $("streak").textContent = state.streak;
+    $("reading").disabled = true;
+    $("check").disabled = true;
+    $("reveal").disabled = true;
+    $("feedback").innerHTML = html;
+    $("next").focus({ preventScroll: true });
+  }
+
+  function check() {
+    if (state.answered) return;
+    const raw = $("reading").value.trim().replace(",", ".");
+    const v = Number(raw);
+    if (raw === "" || !Number.isFinite(v)) {
+      $("feedback").innerHTML = `<span class="verdict no">Enter a number in millimetres, e.g. 23.45.</span>`;
+      return;
+    }
+    const scaled = v * 20;
+    if (Math.abs(scaled - Math.round(scaled)) > 1e-6) {
+      $("feedback").innerHTML = `<span class="verdict no">This caliper reads in steps of 0.05 mm, so the last digit should be 0 or 5.</span>`;
+      return;
+    }
+    const ok = Math.round(scaled) === state.twentieths;
+    showMarks();
+    finish(ok, ok
+      ? `<span class="verdict ok">Correct: ${fmt(value())} mm.</span>`
+      : `<span class="verdict no">Not quite. You entered ${fmt(v)} mm.</span>${breakdownHTML()}`);
+  }
+
+  function reveal() {
+    if (state.answered) return;
+    showMarks();
+    finish(false, `<span class="verdict">Answer shown.</span>${breakdownHTML()}`);
+  }
+
+  function setPressed(groupId, attr, val) {
+    for (const b of $(groupId).querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset[attr] === val));
+  }
+
+  $("modes").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    state.mode = b.dataset.mode;
+    setPressed("modes", "mode", state.mode);
+    newObject();
+  });
+  $("zooms").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    state.zoom = b.dataset.zoom;
+    setPressed("zooms", "zoom", state.zoom);
+    updateView(true);
+  });
+  $("answer").addEventListener("submit", (e) => { e.preventDefault(); check(); });
+  $("reveal").addEventListener("click", reveal);
+  $("next").addEventListener("click", newObject);
+
+  setPressed("modes", "mode", state.mode);
+  setPressed("zooms", "zoom", state.zoom);
+  newObject();
+})();
+</script>
+</body>
+</html>
