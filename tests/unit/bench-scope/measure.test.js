@@ -139,6 +139,45 @@ test('TBS: the multipurpose knob picks the type while the Measure menu shows', (
   assert.equal(engine.acquire(0).menu.items[1].value, 'Phase');
 });
 
+test('TBS: with cursors on, the knob picks the Measure type only while the Measure menu shows', () => {
+  const engine = scope('tbs2072b');
+  engine.press('cursors');
+  engine.softkey(1); // Type: Time
+  assert.equal(engine.mpFunction(), 'Cursor 1');
+  const c0 = engine.state().cursor1;
+  engine.press('measure');
+  assert.equal(engine.mpFunction(), 'Measure type');
+  engine.turn('mp-knob', 1);
+  assert.equal(engine.acquire(0).menu.items[1].value, 'Period');
+  assert.equal(engine.state().cursor1, c0, 'the cursor did not move');
+  engine.press('cursors'); // Measure menu no longer on screen
+  assert.equal(engine.mpFunction(), 'Cursor 1');
+  engine.turn('mp-knob', 1);
+  assert.notEqual(engine.state().cursor1, c0, 'now the knob moves the cursor');
+  engine.press('measure');
+  assert.equal(engine.acquire(0).menu.items[1].value, 'Period', 'and not the Measure type');
+});
+
+test('XY: no automatic measurements; the readouts come back in YT', () => {
+  for (const skin of SKIN_IDS) {
+    const engine = scope(skin);
+    addReadout(engine, 'ch1', 'freq');
+    const saved = engine.serialize();
+    saved.display.format = 'xy';
+    engine.restore(saved);
+    assert.equal(engine.disabled('measure'), true, skin);
+    const frame = engine.acquire(0);
+    assert.ok(!frame.readouts.some((r) => r.id.startsWith('measure')), skin);
+    let s = engine.state();
+    assert.deepEqual([s.measureCount, s.measure1Type, s.measure1Valid], [1, 'freq', false], skin);
+    engine.press('autoset'); // back to YT
+    engine.acquire(0);
+    s = engine.state();
+    assert.equal(engine.disabled('measure'), false);
+    assert.equal(s.measure1Valid, true, skin);
+  }
+});
+
 test('TDS: a slot set to None clears it; readouts survive save/restore and a skin switch', () => {
   const engine = scope('tds2001c');
   addReadout(engine, 'ch1', 'freq');

@@ -26,6 +26,10 @@
 //   TDS2001C  softkeys 1..5 are the five slots, each box showing its readout ("CH1 Freq" and the
 //             value, or "None"); pressing one opens that slot: 1 Source, 2 Type (None, Freq, ...),
 //             5 Back. Readouts show only in the Measure menu, as on the TDS2000C.
+// XY: no automatic measurements, as on both models: the Measure button is disabled (engine
+// `disabled` hook), nothing is shown, and every readout is invalid; the slots are kept for YT.
+// The multipurpose knob: Measure owns it (mpFunction, ahead of the cursors in FEATURES) only
+// while the TBS Measure menu shows.
 // Which TDS slot is open is live menu state: not saved, reset by restore and a press of Measure.
 //
 // State: measureCount, and for k = 1..MAX_READOUTS (the active readouts in slot order; null
@@ -33,6 +37,7 @@
 // (Hz, s, V or degrees; null when invalid), measureKValid.
 
 import { acquiredSPerDiv, acquiredTrace } from './acquire.js';
+import { isXY } from './display.js';
 import { choiceItem, menuShown } from './menus.js';
 import { oneOf, si } from './util.js';
 
@@ -168,7 +173,7 @@ function compute(ctx) {
   const sPerDiv = acquiredSPerDiv(ctx);
   const chan = {};
   for (const ch of SOURCES) {
-    const tr = settings[ch].display ? acquiredTrace(ctx, ch) : null;
+    const tr = settings[ch].display && !isXY(settings) ? acquiredTrace(ctx, ch) : null;
     chan[ch] = tr ? analyse(tr, sPerDiv, profile.screen.divX) : null;
   }
   return settings.measure.slots.filter((s) => s.type !== 'none').map(({ source, type }) => {
@@ -305,7 +310,7 @@ const menus = {
   },
 };
 
-const usesKnob = (ctx) => ctx.profile.id !== 'tds2001c' && menuShown(ctx.settings) === 'measure';
+const usesKnob = (ctx) => ctx.profile.id !== 'tds2001c' && !isXY(ctx.settings) && menuShown(ctx.settings) === 'measure';
 
 export const measure = {
   init(settings, setup, profile) {
@@ -319,6 +324,7 @@ export const measure = {
     caches.delete(settings);
   },
   menus,
+  disabled: ({ settings }, control) => control === 'measure' && isXY(settings),
   turn: {
     'mp-knob'(ctx, detents) { if (usesKnob(ctx)) stepType(ctx.settings, detents); },
   },
@@ -347,7 +353,7 @@ export const measure = {
   },
   frame(ctx, frame) {
     const r = results(ctx, frame.now);
-    if (ctx.profile.id === 'tds2001c') return; // shown in the Measure menu
+    if (ctx.profile.id === 'tds2001c' || isXY(ctx.settings)) return; // shown in the Measure menu
     r.forEach((m, i) => {
       frame.readouts.push({ id: `measure-${i + 1}`, channel: m.source === 'ch1-ch2' ? 'ch1' : m.source, text: `${nameText(m)} ${valueText(m)}` });
     });

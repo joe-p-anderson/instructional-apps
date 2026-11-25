@@ -144,8 +144,8 @@
 <rect x="1554.0" y="170.0" width="76.0" height="50.0" rx="9" fill="#e8e6e0" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
 </g>
 <text x="1712" y="152.0" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Display</text>
-<g id="tds-display" class="osc-control" data-control="display" data-kind="button" data-active="false" data-label="" data-cx="1712" data-cy="195">
-<title> (not available in this simulation)</title>
+<g id="tds-display" class="osc-control" data-control="display" data-kind="button" data-active="true" data-label="" data-cx="1712" data-cy="195">
+<title></title>
 <rect x="1674.0" y="174.0" width="76.0" height="50.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
 <rect x="1674.0" y="170.0" width="76.0" height="50.0" rx="9" fill="#e8e6e0" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
 </g>

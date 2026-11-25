@@ -8,7 +8,7 @@
 //             { type: 'push', control }, { type: 'press', control }, { type: 'softkey', n },
 //             { type: 'set', control, value }, and { type: 'hold' | 'release', control } when a
 //             button goes down / comes up (Trig View acts while held)
-//   values    { value(control), detent(control), mpFunction() }: the engine (see engine.js,
+//   values    { value(control), detent(control), disabled(control), mpFunction() }: the engine (see engine.js,
 //             "Control values")
 //
 // Input. Knobs: the wheel turns one detent per notch (small trackpad deltas add up to one), a
@@ -25,6 +25,8 @@
 // set(v) sends { type: 'set' } for valued controls, otherwise turns the knob to detent v or
 // presses the button once. A locked control ignores all input, is greyed with a "(locked)"
 // tooltip and aria-disabled; a hidden one gets visibility: hidden, so the panel keeps its layout.
+// Disabled: a control the engine disables for now (values.disabled, e.g. the time base in XY)
+// gets data-disabled="true" and class bs-disabled (dimmed) on sync(); the engine drops its events.
 // LEDs: the multipurpose-knob LEDs (mp-led-*, TDS) are lit (data-lit="true", class bs-lit) on
 // sync() while values.mpFunction() is non-null.
 // Inactive controls (data-active="false") ignore input and keep the "not available in this
@@ -261,6 +263,11 @@ export function createPanel({ svgText, model, onEvent, values }) {
       led.classList.toggle('bs-lit', lit === 'true');
     }
     for (const [name, { ctl, node, kind }] of byName) {
+      const off = Boolean(values.disabled?.(name));
+      if (node.dataset.disabled !== String(off)) {
+        node.dataset.disabled = String(off);
+        node.classList.toggle('bs-disabled', off);
+      }
       if (kind !== 'knob') continue;
       const rot = node.querySelector('.osc-knob-rot');
       const angle = values.detent(name) * Number(node.dataset.detent || 15);

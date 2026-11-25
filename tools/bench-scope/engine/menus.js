@@ -16,9 +16,10 @@
 //     },
 //   }
 //
-// An item is { label, value?, options?, select?(ctx) }: label on the first line, value (the
-// current setting) on the second, options (all choices, for skins that list them), and select
-// runs when its softkey is pressed. Build them with choiceItem / toggleItem / infoItem below.
+// An item is { label, value?, options?, select?(ctx), disabled? }: label on the first line, value
+// (the current setting) on the second, options (all choices, for skins that list them), and select
+// runs when its softkey is pressed. disabled: drawn greyed (an item the simulation doesn't offer;
+// give it no select). Build them with choiceItem / toggleItem / infoItem below.
 // Items are rebuilt from the settings every time, so a menu never caches a setting.
 //
 // Behaviour:
@@ -28,7 +29,7 @@
 // Menu state is live, not settings: it is not serialized, and restore() and a skin switch reset
 // it (no menu open).
 //
-// Frame: frame.menu = null, or { id, title, items: [{ label, value, options } | null] } while
+// Frame: frame.menu = null, or { id, title, items: [{ label, value, options, disabled } | null] } while
 // a menu is on screen.
 // Wiring: engine.js builds the menu feature from every feature's `menus` (menuSystem below).
 
@@ -111,7 +112,9 @@ export function menuSystem(features) {
       frame.menu = {
         id,
         title,
-        items: items(ctx, id).map((it) => (it ? { label: it.label, value: it.value ?? '', options: it.options ?? null } : null)),
+        items: items(ctx, id).map((it) => (it
+          ? { label: it.label, value: it.value ?? '', options: it.options ?? null, disabled: it.disabled === true }
+          : null)),
       };
     },
   };

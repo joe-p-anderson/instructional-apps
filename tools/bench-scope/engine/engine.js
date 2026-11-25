@@ -20,6 +20,8 @@
 //   engine.detent(control)            integer knob position: rotation = detent · the knob's detent
 //                                     angle. From the feature's value if it has one, otherwise the
 //                                     net detents turned so far (not saved).
+//   engine.disabled(control)          true while a feature disables the control (the time base and
+//                                     trigger in XY): its events are ignored, the panel greys it
 //   engine.mpFunction()               what the multipurpose knob does now (a short label, e.g.
 //                                     'Cursor 1'), or null; the TDS lights its knob LEDs when non-null
 //
@@ -39,6 +41,8 @@
 //     traces: { ch1: { x[], y[], vPerDiv, position } }   divisions; x 0..divX, y up from centre
 //     readouts: [{ id, text, channel? }],            the renderer places them by id
 //     menu: null | { id, title, items: [{ label, value, options } | null] }   (menus.js)
+//     xy: { x[], y[], clipped } in XY format only (traces is then {}): CH1 → x (0..divX, centre
+//         divX/2), CH2 → y (up from centre), each at its V/div and position (acquire.js)
 //     cursors: null | { ... },  trigView: true while Trig View is held (traces = the trigger signal),
 //     markers: { triggerLevel: { y, channel }, triggerPoint: { x } } }   divisions, see trigger.js
 //
@@ -54,14 +58,18 @@
 //   controls: { [control]: { get(ctx), set(ctx, value), detent?(ctx) } }   Control values; give
 //                                       detent() for a knob whose rotation follows its value
 //   mpFunction(ctx) -> string|null      the multipurpose knob's current function, if this feature owns it
+//                                       (FEATURES order decides; mp-knob events go only to the owner)
 //   menus: { [id]: menu }               softkey menus it adds (see menus.js); softkeys go to the
 //                                       menu on screen, so a feature rarely needs softkey()
 //   hold / release: { [control]: (ctx) => void }   a button went down / came up (Trig View)
+//   disabled(ctx, control) -> bool      true: that control's turn/push/press/hold events are
+//                                       dropped for now (XY disables the time base and trigger)
 // where ctx = { settings, profile }. Add a feature by writing a module and listing it in
 // SETTINGS_FEATURES below (its menus come with it).
 
 import { acquireTraces, acquisition } from './acquire.js';
 import { autosetFeature } from './autoset.js';
+import { cursors } from './cursors.js';
 import { display } from './display.js';
 import { horizontal } from './horizontal.js';
 import { measure } from './measure.js';
@@ -77,13 +85,15 @@ const SETTINGS_FEATURES = [
   trigger,
   acquisition,
   display,
-  measure,
+  measure, // before cursors: it takes the multipurpose knob while the Measure menu shows
+  cursors,
   autosetFeature, // last: it sets the features above through their Control hooks
 ];
 // Plus the softkey menus those features define (each feature's `menus` hook, see menus.js).
 const FEATURES = [...SETTINGS_FEATURES, menuSystem(SETTINGS_FEATURES)];
 
 const SERIAL_VERSION = 1;
+const MP_KNOB = 'mp-knob';
 
 export function createEngine(profile, setup = {}) {
   const ctx = { profile, settings: {} };
@@ -103,9 +113,16 @@ export function createEngine(profile, setup = {}) {
     } else if (type === 'softkey') {
       for (const f of FEATURES) f.softkey?.(ctx, event.n);
     } else if (type === 'turn' || type === 'push' || type === 'press' || type === 'hold' || type === 'release') {
+      // A control a feature disables right now (e.g. the time base in XY) ignores the event; a
+      // release always goes through, so a held button can't stick.
+      if (type !== 'release' && FEATURES.some((f) => f.disabled?.(ctx, event.control))) return;
       const arg = type === 'turn' ? Math.trunc(Number(event.detents) || 0) : undefined;
       if (type === 'turn') spins.set(event.control, (spins.get(event.control) ?? 0) + arg);
-      for (const f of FEATURES) f[type]?.[event.control]?.(ctx, arg);
+      // The multipurpose knob goes only to the feature that owns it now (the first whose
+      // mpFunction is non-null), so e.g. the Measure menu's type selection and the cursors don't
+      // both move on one turn.
+      const owner = event.control === MP_KNOB ? FEATURES.find((f) => f.mpFunction?.(ctx)) : null;
+      for (const f of owner ? [owner] : FEATURES) f[type]?.[event.control]?.(ctx, arg);
     } else if (type === 'set') {
       controlHook(event.control)?.set?.(ctx, event.value);
     }
@@ -125,6 +142,9 @@ export function createEngine(profile, setup = {}) {
       const hook = controlHook(control);
       return hook?.detent ? hook.detent(ctx) : (spins.get(control) ?? 0);
     },
+
+    /** Whether a feature disables `control` right now (its events are dropped). */
+    disabled: (control) => FEATURES.some((f) => f.disabled?.(ctx, control)),
 
     mpFunction() {
       for (const f of FEATURES) { const fn = f.mpFunction?.(ctx); if (fn) return fn; }

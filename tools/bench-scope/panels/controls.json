@@ -339,7 +339,7 @@
      "control": "acquire",
      "kind": "button",
      "label": "Acquire",
-     "active": false,
+     "active": true,
      "cx": 2046,
      "cy": 526
     },
@@ -618,7 +618,7 @@
      "control": "display",
      "kind": "button",
      "label": "",
-     "active": false,
+     "active": true,
      "cx": 1712,
      "cy": 195
     },

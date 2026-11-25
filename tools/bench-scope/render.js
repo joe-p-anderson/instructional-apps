@@ -8,9 +8,11 @@
 //                         "CH1" in the channel colour)
 // Readouts without a slot are laid out along the bottom bar from style.readouts.spareX, so a
 // new readout shows up before it gets a slot.
+// Cursors (frame.cursors) are drawn over the traces: dashed lines, the selected one solid.
 // The softkey menu (frame.menu) is drawn last, over the graticule, in style.menu: the title at
 // style.menu.titleY, then one box per softkey slot with the item's label and its current value
-// (highlighted). Colours: style.colors.menu / menuText.
+// (highlighted); disabled items are greyed. Colours: style.colors.menu / menuText.
+// In XY format frame.xy (CH1 → x, CH2 → y) is drawn as one line in the CH1 colour.
 
 /** Where each readout id goes on each skin's screen: [x, y, align]. */
 const READOUT_SLOTS = {
@@ -23,6 +25,9 @@ const READOUT_SLOTS = {
     // Measure readouts (measure.js): two rows of three along the bottom of the graticule, left
     // of the menu column. (The TDS shows its readouts in the Measure menu boxes instead.)
     ...Object.fromEntries([0, 1, 2, 3, 4, 5].map((i) => [`measure-${i + 1}`, [32 + (i % 3) * 205, 392 + Math.floor(i / 3) * 24, 'left']])),
+    'cursor-dt': [250, 15, 'left'],
+    'cursor-inv': [400, 15, 'left'],
+    'cursor-dv': [250, 15, 'left'],
   },
   // TDS1000C/2000C: trigger status top left, CH readouts then time base along the bottom.
   tds2001c: {
@@ -31,6 +36,9 @@ const READOUT_SLOTS = {
     'ch2-scale': [70, 228, 'left'],
     timebase: [134, 228, 'left'],
     trigger: [196, 228, 'left'],
+    'cursor-dt': [80, 7, 'left'],
+    'cursor-inv': [160, 7, 'left'],
+    'cursor-dv': [80, 7, 'left'],
   },
 };
 
@@ -78,8 +86,9 @@ function drawMenu(g, menu, style) {
     g.strokeRect(m.x + 1.5, y + 1.5, m.w - 3, slotH - 3);
     if (!it) return;
     const mid = y + slotH / 2;
+    g.globalAlpha = it.disabled ? 0.4 : 1; // greyed: an item the simulation doesn't offer
     g.fillStyle = fg;
-    g.fillText(it.label, m.x + m.w / 2, mid - lineH * 0.55 + 1);
+    g.fillText(it.label, m.x + m.w / 2, mid - lineH * 0.55 + 1, m.w - 6); // squeezed if too long
     if (it.value) {
       const w = Math.min(m.w - 6, g.measureText(it.value).width + 8);
       g.fillStyle = fg;
@@ -87,6 +96,7 @@ function drawMenu(g, menu, style) {
       g.fillStyle = colors.menu ?? '#203040';
       g.fillText(it.value, m.x + m.w / 2, mid + lineH * 0.6 + 1);
     }
+    g.globalAlpha = 1;
   });
   g.textAlign = 'left';
 }
@@ -137,7 +147,30 @@ export function renderScreen(g, frame, profile) {
     }
     g.stroke();
   }
+  // XY: CH1 across, CH2 up, one line in the CH1 colour (as on the Tek screens).
+  if (frame.xy) {
+    g.strokeStyle = colors.ch1 ?? colors.text;
+    g.beginPath();
+    frame.xy.x.forEach((x, i) => { if (i) g.lineTo(toX(x), toY(frame.xy.y[i])); else g.moveTo(toX(x), toY(frame.xy.y[i])); });
+    g.stroke();
+  }
   g.restore();
+
+  // Cursors: dashed lines across the graticule, the selected one solid; amplitude cursors in
+  // their source channel's colour.
+  if (frame.cursors) {
+    g.save();
+    g.strokeStyle = colors[frame.cursors.channel] ?? colors.text;
+    g.lineWidth = 1;
+    frame.cursors.lines.forEach((l, i) => {
+      g.setLineDash(i + 1 === frame.cursors.selected ? [] : [4, 3]);
+      g.beginPath();
+      if (l.axis === 'x') { const X = Math.round(toX(l.pos)) + 0.5; g.moveTo(X, plot.y); g.lineTo(X, plot.y + plot.h); }
+      else { const Y = Math.round(toY(l.pos)) + 0.5; g.moveTo(plot.x, Y); g.lineTo(plot.x + plot.w, Y); }
+      g.stroke();
+    });
+    g.restore();
+  }
 
   // Trigger markers: the level as an arrow on the right edge in the source colour, the
   // trigger point as a "T" flag along the top. Off-screen positions pin to the edge.
