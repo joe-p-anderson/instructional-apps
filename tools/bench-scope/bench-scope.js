@@ -1,9 +1,9 @@
 // Bench Oscilloscope Tool (framework v1, Spec 0002): a front-panel scope modelled on the
 // lab's Tektronix TBS2072B (and, from ticket 03, TDS2001C), with a source panel beside it.
 //
-// Setup: { skin: 'tbs2072b', gen1Wave, gen1Freq, gen1Vpp, gen1Offset } (any subset).
+// Setup: { skin: 'tbs2072b', gen1Wave, ..., ch2Source, ch2Fc, ..., gen2Phase } (any subset; source keys in engine/source.js).
 // State: engine.state() (see engine/engine.js and each feature module for keys and units).
-// Controls: source panel 'gen1-wave', 'gen1-freq', 'gen1-vpp', 'gen1-offset', and every active
+// Controls: source panel 'gen1-*', 'ch2-source', 'ch2-fc', 'ch2-f0', 'ch2-q', 'gen2-*' (see source-panel.js), and every active
 //   knob, button and softkey on the front panel by its control-map name ('ch1-scale',
 //   'ch1-menu', 'softkey-3', ...; see panel.js for get/set and engine feature modules for values).
 // Displays: 'screen' (the scope screen at native resolution; the front panel is not included).
