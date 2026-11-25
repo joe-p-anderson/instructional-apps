@@ -1,0 +1,576 @@
+% Lab 10: Spacetime diagrams.
+%
+% One source, three PDFs:
+%   Labs/Lab10_spacetime.tex        grayscale handout (this file): the moving
+%                                   grid is dark and dashed, for B&W copies
+%   Labs/Lab10_spacetime_color.tex  colour handout: the moving grid is blue
+%   Labs/Lab10_spacetime_key.tex    answer key, in colour so the red answers
+%                                   stand out from the grids
+% The wrappers set a flag and \input this file, so edit only here.
+%
+% Layout. Every page break is chosen by hand with \newpage, and answer space
+% is stretchable: \room{n} is a small floor plus n shares of whatever the page
+% has left over. So each page fills to the bottom, a bigger n gets a bigger
+% share, and a question is never left at the foot of a page without its space.
+% If an edit makes a page overflow, move a \newpage rather than shrinking the
+% numbers.
+\documentclass{handout}
+\usepackage{spacetime}
+\ifdefined\labkey \printanswers \fi
+
+\newcommand{\room}[1]{0.35in plus #1fill}
+
+\assignment{Lab 10\ifprintanswers\ (Key)\fi}
+\title{Spacetime Diagrams}
+\duedate{}
+
+\begin{document}
+\maketitle
+
+\section*{Reading the diagrams}
+
+Throughout this lab, $c=1$. Distances are in light-years (ly) and times in
+years (yr), so light covers 1~ly every 1~yr, and a light ray is a line at
+$45^\circ$.
+
+Every diagram prints two grids.
+\begin{itemize}[nosep]
+  \item The \textbf{gray square grid} is the Earth frame, with coordinates $(x,t)$.
+  \item The \textbf{\ifdefined\spacetimecolor blue\else dark dashed\fi\ grid} is a
+        rocket moving at $\beta = v/c = 0.6$, with coordinates $(x',t')$. Its
+        $t'$ axis is the rocket's own worldline. Lines parallel to the $t'$ axis
+        are places of constant $x'$, and lines parallel to the $x'$ axis are the
+        rocket's lines of constant $t'$, its ``now.''
+  \item Each step of the tilted grid is 1~ly or 1~yr \emph{in the rocket
+        frame}, even though it looks longer on the page. To read an event's
+        rocket coordinates, count tilted lines; do not measure with a ruler.
+\end{itemize}
+At this speed $\gamma = 1/\sqrt{1-\beta^2} = 1.25$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Building the diagram}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{center}
+\begin{spacetime}[0.8]{-2}{6}{0}{7}
+  \movinggrid{0.6}{0}{0}
+  \answer{
+    \draw[st ans] (2,0) -- (2,7) node[pos=0.9, st anslabel, right] {lamp};
+    \draw[st ans] (0,0) -- (4.2,7) node[pos=0.85, st anslabel, left] {rocket};
+    \draw[st light] (0,0) -- (6,6);
+    \draw[st light] (0,0) -- (-2,2);
+    \node[st event, label={[st anslabel]right:$E$}] at (3,5) {};
+    \node[st event, label={[st anslabel]right:$F$}] at (5,5) {};
+  }
+\end{spacetime}
+\end{center}
+
+\begin{questions}
+  \question On the diagram, draw the worldline of each of these.
+  \begin{parts}
+    \part A lamp sitting still at $x = 2$~ly.
+    \part A rocket that leaves $x=0$ at $t=0$ moving at $0.6c$. Where is it at $t=5$~yr?
+    \part A flash of light sent both ways from $x = 0$ at $t = 0$.
+  \end{parts}
+  % answered on the diagram, so no floor: just what is left of page 1
+  \begin{solution}[0pt plus 1fill]
+    (a) A vertical line at $x=2$. (b) A straight line from the origin through
+    $(x,t) = (3,5)$: it covers 0.6~ly each year. (c) Two $45^\circ$ lines from
+    the origin, one each way.
+  \end{solution}
+
+\newpage
+  \question Explain why no object's worldline can tilt farther from vertical
+  than $45^\circ$.
+  \begin{solution}[\room{1}]
+    The tilt from vertical measures speed: $\Delta x/\Delta t$. A line beyond
+    $45^\circ$ covers more than 1~ly per year, which is faster than light.
+  \end{solution}
+
+  \question Your rocket's worldline lies on top of one of the tilted lines.
+  Which one? Explain why a rocket's own time axis has to be its own worldline.
+  \begin{solution}[\room{1}]
+    The $t'$ axis. In its own frame the rocket sits still at $x'=0$, and the
+    set of all events at $x'=0$ is exactly the $t'$ axis.
+  \end{solution}
+
+  \question Mark the event $E$ at $(x,t) = (3,5)$ and the event $F$ at
+  $(x,t) = (5,5)$. Count tilted lines to find each event's rocket coordinates
+  $(x',t')$.
+  \begin{solution}[\room{1}]
+    $E$: $(x',t') = (0,4)$, on the rocket's own worldline.
+    $F$: $(x',t') = (2.5, 2.5)$.
+  \end{solution}
+
+  \question $F$ lies on your light ray. What do the rocket's coordinates of
+  $F$ say about the speed of light in the rocket frame?
+  \begin{solution}[\room{1}]
+    $x' = t'$, so in the rocket frame the light also covers 1~ly per year:
+    both frames measure the same speed of light. That is the whole reason the
+    tilted grid has to tilt symmetrically about the $45^\circ$ line.
+  \end{solution}
+\end{questions}
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Relativity of simultaneity}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+A rocket 4~ly long (in its own frame) moves at $0.6c$. A lamp at its exact
+middle flashes at $t = t' = 0$, at the origin. Detectors at the back
+($x' = -2$) and the front ($x'=+2$) record when the light reaches them.
+
+\begin{center}
+\begin{spacetime}[1.0]{-3}{6}{0}{6}
+  \movinggrid{0.6}{0}{0}
+  \answer{
+    \draw[st ans] (-1.6,0) -- (2,6);
+    \draw[st ans] (1.6,0) -- (5.2,6);
+    \draw[st light] (0,0) -- (6,6);
+    \draw[st light] (0,0) -- (-3,3);
+    \node[st event, label={[st anslabel]left:$B$}] at (-1,1) {};
+    \node[st event, label={[st anslabel]right:$F$}] at (4,4) {};
+    \draw[st ans, dashed] (-1,1) -- (4,4);
+  }
+\end{spacetime}
+\end{center}
+
+\begin{questions}
+  \question Trace the worldlines of the back and the front of the rocket
+  along the tilted grid. Then draw the flash going each way.
+  \begin{solution}[\room{1}]
+    The ends follow the tilted lines $x'=-2$ and $x'=+2$. The flash is two
+    $45^\circ$ lines from the origin.
+  \end{solution}
+
+  \question Mark $B$, where light reaches the back, and $F$, where it reaches
+  the front. Give the rocket time $t'$ of each.
+  \begin{solution}[\room{1}]
+    $t'_B = t'_F = 2$~yr. In the rocket frame the two arrivals are simultaneous,
+    as they must be: the lamp is in the middle and light goes the same speed both
+    ways.
+  \end{solution}
+
+  \question Give the Earth time $t$ of each. Which arrival happens first in the
+  Earth frame?
+  \begin{solution}[\room{1}]
+    $B$ at $(x,t)=(-1,1)$ and $F$ at $(x,t)=(4,4)$. In the Earth frame the light
+    reaches the back first, 3~yr before it reaches the front.
+  \end{solution}
+
+\newpage
+  \question Explain, from the point of view of someone on Earth, why the back
+  is reached first.
+  \begin{solution}[\room{1}]
+    Light goes the same speed both ways in the Earth frame too, but the back of
+    the rocket is moving toward the flash and the front is running away from it.
+    The light going backward has less distance to cover.
+  \end{solution}
+
+  \question Connect $B$ and $F$. Which grid lines is your line parallel to?
+  In one sentence, what does that say about the word ``simultaneous''?
+  \begin{solution}[\room{1}]
+    The line through $B$ and $F$ is parallel to the $x'$ axis: it is one of the
+    rocket's ``now'' lines. Events that are simultaneous in one frame are not
+    simultaneous in another moving relative to it; ``at the same time'' depends
+    on the frame.
+  \end{solution}
+\end{questions}
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Time dilation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{questions}
+  \question A light clock is a pulse of light bouncing between two mirrors a
+  distance $D$ apart; one tick is one round trip. In the clock's own frame a
+  tick takes $\Delta t_0 = 2D/c$. Seen from a frame where the clock moves
+  sideways at speed $v$, the light travels a longer, diagonal path. Use the
+  Pythagorean theorem to show that the moving clock's tick takes
+  \[ \Delta t = \gamma\,\Delta t_0, \qquad \gamma = \frac{1}{\sqrt{1-v^2/c^2}}. \]
+  \begin{solution}[\room{1}]
+    In the frame where the clock moves, each half-tick takes $\Delta t/2$. In
+    that time the light goes $c\,\Delta t/2$ along the diagonal while the clock
+    moves $v\,\Delta t/2$ sideways, and the vertical leg is still $D$:
+    \[ \left(\tfrac{c\Delta t}{2}\right)^2 = D^2 + \left(\tfrac{v\Delta t}{2}\right)^2
+       \quad\Rightarrow\quad
+       \Delta t = \frac{2D/c}{\sqrt{1-v^2/c^2}} = \gamma\,\Delta t_0 . \]
+  \end{solution}
+\end{questions}
+
+\newpage
+The rocket carries a clock at $x' = 0$, and Earth has a clock at $x = 0$.
+Both read zero at the origin.
+
+\begin{center}
+\begin{spacetime}[0.95]{-1}{6}{0}{8}
+  \movinggrid{0.6}{0}{0}
+  \answer{
+    \draw[st ans] (0,0) -- (4.8,8);
+    \node[st event, label={[st anslabel]right:$R$}] at (3,5) {};
+    \node[st event, label={[st anslabel]left:$G$}] at (0,4) {};
+    \draw[st ans, dashed] (0,4) -- (3.75,6.25);
+    \draw[st ans, dashed] (3,5) -- (0,5);
+  }
+\end{spacetime}
+\end{center}
+
+\begin{questions}
+  \question Mark the event $R$ where the rocket clock reads $t' = 4$~yr. How
+  much time has passed in the Earth frame? What is the ratio, and how does it
+  compare to $\gamma$?
+  \begin{solution}[\room{1}]
+    $R$ is at $(x,t)=(3,5)$. Earth says 5~yr have passed while the rocket clock
+    shows 4: the ratio is $5/4 = 1.25 = \gamma$. Earth says the rocket clock
+    runs slow.
+  \end{solution}
+
+  \question Mark the event $G$ where the Earth clock reads $t = 4$~yr. Count
+  tilted lines: what is the rocket time $t'$ of $G$? What does the rocket
+  conclude about the Earth clock?
+  \begin{solution}[\room{1}]
+    $G$ is at $(x',t') = (-3,5)$. The rocket says 5~yr have passed while the
+    Earth clock shows 4. The rocket says the \emph{Earth} clock runs slow, by the
+    same factor $\gamma$.
+  \end{solution}
+
+\newpage
+  \question Each frame says the other's clock runs slow. Draw the rocket's
+  ``now'' line through $G$, and Earth's ``now'' line through $R$. Use them to
+  explain why the two claims do not contradict each other.
+  \begin{solution}[\room{1}]
+    Comparing two clocks that are far apart means deciding which reading on one
+    happens ``at the same time'' as a reading on the other, and the frames
+    disagree about that. Earth's now line through $R$ is horizontal, so it pairs
+    rocket~4 with Earth~5. The rocket's now line through $G$ is parallel to $x'$
+    and meets the rocket worldline at $t'=5$, so it pairs Earth~4 with rocket~5.
+    Each comparison is right in its own frame; they are different comparisons.
+  \end{solution}
+\end{questions}
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Length contraction: the pole and the barn}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+A barn sits at rest on Earth, with its open doors at $x=0$ and $x=4$~ly. A
+pole 5~ly long in its own frame moves through it at $0.6c$. The back of the
+pole is at $x' = 0$ and the front at $x' = 5$, and the back reaches the first
+door at the origin.
+
+\begin{center}
+\begin{spacetime}[0.95]{-1}{8}{-4}{4}
+  \movinggrid{0.6}{0}{0}
+  \answer{
+    \draw[st ans] (0,-4) -- (0,4);
+    \draw[st ans] (4,-4) -- (4,4);
+    \draw[st ans] (-1,-1.6667) -- (3.4,5.6667);
+    \draw[st ans] (1.6,-4) -- (8,6.6667);
+    \node[st event, label={[st anslabel]above left:$P$}] at (0,0) {};
+    \node[st event, label={[st anslabel]right:$Q$}] at (4,0) {};
+    \draw[st ans, dashed] (0,0) -- (4,0);
+    \draw[st ans, dashed] (4,0) -- (-1,-3); % the pole's now line t'=-3
+  }
+\end{spacetime}
+\end{center}
+
+\begin{questions}
+  \question Draw the worldlines of both barn doors and of both ends of the pole.
+  \begin{solution}[\room{1}]
+    The doors are vertical lines at $x=0$ and $x=4$. The pole's ends follow the
+    tilted lines $x'=0$ (the $t'$ axis) and $x'=5$.
+  \end{solution}
+
+  \question Earth measures the pole's length by marking both ends at the same
+  Earth time, $t=0$. How long is the pole in the Earth frame? Compare to
+  $5/\gamma$.
+  \begin{solution}[\room{1}]
+    At $t=0$ the back is at $x=0$ and the front at $x=4$, so Earth measures 4~ly,
+    which is $5/1.25$. The moving pole is contracted.
+  \end{solution}
+
+  \question According to Earth, does the pole ever fit inside the barn?
+  \begin{solution}[\room{1}]
+    Yes, exactly, at $t=0$: back end at the first door (event $P$), front end at
+    the far door (event $Q$).
+  \end{solution}
+
+\newpage
+  \question Now take the pole's point of view. Count tilted lines to find the
+  rocket time $t'$ of $P$ and of $Q$. Which happens first for the pole? In the
+  pole's frame, how long is the barn?
+  \begin{solution}[\room{1}]
+    $t'_P = 0$ and $t'_Q = -3$~yr. For the pole, the front reaches the far door
+    3~yr \emph{before} the back reaches the first door, so the pole never fits.
+    The barn moves past the pole and is contracted to $4/1.25 = 3.2$~ly.
+  \end{solution}
+
+  \question Earth says the pole fits; the pole says it does not. Who is right?
+  Use the diagram to explain.
+  \begin{solution}[\room{1}]
+    Both. ``The pole is inside the barn'' means both ends are inside \emph{at the
+    same time}, and the two frames disagree about which events are simultaneous.
+    Earth's now line $t=0$ pairs $P$ with $Q$; the pole's now lines are tilted
+    and never pair them.
+  \end{solution}
+\end{questions}
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{The invariant interval}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The frames disagree about times, lengths and simultaneity. One combination of
+coordinates they all agree on is the \emph{interval}, $s^2 = t^2 - x^2$.
+
+\begin{questions}
+  \question Fill in the table with events from earlier in the lab.
+
+  \begin{center}
+  \renewcommand{\arraystretch}{1.6}
+  \begin{tabular}{l|c|c|c||c|c|c}
+    Event & $x$ & $t$ & $t^2-x^2$ & $x'$ & $t'$ & $t'^2-x'^2$ \\ \hline
+    $E$ (Section 1) & 3 & 5 &
+      \ifprintanswers 16\fi & \ifprintanswers 0\fi & \ifprintanswers 4\fi & \ifprintanswers 16\fi \\
+    $F$ (Section 1) & 5 & 5 &
+      \ifprintanswers 0\fi & \ifprintanswers 2.5\fi & \ifprintanswers 2.5\fi & \ifprintanswers 0\fi \\
+    $B$ (Section 2) & \ifprintanswers $-1$\fi & \ifprintanswers 1\fi &
+      \ifprintanswers 0\fi & \ifprintanswers $-2$\fi & \ifprintanswers 2\fi & \ifprintanswers 0\fi \\
+    $G$ (Section 3) & 0 & 4 &
+      \ifprintanswers 16\fi & \ifprintanswers $-3$\fi & \ifprintanswers 5\fi & \ifprintanswers 16\fi \\
+    $Q$ (Section 4) & 4 & 0 &
+      \ifprintanswers $-16$\fi & \ifprintanswers 5\fi & \ifprintanswers $-3$\fi & \ifprintanswers $-16$\fi \\
+  \end{tabular}
+  \end{center}
+
+  \question What do you notice? What does $s^2 = 0$ mean about an event and the
+  origin?
+  \begin{solution}[\room{1}]
+    The interval comes out the same in both frames for every event. $s^2=0$ means
+    the event lies on a light ray from the origin, and both frames agree on that.
+  \end{solution}
+
+\newpage
+  \question On the grid below, plot every event you can find with
+  $t^2 - x^2 = 16$ (try $x = 0, \pm 3, \pm 4, \pm 5$) and sketch the curve
+  through them. Which tick on the rocket's $t'$ axis does the curve pass
+  through?
+
+  \begin{center}
+  \begin{spacetime}[0.8]{-6}{6}{0}{8}
+    \movinggrid{0.6}{0}{0}
+    \answer{
+      \draw[st ans, domain=-6:6, samples=60, smooth] plot (\x, {sqrt(16+\x*\x)});
+      \foreach \p in {(0,4),(3,5),(-3,5),(4,5.657),(-4,5.657),(5,6.403),(-5,6.403)}
+        {\node[st event] at \p {};}
+    }
+  \end{spacetime}
+  \end{center}
+
+  \begin{solution}[\room{1}]
+    The curve is a hyperbola through $(0,4)$, $(\pm3, 5)$, $(\pm4, 5.66)$ and
+    $(\pm5, 6.40)$. It passes through the $t' = 4$ tick.
+  \end{solution}
+
+  \question The interval from the origin to an event on a clock's worldline is
+  the time that clock itself measures (its \emph{proper time}). Use that to
+  explain why the tilted tick marks look farther apart than the square ones,
+  even though each stands for 1~yr.
+  \begin{solution}[\room{2}]
+    Every clock that leaves the origin reads 4~yr when it reaches the
+    $s^2=16$ hyperbola. The hyperbola curves upward and away from the origin, so
+    along the tilted $t'$ axis it is farther out on the page than along the
+    vertical $t$ axis. The page is drawn with Earth's ruler; distances on it do
+    not measure the rocket's time.
+  \end{solution}
+\end{questions}
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{A real check: muons}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Muons are made when cosmic rays hit the top of the atmosphere. At rest, a muon
+lives an average of $\tau = 2.2~\mu$s. In 1962, David Frisch and James Smith
+counted muons moving at about $0.995c$ at the top of Mount Washington, 1917~m
+up, and then at sea level in Cambridge, Massachusetts.\footnote{D.~H.~Frisch and
+J.~H.~Smith, ``Measurement of the relativistic time dilation using
+$\mu$-mesons,'' \emph{Am.\ J.\ Phys.}\ \textbf{31}, 342 (1963).}
+
+\begin{center}
+\begin{tabular}{lc}
+  \toprule
+  Location & Muons per hour \\ \midrule
+  Mount Washington, 1917~m & 563 \\
+  Cambridge, sea level     & 412 \\ \bottomrule
+\end{tabular}
+\end{center}
+
+For muons it helps to keep $c=1$ but change units: distance in
+light-microseconds (1~light-$\mu$s $= 300$~m) and time in $\mu$s.
+
+\begin{questions}
+  \question How far is the trip down, in light-$\mu$s? How long does it take,
+  in the Earth frame?
+  \begin{solution}[\room{1}]
+    $1917~\text{m} / 300~\text{m} = 6.39$~light-$\mu$s. At $0.995c$ the trip
+    takes $6.39/0.995 = 6.4~\mu$s.
+  \end{solution}
+
+  \question If a muon's clock ran at the Earth rate, the fraction surviving the
+  trip would be $e^{-\Delta t/\tau}$. How many of the 563 per hour should reach
+  sea level? Compare to what was measured.
+  \begin{solution}[\room{1}]
+    $e^{-6.4/2.2} = e^{-2.9} \approx 0.054$, so about 30 per hour (Frisch and
+    Smith, correcting for the spread in speeds, predicted 27). They measured 412,
+    more than ten times as many.
+  \end{solution}
+
+  \question From the measured counts, how much time passed on the muons' own
+  clocks during the trip? What time-dilation factor does that imply? Compare to
+  $\gamma$ at $0.995c$.
+  \begin{solution}[\room{1.3}]
+    $\Delta t_0 = \tau\ln(563/412) = 2.2 \times 0.312 = 0.69~\mu$s. The implied
+    factor is $6.4/0.69 \approx 9$. At $0.995c$, $\gamma = 10.0$. Close: the
+    muons slow down in the air on the way, so their average $\gamma$ is a little
+    lower. (Frisch and Smith's careful analysis gave $8.8 \pm 0.8$.)
+  \end{solution}
+
+\newpage
+  \question In the muon's own frame the muon is at rest and lives its normal
+  life. How does the muon explain making it down? How tall is the mountain in
+  the muon frame?
+  \begin{solution}[\room{1}]
+    In the muon frame the mountain rushes up at $0.995c$ and is length-contracted
+    by $\gamma$: about $1917/9 \approx 210$~m, which takes only $0.7~\mu$s to pass.
+    Earth says time dilation, the muon says length contraction: one fact, two
+    descriptions.
+  \end{solution}
+
+  \question Sketch a spacetime diagram of the trip in the Earth frame: the
+  mountaintop and sea level as worldlines, and the muon's worldline between
+  them. Label the Earth time and the muon's own time for the trip. (The grids
+  in this lab are for $0.6c$, so this one is a sketch.)
+  \begin{solution}[\room{2}]
+    Two vertical lines, the top at $x=0$ and sea level at $x = 6.4$~light-$\mu$s
+    (taking downward as $+x$). The muon's worldline runs from the top at $t=0$
+    to sea level at $t=6.4~\mu$s, very nearly at $45^\circ$. Its own clock reads
+    only about $0.7~\mu$s at the bottom.
+  \end{solution}
+\end{questions}
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{The twin paradox}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+One twin stays on Earth at $x=0$. The other leaves at $t=0$, flies at $0.6c$ to
+a star 3~ly away, turns around immediately, and flies home at $0.6c$. Both
+diagrams show the whole trip. The left one carries the outbound rocket's grid
+$(x',t')$, with its origin where the trip starts. The right one carries the
+homebound rocket's grid $(x'',t'')$, tilted the other way, with its origin at
+the turnaround.
+
+\begin{center}
+\begin{spacetime}[0.9]{-1}{5}{0}{10}
+  \movinggrid{0.6}{0}{0}
+  \answer{
+    \draw[st ans] (0,0) -- (0,10);
+    \draw[st ans] (0,0) -- (3,5) -- (0,10);
+    \node[st event, label={[st anslabel]right:$T$}] at (3,5) {};
+    \draw[st ans, dashed] (3,5) -- (0,3.2);
+  }
+\end{spacetime}
+\hspace{1.2cm}
+\begin{spacetime}[0.9]{-1}{5}{0}{10}
+  \movinggrid['']{-0.6}{3}{5}
+  \answer{
+    \draw[st ans] (0,0) -- (0,10);
+    \draw[st ans] (0,0) -- (3,5) -- (0,10);
+    \node[st event, label={[st anslabel]right:$T$}] at (3,5) {};
+    \draw[st ans, dashed] (3,5) -- (0,6.8);
+  }
+\end{spacetime}
+\end{center}
+
+\begin{questions}
+  \question On both diagrams, draw both twins' worldlines and mark the
+  turnaround $T$. How much does the Earth twin age?
+  \begin{solution}[\room{1}]
+    The trip covers 6~ly at $0.6c$, so the Earth twin ages 10~yr. The traveler's
+    worldline is the tilted line out to $T=(3,5)$ and back to $(0,10)$.
+  \end{solution}
+
+  \question Use the left grid to read the traveler's clock at $T$, and the
+  right grid to read how much it advances on the way home. How much does the
+  traveler age? Check your answer with the interval.
+  \begin{solution}[\room{1}]
+    4~yr out ($t'=4$ at $T$) and 4~yr back ($t''$ goes from 0 to 4). The traveler
+    ages 8~yr, two fewer than the Earth twin. Check: each leg has
+    $\sqrt{5^2-3^2} = 4$.
+  \end{solution}
+
+\newpage
+  \question On each leg, the traveler says the Earth twin's clock runs slow.
+  So why isn't the traveler the older one? What makes the two twins' situations
+  different? Point to it on the diagram.
+  \begin{solution}[\room{1}]
+    The traveler's worldline has a kink at $T$: the traveler changes frames,
+    and the Earth twin never does. The slow-clock argument holds within one
+    frame, and the traveler uses two of them.
+  \end{solution}
+
+  \question Draw the traveler's ``now'' line through $T$ on each diagram, and
+  read where it meets the Earth twin's worldline. What happens to the
+  traveler's idea of ``what time it is on Earth'' at the turnaround?
+  \begin{solution}[\room{1.3}]
+    Just before turning, the outbound now line through $T$ meets Earth at
+    $t = 3.2$~yr. Just after, the homebound now line meets Earth at $t = 6.8$~yr.
+    At the turnaround the traveler's ``now on Earth'' jumps ahead 3.6~yr. Earth
+    ages $3.2$ (slow, outbound) $+\ 3.6$ (the jump) $+\ 3.2$ (slow, homebound)
+    $= 10$~yr, as it should.
+  \end{solution}
+\end{questions}
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Extension (optional): adding velocities}
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% The rocket, moving at $0.6c$, fires a probe forward at the origin. In the rocket
+% frame the probe moves at $0.6c$.
+
+% \begin{center}
+% \begin{spacetime}[0.8]{0}{9}{0}{10}
+%   \movinggrid{0.6}{0}{0}
+%   \answer{
+%     \draw[st ans] (0,0) -- (8.8235,10);
+%     \node[st event, label={[st anslabel]left:$P$}] at (7.5,8.5) {};
+%   }
+% \end{spacetime}
+% \end{center}
+
+% \begin{questions}
+%   \question In the rocket frame, where is the probe at $t' = 5$~yr? Mark that
+%   event $P$ using the tilted grid, and draw the probe's worldline.
+%   \begin{solution}[\room{0.6}]
+%     At $(x',t') = (3,5)$, which is $(x,t)=(7.5, 8.5)$ in the Earth frame.
+%   \end{solution}
+
+%   \question Read the Earth coordinates of $P$ and find the probe's speed in the
+%   Earth frame. What would you have predicted before this lab?
+%   \begin{solution}[\room{1}]
+%     $7.5/8.5 = 0.88c$. Simple addition says $0.6c + 0.6c = 1.2c$, faster than
+%     light. That cannot be right, because both frames agree on the speed of light.
+%   \end{solution}
+
+%   \question The relativistic rule is
+%   $\displaystyle u = \frac{u' + v}{1 + u'v/c^2}$. Check it against your
+%   reading.
+%   \begin{solution}[\room{1}]
+%     $(0.6+0.6)/(1+0.36) = 1.2/1.36 = 0.882$, matching the diagram.
+%   \end{solution}
+% \end{questions}
+
+\end{document}

@@ -5,9 +5,9 @@ Static ES modules and CSS, served as-is (no build, no install). Breaking changes
 | Module | What it is |
 | --- | --- |
 | `tool.js` | **The Tool contract** (documented in its header comment), `defineTool()` validator, `createEmitter()`. No DOM, so it can be imported from Node. |
-| `control.js` | `createControl()`: base implementation of the Control interface (lock/unlock, show/hide). Use it for custom Controls such as draggable markers. |
-| `ui-kit.js` | Standard Controls: `slider` (with number box and reset; `log: true` for a logarithmic scale), `toggle`, `select`, `button`; plus `metric` readout, `section`, `h()` element helper. |
-| `theme.css` | The v1 cream-and-serif theme and layout classes (`.fw-*`). |
+| `control.js` | `createControl()`: base implementation of the Control interface (lock/unlock, show/hide). Lock disables every input, button, select and textarea in the Control's `el`, and `el` itself when it is one (so a bare `<button>` can be the `el`). Use it for custom Controls such as draggable markers. |
+| `ui-kit.js` | Standard Controls: `slider` (with number box and reset; `log: true` for a logarithmic scale), `toggle`, `select`, `button` (optional `title`; a locked button is disabled and neither a click nor `set()` presses it); `toggle` and `button` also take `onLock`/`onHide` for extra work. Plus `metric` readout, `section`, `h()` element helper, `escapeHtml(s)`, and `themeVars(el, { key: '--fw-var' })`: theme variables as computed at `el` (the v1 palette while `el` is not in a page), the one way to read drawing colours for canvas, SVG rendered to PNG and Plotly. |
+| `theme.css` | The v1 cream-and-serif theme and layout classes (`.fw-*`). Its `:root` variables (`--fw-blue`, `--fw-surface`, `--fw-paper` for a white drawing ground, ...) are also the drawing colours; keep `themeVars`' fallback palette in `ui-kit.js` in step. |
 | `tool-host.js` | `mountStandalone(tool, root)`: Standalone mode, one tab per Mode, every Control unlocked, State autosaved per Tool and Mode, `#s=` share link. Also exports `createFrame`/`createTabs` for the Activity runner UI. |
 | `persistence.js` | Autosave (`standaloneStore(toolId, modeId)`, `runStore(activityId)`, `createStore(key, storage)`, `browserStorage()`) and `#s=` share links (`shareHash`/`readShareHash`). No DOM. |
 | `runner/` | Activity runner core (pure logic, no DOM). `await runner.report()` assembles the sealed Report so far, also in Node (fixtures); `runner.save()`/`restore()` carry the Run, including unsubmitted Question drafts (`runner.draft()`). `runner/questions.js`: `questionKinds`, the one table of Question kinds (validation and judging). `runner/scoring.js`: the scoring rules (`scoreActivity`, `earnedFromResults`). `runner/keys.js`: encoded answer keys (`encodeKey`/`decodeKey`); the runner and scoring decode them, and an encoded Hint text is decoded only when the Hint is revealed. |
@@ -32,6 +32,22 @@ Static ES modules and CSS, served as-is (no build, no install). Breaking changes
 Each Activity is a pure-data module plus a tiny HTML page beside it, so the URL identifies one Activity:
 `tools/oscilloscope/activities/phase-period-amplitude.html` loads `phase-period-amplitude.js` and calls
 `mountActivity(oscilloscope, activity, root)`. Prompts may use `\( \)` math (MathJax).
+
+## Conditions
+
+A Task's `condition` is judged against the State only on Submit (`runner/conditions.js`). Every form except a function is plain data, so a whole Condition can be encoded with `authoring/encode-keys.html`.
+
+| Condition | Passes when | Miss feedback |
+| --- | --- | --- |
+| `{ state, target, tol, targetLabel? }` | the value is within `tol` of `target` | `T = 2.50 s; need 3.00 ± 0.05 s` |
+| `{ state, equals, targetLabel? }` | the value is exactly `equals` | `Coupling = DC; need AC` |
+| `{ type: 'range', state, above?, below?, targetLabel? }` | the value is strictly above `above` and/or strictly below `below` (give one or both) | the bound it missed: `\|E₀\| = 0 V/m; need > 0` |
+| `{ type: 'anyOf', conditions: [...] }` | at least one component passes; components may be any Condition, including registered types, functions and lists | each component's feedback: `Any one of: Coupled = false; need true — or — T = 2 s; need < 1` |
+| `{ type, ...options }` | the registered evaluator says so (`conditionTypes` on the Activity, or passed to `createRunner`/`mountActivity`) | the evaluator's `feedback` |
+| `(state, info) => boolean \| { pass, feedback }` | the function says so (escape hatch; can't be encoded) | its `feedback` |
+| `[condition, ...]` | every component passes; one result is recorded per component | per component |
+
+`targetLabel` replaces the generated "need …" text. A registered evaluator is `(condition, state, info, { evaluate }) => { pass, feedback? }`; `evaluate(inner)` judges a nested Condition.
 
 ## Tool contract in brief
 
