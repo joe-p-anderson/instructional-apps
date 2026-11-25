@@ -1,5 +1,40 @@
-/* Framework v1 theme: the cream-and-serif look of the original lecture apps
-   (oscilloscope_lab, conductor_properties). Everything is scoped under .fw-* classes. */
+/* Framework v1 theme: Refined Cream, the cream-and-serif look of the original lecture apps
+   (oscilloscope_lab, conductor_properties) with WCAG AA text contrast and a self-hosted
+   typeface. Everything is scoped under .fw-* classes; Tools read the --fw-plot-* tokens
+   (plot-theme.js) so their plots match. */
+
+/* Libre Baskerville (SIL OFL 1.1, vendor/libre-baskerville/OFL.txt), latin and latin-ext subsets
+   from @fontsource/libre-baskerville 5.3.0. */
+@font-face {
+  font-family: 'Libre Baskerville'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url(./vendor/libre-baskerville/libre-baskerville-latin-400-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Libre Baskerville'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url(./vendor/libre-baskerville/libre-baskerville-latin-ext-400-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Libre Baskerville'; font-style: italic; font-weight: 400; font-display: swap;
+  src: url(./vendor/libre-baskerville/libre-baskerville-latin-400-italic.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Libre Baskerville'; font-style: italic; font-weight: 400; font-display: swap;
+  src: url(./vendor/libre-baskerville/libre-baskerville-latin-ext-400-italic.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Libre Baskerville'; font-style: normal; font-weight: 700; font-display: swap;
+  src: url(./vendor/libre-baskerville/libre-baskerville-latin-700-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Libre Baskerville'; font-style: normal; font-weight: 700; font-display: swap;
+  src: url(./vendor/libre-baskerville/libre-baskerville-latin-ext-700-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
 
 :root {
   --fw-page:      #D8D0BC;
@@ -10,14 +45,28 @@
   --fw-blue:      #1B4F8A;
   --fw-blue-dk:   #13376A;
   --fw-red:       #B81C1C;
-  --fw-orange:    #E8720C;
-  --fw-yellow:    #C8900A;
+  --fw-orange:    #E8720C;   /* plot marks only: below 4.5:1, never text */
+  --fw-yellow:    #8A5F00;   /* Hint text */
+  --fw-hint-bg:   #FBF3DF;
   --fw-green:     #2A6E2A;
   --fw-text:      #1A1008;
   --fw-text-dim:  #5C4F38;
-  --fw-text-muted:#9C8C70;
+  --fw-text-muted:#6E604A;
   --fw-grid:      #DDD5C0;
-  --fw-font: 'Baskerville Old Face', 'Baskervville', 'Libre Baskerville', Baskerville, Georgia, serif;
+  --fw-font: 'Libre Baskerville', Georgia, serif;
+
+  /* Plot tokens: read by Tools at runtime (plot-theme.js), never hard-coded in a Tool. */
+  --fw-plot-bg:        var(--fw-surface);
+  --fw-plot-grid:      var(--fw-grid);
+  --fw-plot-axis:      var(--fw-border-dk);  /* zero lines, outlines of locked marks */
+  --fw-plot-text:      var(--fw-text-dim);   /* tick labels and axis titles */
+  --fw-plot-ink:       var(--fw-text);       /* outlines of operable marks */
+  --fw-plot-muted:     var(--fw-border);     /* fill of locked marks */
+  --fw-plot-trace-1:   var(--fw-blue);
+  --fw-plot-trace-2:   var(--fw-red);
+  --fw-plot-trace-3:   var(--fw-orange);
+  --fw-plot-font:      var(--fw-font);
+  --fw-plot-font-size: 14px;
 }
 
 .fw-app, .fw-app *, .fw-app *::before, .fw-app *::after { box-sizing: border-box; }
@@ -28,7 +77,7 @@ html.fw-root, html.fw-root body {
   background: var(--fw-page);
   color: var(--fw-text);
   font-family: var(--fw-font);
-  font-size: 18px;
+  font-size: 16px;   /* Libre Baskerville sets wide: 16px reads like the old 18px */
 }
 
 /* ── Page frame ── */
@@ -57,7 +106,7 @@ html.fw-root, html.fw-root body {
 .fw-header-titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .fw-title {
   margin: 0;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: bold;
   font-variant: small-caps;
   letter-spacing: 0.04em;
@@ -76,9 +125,9 @@ html.fw-root, html.fw-root body {
   border: none;
   border-right: 1px solid var(--fw-border);
   border-bottom: 3px solid transparent;
-  color: var(--fw-text-muted);
+  color: var(--fw-text-dim);
   font-family: var(--fw-font);
-  font-size: 17px;
+  font-size: 15px;
   font-variant: small-caps;
   letter-spacing: 0.05em;
   padding: 7px 20px 5px;
@@ -87,6 +136,10 @@ html.fw-root, html.fw-root body {
   bottom: -2px;
 }
 .fw-tab:hover { color: var(--fw-blue); }
+.fw-tab:focus-visible, .fw-button:focus-visible, .fw-reset:focus-visible {
+  outline: 2px solid var(--fw-blue);
+  outline-offset: 2px;
+}
 .fw-tab[aria-selected="true"] {
   color: var(--fw-blue);
   border-bottom-color: var(--fw-blue);
@@ -125,29 +178,28 @@ html.fw-root, html.fw-root body {
 
 .fw-section { padding: 10px 12px; border-bottom: 1px solid var(--fw-border); }
 .fw-section:last-child { border-bottom: none; }
+/* Upright capitals: no small caps, which Libre Baskerville would have to synthesise. */
 .fw-section-label {
-  font-size: 14px;
-  font-variant: small-caps;
-  letter-spacing: 0.22em;
-  color: var(--fw-text-muted);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--fw-text-dim);
   text-transform: uppercase;
   margin-bottom: 8px;
 }
 .fw-hint {
   font-size: 14px;
-  color: var(--fw-text-muted);
-  font-style: italic;
+  color: var(--fw-text-dim);
   line-height: 1.4;
 }
 
 /* ── Controls ── */
 .fw-control[hidden] { display: none; }
-.fw-control.fw-locked { opacity: 0.35; }
+.fw-control.fw-locked { opacity: 0.55; }
 .fw-control.fw-locked * { cursor: not-allowed; }
 
 .fw-slider { margin-bottom: 12px; }
 .fw-slider-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 4px; }
-.fw-control-name { font-size: 17px; font-style: italic; flex-shrink: 0; }
+.fw-control-name { font-size: 15px; font-style: italic; flex-shrink: 0; }
 .fw-unit { font-size: 15px; font-style: normal; color: var(--fw-text-dim); }
 .fw-number {
   width: 72px;
@@ -174,20 +226,20 @@ html.fw-root, html.fw-root body {
   min-width: 0;
   -webkit-appearance: none;
   appearance: none;
-  height: 3px;
+  height: 4px;
   background: var(--fw-border);
   outline: none;
   cursor: pointer;
 }
 .fw-range::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 13px; height: 13px;
+  width: 18px; height: 18px; border-radius: 50%;
   background: var(--fw-blue);
   border: 1.5px solid var(--fw-text);
   cursor: pointer;
 }
 .fw-range::-moz-range-thumb {
-  width: 13px; height: 13px; border-radius: 0;
+  width: 18px; height: 18px; border-radius: 50%;
   background: var(--fw-blue);
   border: 1.5px solid var(--fw-text);
 }
@@ -196,7 +248,7 @@ html.fw-root, html.fw-root body {
 .fw-button, .fw-reset {
   background: none;
   border: 1px solid var(--fw-border-dk);
-  color: var(--fw-text-muted);
+  color: var(--fw-text-dim);
   font-family: var(--fw-font);
   font-size: 15px;
   padding: 2px 6px;
@@ -219,11 +271,11 @@ html.fw-root, html.fw-root body {
 .fw-toggle input { accent-color: var(--fw-blue); }
 
 /* ── Metric readouts ── */
-.fw-metric { font-size: 15px; color: var(--fw-text-dim); line-height: 2.0; }
+.fw-metric { font-size: 14px; color: var(--fw-text-dim); line-height: 2.0; }
 .fw-metric-value { color: var(--fw-blue); font-weight: bold; }
 
 /* ── Legend ── */
-.fw-legend-row { display: flex; align-items: center; gap: 7px; font-size: 15px; margin-bottom: 6px; }
+.fw-legend-row { display: flex; align-items: center; gap: 7px; font-size: 14px; margin-bottom: 6px; }
 .fw-legend-line { display: inline-block; width: 22px; height: 2.5px; flex-shrink: 0; }
 
 .fw-controls::-webkit-scrollbar { width: 5px; }
@@ -285,7 +337,9 @@ html.fw-root, html.fw-root body {
   transition: opacity 0.25s;
 }
 .fw-task-card:last-child { border-right: none; }
-.fw-task-card[data-status="locked"] { opacity: 0.32; }
+.fw-task-card[data-status="locked"] { opacity: 0.6; }
+.fw-task-locked { font-size: 14px; font-style: italic; color: var(--fw-text-dim); white-space: nowrap; margin-top: 2px; }
+.fw-task-locked[hidden] { display: none; }
 .fw-task-heading { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 5px; }
 .fw-task-check {
   width: 18px; height: 18px; flex-shrink: 0; margin-top: 2px;
@@ -296,9 +350,10 @@ html.fw-root, html.fw-root body {
 .fw-task-card[data-status="passed"] .fw-task-check { background: var(--fw-green); border-color: var(--fw-green); }
 .fw-task-title { margin: 0; font-size: 16px; font-weight: bold; font-variant: small-caps; letter-spacing: 0.04em; }
 .fw-task-prompt, .fw-question, .fw-task-submit, .fw-task-hint { margin-left: 26px; }
-.fw-task-prompt { font-size: 15px; color: var(--fw-text-dim); font-style: italic; margin-bottom: 7px; line-height: 1.5; }
+.fw-task-prompt { font-size: 15px; color: var(--fw-text-dim); margin-bottom: 7px; line-height: 1.5; }
 .fw-question { margin-bottom: 8px; display: flex; flex-direction: column; gap: 4px; }
-.fw-question-prompt { font-size: 15px; color: var(--fw-red); font-style: italic; line-height: 1.4; }
+/* A Question is not an error: text colour, marked by a blue rule. */
+.fw-question-prompt { font-size: 15px; color: var(--fw-text); line-height: 1.4; border-left: 3px solid var(--fw-blue); padding-left: 8px; }
 .fw-question-input { width: 100%; resize: vertical; }
 .fw-question-number { width: 120px; flex: none; }
 .fw-choice { display: flex; gap: 6px; font-size: 15px; }
@@ -306,7 +361,7 @@ html.fw-root, html.fw-root body {
 .fw-task-feedback { font-size: 15px; font-style: italic; }
 .fw-task-feedback.fw-ok { color: var(--fw-green); }
 .fw-task-feedback.fw-fail { color: var(--fw-red); }
-.fw-task-hint { font-size: 14px; color: var(--fw-yellow); font-style: italic; line-height: 1.4; }
+.fw-task-hint { font-size: 14px; color: var(--fw-yellow); line-height: 1.4; background: var(--fw-hint-bg); border-left: 3px solid var(--fw-yellow); padding: 4px 8px; }
 .fw-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Report Viewer (report-viewer/): a scrolling document page, printable ── */

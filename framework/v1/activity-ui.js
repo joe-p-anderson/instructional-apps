@@ -141,12 +141,13 @@ export function mountActivity(tool, activity, root, { conditionTypes, storage = 
     const given = () => Object.fromEntries(answers.map((a) => [a.id, a.read()]).filter(([, v]) => v !== undefined));
 
     const check = h('span', { class: 'fw-task-check', 'aria-hidden': 'true' });
+    const lockedNote = h('span', { class: 'fw-task-locked', hidden: true }, 'Locked');
     const submit = h('button', { type: 'button', class: 'fw-button', 'aria-label': `Submit ${number}` }, 'Submit');
     const feedback = h('span', { class: 'fw-task-feedback', role: 'status', 'aria-label': `${number} feedback` });
     const hint = h('div', { class: 'fw-task-hint', hidden: true });
     const el = h('section', { class: 'fw-task-card', 'aria-label': number, 'data-task': task.id },
       h('div', { class: 'fw-task-heading' }, check,
-        h('h3', { class: 'fw-task-title', html: `${number} — ${task.title ?? ''}` })),
+        h('h3', { class: 'fw-task-title', html: `${number} — ${task.title ?? ''}` }), lockedNote),
       task.prompt ? h('div', { class: 'fw-task-prompt', html: task.prompt }) : null,
       ...questions,
       h('div', { class: 'fw-task-submit' }, submit, feedback),
@@ -188,6 +189,7 @@ export function mountActivity(tool, activity, root, { conditionTypes, storage = 
       const done = state.status === 'passed';
       const operable = state.status === 'open';
       check.textContent = done ? '✓' : '';
+      lockedNote.hidden = state.status !== 'locked';
       submit.hidden = done;
       submit.disabled = !operable;
       for (const a of answers) {
