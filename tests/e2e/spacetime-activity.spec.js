@@ -16,24 +16,30 @@ async function enterName(page, name = 'Ada Lovelace') {
   await page.waitForFunction(() => window.activityHost.instances.building.displays[0].toScreen(0, 0));
 }
 
+const PART_IDS = { 1: 'building', 2: 'simultaneity' };
 const part = (page, n) => page.getByRole('tabpanel', { name: new RegExp(`Part ${n}`) });
-const at = (page, x, t) => page.evaluate(([x, t]) => window.activityHost.instances.building.displays[0].toScreen(x, t), [x, t]);
-const diagram = (page) => page.evaluate(() => JSON.parse(window.activityHost.instances.building.state.snapshot().diagram));
+const at = (page, x, t, n = 1) => page.evaluate(([x, t, id]) => window.activityHost.instances[id].displays[0].toScreen(x, t), [x, t, PART_IDS[n]]);
+const diagram = (page, n = 1) => page.evaluate((id) => JSON.parse(window.activityHost.instances[id].state.snapshot().diagram), PART_IDS[n]);
 
-/** Draw a worldline with the real Worldline tool, dragging from one K point to another. */
-async function drawWorldline(page, [x1, t1], [x2, t2]) {
-  await part(page, 1).getByRole('button', { name: 'Worldline', exact: true }).click();
-  const a = await at(page, x1, t1), b = await at(page, x2, t2);
+/** Drag with the mouse from one K point to another in Part n's K diagram. */
+async function drag(page, [x1, t1], [x2, t2], n = 1) {
+  const a = await at(page, x1, t1, n), b = await at(page, x2, t2, n);
   await page.mouse.move(a.x, a.y);
   await page.mouse.down();
   await page.mouse.move(b.x, b.y, { steps: 8 });
   await page.mouse.up();
 }
 
+/** Draw a worldline with the real Worldline tool, dragging from one K point to another. */
+async function drawWorldline(page, from, to, n = 1) {
+  await part(page, n).getByRole('button', { name: 'Worldline', exact: true }).click();
+  await drag(page, from, to, n);
+}
+
 /** Mark an event with the real Event tool. */
-async function drawEvent(page, x, t) {
-  await part(page, 1).getByRole('button', { name: 'Event', exact: true }).click();
-  const p = await at(page, x, t);
+async function drawEvent(page, x, t, n = 1) {
+  await part(page, n).getByRole('button', { name: 'Event', exact: true }).click();
+  const p = await at(page, x, t, n);
   await page.mouse.click(p.x, p.y);
 }
 
@@ -177,4 +183,85 @@ test('the Activity layout fits a laptop screen without horizontal scrolling', as
   await enterName(page);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
+});
+
+/** Fill a Task's text boxes in order. */
+async function fill(scope, task, values) {
+  const boxes = scope.getByRole('region', { name: task }).getByRole('textbox');
+  for (const [i, v] of values.entries()) await boxes.nth(i).fill(v);
+}
+
+async function submitPasses(scope, task) {
+  await scope.getByRole('button', { name: `Submit ${task}` }).click();
+  await expect(scope.getByRole('region', { name: task })).toHaveAttribute('data-status', 'passed');
+}
+
+test('Part 2: only a rocket-frame rod lies from B to F, and it passes Task 2.5 on Submit', async ({ page }) => {
+  await open(page);
+  await enterName(page);
+  await page.getByRole('tab', { name: /Part 2/ }).click();
+  await page.waitForFunction(() => window.activityHost.instances.simultaneity.displays[0].toScreen(0, 0));
+  const p2 = part(page, 2);
+  await expect(p2.getByRole('slider', { name: 'v/c' })).toBeDisabled();
+  await expect(p2.getByRole('button', { name: 'Rod', exact: true })).toBeHidden();
+
+  // 2.1: the back and the front of the rocket (x′ = ∓2, through x = ∓1.6 at t = 0), and the flash.
+  await drawWorldline(page, [-1.6, 0], [-0.4, 2], 2);
+  await drawWorldline(page, [1.6, 0], [4, 4], 2);
+  await drawWorldline(page, [0, 0], [4, 4], 2);
+  await drawWorldline(page, [0, 0], [-2, 2], 2);
+  await submitPasses(p2, 'Task 2.1');
+
+  // 2.2–2.4: mark B and F on the worldlines, and answer.
+  await drawEvent(page, -1, 1, 2);
+  await drawEvent(page, 4, 4, 2);
+  await fill(p2, 'Task 2.2', ['2', '2']);
+  await submitPasses(p2, 'Task 2.2');
+  await fill(p2, 'Task 2.3', ['1', '4']);
+  await p2.getByRole('region', { name: 'Task 2.3' }).getByRole('radio', { name: /reaches the back/ }).check();
+  await submitPasses(p2, 'Task 2.3');
+  await fill(p2, 'Task 2.4', ['The back runs into the light; the front runs away from it.']);
+  await submitPasses(p2, 'Task 2.4');
+
+  // 2.5: the rod tool appears. A rod laid in the Earth frame from B can't reach F.
+  const rodTool = p2.getByRole('button', { name: 'Rod', exact: true });
+  await expect(rodTool).toBeVisible();
+  await rodTool.click();
+  await drag(page, [-1, 1], [4, 1], 2);
+  const task = p2.getByRole('region', { name: 'Task 2.5' });
+  await task.locator('input[type=radio][value="xp-axis"]').check();
+  await fill(p2, 'Task 2.5', ['Events simultaneous in one frame are not in another.']);
+  await p2.getByRole('button', { name: 'Submit Task 2.5' }).click();
+  await expect(p2.getByRole('status', { name: 'Task 2.5 feedback' })).toContainText('nearest rod');
+  await expect(task).toHaveAttribute('data-status', 'open');
+
+  // Make it simultaneous in the rocket frame, put its ends on the back and the front, and drag it
+  // up to B: a rocket "now" line.
+  const side = p2.getByRole('complementary', { name: 'Objects and measurements' });
+  const rodItem = side.locator('[data-item]').last();
+  await rodItem.locator('select[data-k="frame"]').selectOption('Kp');
+  await side.getByRole('combobox', { name: 'End 1' }).selectOption({ index: 1 });
+  await side.getByRole('combobox', { name: 'End 2' }).selectOption({ index: 2 });
+  let rod = (await diagram(page, 2)).find((o) => o.kind === 'rod');
+  expect(rod.frame).toBe('Kp');
+  expect(rod.ends.map((e) => e.wl)).toEqual([1, 2]);
+  // A point on the rod, at x′ = −1 on its t′ = T line, in K (clear of the light rays).
+  const g = 1.25, v = 0.6;
+  const onRod = [g * (-1 + v * rod.T), g * (rod.T + v * -1)];
+  await p2.getByRole('button', { name: 'Move', exact: true }).click();
+  // Starting the drag re-renders the sidebar, which can shift the diagram on the page by a few
+  // pixels, so find B again once the drag has started.
+  const q = await at(page, ...onRod, 2);
+  await page.mouse.move(q.x, q.y);
+  await page.mouse.down();
+  await page.mouse.move(q.x, q.y - 10, { steps: 2 });
+  const b = await at(page, -1, 1, 2);
+  await page.mouse.move(b.x, b.y, { steps: 8 });
+  await page.mouse.up();
+  rod = (await diagram(page, 2)).find((o) => o.kind === 'rod');
+  expect(rod.T).toBeCloseTo(2, 9);
+
+  await p2.getByRole('button', { name: 'Submit Task 2.5' }).click();
+  await expect(task).toHaveAttribute('data-status', 'passed');
+  await expect(p2.getByText('5 of 5 Tasks done')).toBeVisible();
 });

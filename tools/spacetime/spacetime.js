@@ -1,4 +1,4 @@
-// Spacetime diagrams Tool (framework v1, Spec 0003). Ported from spacetime/spacetime-diagrams.html.
+// Spacetime diagrams Tool (framework v1, Spec 0003). Ported from the old single-file spacetime-diagrams.html (deleted).
 // Two frames, K and K′ (K′ moving at v along +x; units have c = 1), drawn side by side.
 //
 // Mode: 'diagram'.

@@ -23,6 +23,8 @@ const CONTROLS = [
 // Diagram objects in the saved format (as in tests/unit/spacetime/conditions.test.js).
 const ev = (id, x, t, home = 'K') => ({ id, kind: 'event', home, x, t, label: '', color: '#D55E00' });
 const param = (id, u, x0, frame = 'K') => ({ id, kind: 'wl', mode: 'param', frame, u, x0, label: '', color: '#0072B2' });
+const rod = (id, frame, T, x1, x2, wl1 = null, wl2 = null) =>
+  ({ id, kind: 'rod', frame, T, ends: [{ x: x1, wl: wl1 }, { x: x2, wl: wl2 }], label: '', color: '#009E73' });
 
 const V = 0.6;
 
@@ -43,6 +45,22 @@ const PARTS = {
       'light-speed': { says: 'x′ = t′, so light covers 1 ly per yr in the rocket frame too.' },
     },
     points: 13,
+  },
+  // Lab 10 Section 2: a 4 ly rocket (ends at x′ = ∓2) with a lamp at its middle flashing at the origin.
+  simultaneity: {
+    answer: [
+      param(1, 0.6, -1.6), param(2, 0.6, 1.6), // the back and the front
+      param(3, 1, 0), param(4, -1, 0), // the flash, both ways
+      ev(5, -1, 1), ev(6, 4, 4), // B and F
+      rod(7, 'Kp', 2, -2, 2), // the rocket-frame rod from B to F
+    ],
+    answers: {
+      'marks-bf': { 'tp-B': '2', 'tp-F': '2' },
+      'earth-times': { 't-B': '1', 't-F': '4', first: 'B' },
+      'back-first': { why: 'The back moves toward the flash and the front runs away from it.' },
+      'rod-bf': { parallel: 'xp-axis', says: 'Simultaneous depends on the frame.' },
+    },
+    points: 11,
   },
 };
 
@@ -82,6 +100,7 @@ const exposure = (tool) => Object.fromEntries(CONTROLS.map((id) => {
 }));
 
 const part1 = activity.parts.find((p) => p.id === 'building');
+const part2 = activity.parts.find((p) => p.id === 'simultaneity');
 
 test('the Activity is "Spacetime Diagrams" for PHY 1200, on the spacetime Tool', () => {
   assert.equal(activity.id, 'spacetime-lab10');
@@ -104,6 +123,12 @@ test('every Part starts at v = 0.6 with the K′ grid drawn over an empty Earth 
 test('Part 1 is Lab 10 Section 1: Tasks 1.1–1.7', () => {
   assert.deepEqual(part1.tasks.map((t) => t.id),
     ['lamp', 'rocket', 'flash', 'light-limit', 'rocket-axis', 'events-ef', 'light-speed']);
+});
+
+test('Part 2 is Lab 10 Section 2: Tasks 2.1–2.5', () => {
+  assert.equal(part2.title, 'Part 2: Relativity of simultaneity');
+  assert.deepEqual(part2.tasks.map((t) => t.id),
+    ['ends-flash', 'marks-bf', 'earth-times', 'back-first', 'rod-bf']);
 });
 
 for (const part of activity.parts) {
@@ -178,6 +203,63 @@ test('Part 1 exposure: v, γ and flip locked; K′ panel, primed and measurement
   }
 });
 
+test('Part 2 exposure: staged like Part 1, with the rod tool hidden until Task 2.5 and shown from then on', () => {
+  const { runner, tools } = start();
+  const staged = {
+    'tool-select': 'open', 'tool-event': 'open', 'tool-worldline': 'open', 'tool-join': 'hidden',
+    v: 'locked', gamma: 'locked', flip: 'locked',
+    'kp-panel': 'hidden', primed: 'hidden', measurements: 'hidden',
+  };
+  const t = tools.simultaneity;
+  t.draw(PARTS.simultaneity.answer);
+  for (const task of part2.tasks) {
+    const rodTool = task.id === 'rod-bf' ? 'open' : 'hidden';
+    assert.deepEqual(exposure(t), { ...exposure(t), ...staged, 'tool-rod': rodTool }, `at Task "${task.id}"`);
+    assert.equal(runner.submit('simultaneity', task.id, PARTS.simultaneity.answers[task.id]).passed, true);
+  }
+  // Once every Task has passed, the rod tool stays shown.
+  assert.equal(exposure(t)['tool-rod'], 'open');
+});
+
+test('Task 2.5 passes only for a rod with its ends at B and F', () => {
+  const lines = PARTS.simultaneity.answer.slice(0, 6);
+  const answers = PARTS.simultaneity.answers['rod-bf'];
+  const judged = (r) => {
+    const { runner, tools } = start();
+    passUpTo(runner, tools, part2, 'rod-bf');
+    tools.simultaneity.draw([...lines, r]);
+    return runner.submit('simultaneity', 'rod-bf', answers).passed;
+  };
+  assert.equal(judged(rod(7, 'K', 1, -1, 4)), false, 'an Earth-frame rod from B can\'t reach F');
+  assert.equal(judged(rod(7, 'K', 4, -1, 4)), false, 'nor one through F reach B');
+  assert.equal(judged(rod(7, 'Kp', 2, -2, 1.8)), false, 'a rocket rod short of F');
+  assert.equal(judged(rod(7, 'Kp', 2.2, -2, 2)), false, 'a rocket rod on a later "now" line');
+  assert.equal(judged(rod(7, 'Kp', 2, 2, -2)), true, 'its ends in either order');
+  assert.equal(judged(rod(7, 'Kp', 2, 0, 0, 1, 2)), true, 'its ends riding the back and front worldlines');
+  assert.equal(judged(rod(7, 'Kp', 2, -2.05, 2.05)), true, 'within the tolerance');
+});
+
+test('Task 2.3: B is reached first in the Earth frame', () => {
+  const { runner, tools } = start();
+  passUpTo(runner, tools, part2, 'earth-times');
+  const answers = PARTS.simultaneity.answers['earth-times'];
+  for (const wrong of ['F', 'both']) {
+    assert.equal(runner.submit('simultaneity', 'earth-times', { ...answers, first: wrong }).passed, false);
+  }
+  assert.equal(runner.submit('simultaneity', 'earth-times', { ...answers, 't-F': '2' }).passed, false); // t′, not t
+  assert.equal(runner.submit('simultaneity', 'earth-times', answers).passed, true);
+});
+
+test('Task 2.5 takes the x′ axis as the line through B and F', () => {
+  const { runner, tools } = start();
+  passUpTo(runner, tools, part2, 'rod-bf');
+  const { says } = PARTS.simultaneity.answers['rod-bf'];
+  for (const wrong of ['t-axis', 'x-axis', 'tp-axis', 'light']) {
+    assert.equal(runner.submit('simultaneity', 'rod-bf', { parallel: wrong, says }).passed, false);
+  }
+  assert.equal(runner.submit('simultaneity', 'rod-bf', { parallel: 'xp-axis', says }).passed, true);
+});
+
 test('Hints appear after 3 misses, decoded', () => {
   for (const part of activity.parts) {
     for (const task of part.tasks.filter((t) => t.hint)) {
@@ -200,7 +282,7 @@ test('Task 1.2\'s Hint gives the aim point (3, 5)', () => {
   assert.match(runner.task('building', 'rocket').hint, /\(3, 5\)/);
 });
 
-test('points: 1 per Condition-bearing Task, none for a Task without one, 1 per Question; Part 1 totals 13', () => {
+test('points: 1 per Condition-bearing Task, none for a Task without one, 1 per Question; Part 1 totals 13, Part 2 11, the Activity 24', () => {
   const { runner, tools } = start();
   for (const part of activity.parts) {
     for (const task of part.tasks) {
@@ -214,6 +296,8 @@ test('points: 1 per Condition-bearing Task, none for a Task without one, 1 per Q
     assert.equal(before.parts[p].earned, 0, 'a blank start earns nothing');
   }
   assert.equal(before.parts[0].possible, 13);
+  assert.equal(before.parts[1].possible, 11);
+  assert.equal(before.possible, 24);
 
   // A blank Submit of every Task earns nothing either.
   for (const part of activity.parts) {
@@ -226,6 +310,7 @@ test('points: 1 per Condition-bearing Task, none for a Task without one, 1 per Q
   for (const part of activity.parts) passUpTo(runner, tools, part, null);
   const after = runner.score();
   assert.equal(after.parts[0].earned, 13);
+  assert.equal(after.parts[1].earned, 11);
   assert.equal(after.earned, after.possible);
 });
 
@@ -248,12 +333,13 @@ test('every encoded key decodes, and Conditions, keys and answer-revealing Hints
       }
     }
   }
-  const hintOf = (id) => part1.tasks.find((t) => t.id === id).hint.text;
-  assert.ok(isEncodedKey(hintOf('rocket')), 'Task 1.2 Hint gives the answer away, so it is encoded');
-  assert.ok(isEncodedKey(hintOf('flash')), 'Task 1.3 Hint gives the answer away, so it is encoded');
+  const hintOf = (part, id) => part.tasks.find((t) => t.id === id).hint.text;
+  assert.ok(isEncodedKey(hintOf(part1, 'rocket')), 'Task 1.2 Hint gives the answer away, so it is encoded');
+  assert.ok(isEncodedKey(hintOf(part1, 'flash')), 'Task 1.3 Hint gives the answer away, so it is encoded');
+  assert.ok(isEncodedKey(hintOf(part2, 'ends-flash')), 'Task 2.1 Hint gives the answer away, so it is encoded');
 
   const source = await readFile(new URL('../../../tools/spacetime/activities/lab10.js', import.meta.url), 'utf8');
-  for (const leak of ['st-worldline', 'st-event', "correct: 't", '2.5']) {
+  for (const leak of ['st-worldline', 'st-event', 'st-rod', "correct: 't", "correct: 'x", "correct: 'B", '1.6', '2.5']) {
     assert.ok(!source.includes(leak), `source contains "${leak}"`);
   }
 });
