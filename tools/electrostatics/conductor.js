@@ -109,6 +109,44 @@ export function fieldGrid(params, { fine = FINE, arrows = ARROWS } = {}) {
   return { xs, z, maxE, quiver: { x: qx, y: qy } };
 }
 
+// ── Potential (the potential Mode) ──
+
+/**
+ * Electric potential (V) at (x, y) cm for conductor charge Q (nC), zero at infinity.
+ * Outside it falls off as kQ/r; everywhere inside it equals the surface value kQ/RADIUS.
+ */
+export function potentialAt(x, y, Q = 0) {
+  const r = Math.max(Math.hypot(x, y), RADIUS);
+  return K * Q * 1e-9 / (r * 0.01); // cm → m
+}
+
+/**
+ * The potential probes P1 and P2 ({ x, y } cm, where the student put them) after the toggles:
+ *   lockToSurface      both probes move onto the edge along their own directions from the centre
+ *                      (a probe at the centre goes to (RADIUS, 0))
+ *   measureAtInfinity  P2 goes off the plot, 2 × WINDOW along P1's direction, and V2 = 0
+ * The Mode keeps the toggles exclusive; if both are on, both apply in that order, as in the old app.
+ * Returns { x1, y1, x2, y2, r1, r2, V1, V2, dV } with dV = V1 − V2 (V1 − V(∞)).
+ */
+export function potentialProbe(P1, P2, { Q = 0, lockToSurface = false, measureAtInfinity = false } = {}) {
+  const onEdge = ({ x, y }) => {
+    const r = Math.hypot(x, y);
+    return r > 0 ? { x: RADIUS * x / r, y: RADIUS * y / r } : { x: RADIUS, y: 0 };
+  };
+  let p1 = { x: P1.x, y: P1.y };
+  let p2 = { x: P2.x, y: P2.y };
+  if (lockToSurface) { p1 = onEdge(p1); p2 = onEdge(p2); }
+  if (measureAtInfinity) {
+    const r = Math.hypot(p1.x, p1.y);
+    const [ux, uy] = r > 0 ? [p1.x / r, p1.y / r] : [1, 0];
+    p2 = { x: ux * 2 * WINDOW, y: uy * 2 * WINDOW };
+  }
+  const V1 = potentialAt(p1.x, p1.y, Q);
+  const V2 = measureAtInfinity ? 0 : potentialAt(p2.x, p2.y, Q);
+  return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, r1: Math.hypot(p1.x, p1.y), r2: Math.hypot(p2.x, p2.y),
+    V1, V2, dV: V1 - V2 };
+}
+
 /** Scale (E0x, E0y) back onto the |E₀| = E0_MAX circle if it lies outside it. */
 export function limitE0(E0x, E0y) {
   const m = Math.hypot(E0x, E0y);
