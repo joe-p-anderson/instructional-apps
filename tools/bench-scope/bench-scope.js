@@ -1,9 +1,9 @@
 // Bench Oscilloscope Tool (framework v1, Spec 0002): a front-panel scope modelled on the
-// lab's Tektronix TBS2072B (and, from ticket 03, TDS2001C), with a source panel beside it.
+// lab's Tektronix TBS2072B or TDS2001C (the skin), with a source panel beside it.
 //
-// Setup: { skin: 'tbs2072b', gen1Wave, gen1Freq, gen1Vpp, gen1Offset } (any subset).
+// Setup: { skin: 'tbs2072b' | 'tds2001c', gen1Wave, ..., ch2Source, ch2Fc, ..., gen2Phase } (any subset; source keys in engine/source.js).
 // State: engine.state() (see engine/engine.js and each feature module for keys and units).
-// Controls: source panel 'gen1-wave', 'gen1-freq', 'gen1-vpp', 'gen1-offset', and every active
+// Controls: 'skin' (the skin switcher, a select), source panel 'gen1-*', 'ch2-source', 'ch2-fc', 'ch2-f0', 'ch2-q', 'gen2-*' (see source-panel.js), and every active
 //   knob, button and softkey on the front panel by its control-map name ('ch1-scale',
 //   'ch1-menu', 'softkey-3', ...; see panel.js for get/set and engine feature modules for values).
 // Displays: 'screen' (the scope screen at native resolution; the front panel is not included).
@@ -11,14 +11,19 @@
 // Layout: source panel in the Controls column, the front panel (inlined SVG with the screen
 // canvas over it) in the Display area. Behaviour lives in the DOM-free engine; this module
 // wires the panel binding, the source panel and the renderer to it.
+//
+// Switching skin (the 'skin' Control, or restore() of a save from the other skin) swaps the
+// engine for one on the new profile (engine.js switchSkin) and the panel for the new SVG; the
+// panel Controls are rebuilt, keeping the lock and hide state of controls both models have.
 
 import { controlRegistry } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
 import { h } from '../../framework/v1/ui-kit.js';
-import { createEngine } from './engine/engine.js';
 import { DEFAULT_SKIN, SKIN_IDS, skinProfile } from './engine/skins.js';
+import { createEngine, switchSkin } from './engine/engine.js';
 import { createPanel } from './panel.js';
 import { renderScreen } from './render.js';
+import { createSkinSwitcher } from './skin-switcher.js';
 import { createSourcePanel } from './source-panel.js';
 
 const here = (path) => new URL(path, import.meta.url);
@@ -44,6 +49,7 @@ const CSS = `
 .bs-panel .osc-control.bs-locked:hover .osc-face { filter: grayscale(1) brightness(.7); }
 .bs-panel .osc-control[data-kind="knob"] { touch-action: none; }
 .bs-panel .osc-control[data-kind="led"], .bs-panel .osc-control[data-kind="screen"] { cursor: default; }
+.bs-panel .osc-control.bs-lit .osc-led { fill: #39e05c; stroke: #1c8a33; }
 `;
 
 function ensureStyles(doc) {
@@ -54,8 +60,8 @@ function ensureStyles(doc) {
 function mount(container, modeId = 'scope', setup = {}) {
   ensureStyles(container.ownerDocument);
   const skin = SKIN_IDS.includes(setup?.skin) ? setup.skin : DEFAULT_SKIN;
-  const profile = skinProfile(skin);
-  const engine = createEngine(profile, setup || {});
+  let profile = skinProfile(skin);
+  let engine = createEngine(profile, setup || {});
   const changes = createEmitter();
   let lastState = '';
 
@@ -75,13 +81,48 @@ function mount(container, modeId = 'scope', setup = {}) {
   }
 
   const source = createSourcePanel({ values: engine.state(), onPatch: (patch) => dispatch({ type: 'setSource', patch }) });
-  const panel = createPanel({ svgText: svgTexts[skin], model: controlMap.models[profile.model], onEvent: dispatch, values: engine });
-  const g = panel.canvas.getContext('2d');
+  const switcher = createSkinSwitcher({ value: skin, onSwitch: (id) => setSkin(id) });
+  const makePanel = () => createPanel({
+    svgText: svgTexts[profile.id], model: controlMap.models[profile.model], onEvent: dispatch, values: engine,
+  });
+  let panel = makePanel();
+  let g = panel.canvas.getContext('2d');
 
+  const displaysEl = h('div', { class: 'fw-displays' }, panel.el);
   const root = h('div', { class: 'fw-tool bs-tool', 'data-tool': 'bench-scope' },
-    h('aside', { class: 'fw-controls' }, source.el),
-    h('div', { class: 'fw-displays' }, panel.el));
+    h('aside', { class: 'fw-controls' }, switcher.el, source.el),
+    displaysEl);
   container.append(root);
+
+  /** Put the instance on another skin: new engine (from `saved`, or carrying the settings over) and panel. */
+  function reskin(id, saved) {
+    profile = skinProfile(id);
+    if (saved) {
+      engine = createEngine(profile);
+      engine.restore(saved);
+    } else {
+      engine = switchSkin(engine, profile);
+    }
+    const old = new Map(panel.controls.map((c) => [c.id, c]));
+    panel.destroy();
+    panel = makePanel();
+    for (const c of panel.controls) {
+      if (old.get(c.id)?.isLocked()) c.lock();
+      if (old.get(c.id)?.isHidden()) c.hide();
+    }
+    displaysEl.append(panel.el);
+    g = panel.canvas.getContext('2d');
+    switcher.sync(id);
+  }
+
+  function setSkin(id) {
+    if (!SKIN_IDS.includes(id) || id === profile.id) return;
+    reskin(id);
+    source.sync(engine.state());
+    panel.sync();
+    draw();
+    notify();
+  }
 
   function draw(now = performance.now()) {
     renderScreen(g, engine.acquire(now), profile);
@@ -97,13 +138,18 @@ function mount(container, modeId = 'scope', setup = {}) {
   draw();
   lastState = JSON.stringify(engine.state());
 
+  const registry = () => controlRegistry([switcher.control, ...Object.values(source.controls), ...panel.controls]);
+
   return {
     state: {
       snapshot: () => engine.state(),
       describe: () => engine.describe(),
       onChange: (fn) => changes.on(fn),
     },
-    controls: controlRegistry([...Object.values(source.controls), ...panel.controls]),
+    controls: {
+      get: (id) => registry().get(id),
+      ids: () => registry().ids(),
+    },
     displays: [{
       id: 'screen',
       label: 'Oscilloscope screen',
@@ -114,7 +160,9 @@ function mount(container, modeId = 'scope', setup = {}) {
     }],
     serialize: () => engine.serialize(),
     restore(saved) {
-      engine.restore(saved);
+      const savedSkin = saved?.skin;
+      if (SKIN_IDS.includes(savedSkin) && savedSkin !== profile.id) reskin(savedSkin, saved);
+      else engine.restore(saved);
       source.sync(engine.state());
       panel.sync();
       draw();

@@ -6,10 +6,18 @@
 //   screen                     { width, height } native pixels; { divX, divY } graticule divisions
 //   recordLength               samples per trace across the full graticule width
 //   sdivSequence               the Horizontal Scale steps (s/div), fastest first, 1 µs .. 1 s
+//   onlyControls               control-map names (or "<knob>:push") that only this model has
+//   xyMenu                     where XY lives: { button (control that opens the menu), item }
 //   style                      on-screen look, used only by render.js:
 //     plot                     { x, y, w, h } graticule rectangle in screen pixels
 //     colors                   background, grid, text, per-channel trace colours
 //     font                     canvas font for readouts
+//     menu                     { x, y, w, h, items } the softkey menu area and its item count
+//     readouts                 { y, spareX } bottom readout baseline and where unslotted ones start
+//
+// Readout positions per id and the skin-specific drawing live in render.js, keyed by profile.id.
+// Switching skin (engine.js switchSkin) keeps the shared settings; each feature's restore()
+// clamps them to the new profile.
 
 /** m · 10^e for each exponent from..to and mantissa, up to 10^to; exact decimals (0.4, not 0.4000000000000001). */
 function decades(mantissas, from, to) {
@@ -41,7 +49,39 @@ const PROFILES = {
         ch2: '#22c4e8',
       },
       font: '16px monospace',
+      menu: { x: 650, y: 30, w: 150, h: 400, items: 7 },
+      readouts: { y: 455, spareX: 620 },
     },
+    onlyControls: ['fine', 'menu-onoff', 'trig-level:push', 'hor-position:push', 'softkey-6', 'softkey-7'],
+    xyMenu: { button: 'acquire', item: 'XY Display' },
+  },
+  tds2001c: {
+    id: 'tds2001c',
+    model: 'TDS2001C',
+    panel: 'tds2001c.svg',
+    screen: { width: 320, height: 240, divX: 10, divY: 8 },
+    recordLength: 251,
+    // 1-2.5-5 (TDS2000C: 5 ns to 50 s/div in a 1, 2.5, 5 sequence), cut to 1 µs .. 1 s.
+    sdivSequence: decades([1, 2.5, 5], -6, 0),
+    style: {
+      // TDS1000C/2000C screen: status line on top, readouts along the bottom, the softkey menu
+      // in a column on the right, 25 px per division.
+      plot: { x: 3, y: 15, w: 250, h: 200 },
+      colors: {
+        background: '#000000',
+        grid: '#505050',
+        gridMajor: '#8a8a8a',
+        text: '#e8e8e8',
+        ch1: '#ffff00',
+        ch2: '#00c8ff',
+        menu: '#1e3c78',
+      },
+      font: '10px monospace',
+      menu: { x: 258, y: 0, w: 62, h: 240, items: 5 },
+      readouts: { y: 228, spareX: 196 },
+    },
+    onlyControls: ['horiz-menu', 'set-to-zero', 'trig-50', 'trig-view', 'mp-led-left', 'mp-led-right'],
+    xyMenu: { button: 'display', item: 'Format' },
   },
 };
 

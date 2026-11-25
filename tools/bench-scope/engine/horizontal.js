@@ -17,7 +17,8 @@ import { clamp, clampNumber, si } from './util.js';
 /** Divisions the trigger point moves per Position detent. */
 export const POSITION_STEP = 0.2;
 
-const DEFAULT_SPERDIV = 250e-6; // snapped to the skin's sequence (200 µs on the TBS)
+// 1 ms/div: in both skins' sequences (only the decades are shared), so both start alike.
+const DEFAULT_SPERDIV = 1e-3;
 
 /** The sequence value nearest `v` on a log scale, or `fallback` if `v` is not a positive number. */
 function snap(seq, v, fallback) {

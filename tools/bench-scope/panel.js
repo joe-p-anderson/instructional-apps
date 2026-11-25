@@ -7,7 +7,8 @@
 //   onEvent   (event) => void, called with engine events: { type: 'turn', control, detents },
 //             { type: 'push', control }, { type: 'press', control }, { type: 'softkey', n },
 //             { type: 'set', control, value }
-//   values    { value(control), detent(control) }: the engine (see engine.js, "Control values")
+//   values    { value(control), detent(control), mpFunction() }: the engine (see engine.js,
+//             "Control values")
 //
 // Input. Knobs: the wheel turns one detent per notch (small trackpad deltas add up to one), a
 // vertical drag turns continuously (up = clockwise, DRAG_PX per detent), the arrow keys turn a
@@ -22,6 +23,8 @@
 // set(v) sends { type: 'set' } for valued controls, otherwise turns the knob to detent v or
 // presses the button once. A locked control ignores all input, is greyed with a "(locked)"
 // tooltip and aria-disabled; a hidden one gets visibility: hidden, so the panel keeps its layout.
+// LEDs: the multipurpose-knob LEDs (mp-led-*, TDS) are lit (data-lit="true", class bs-lit) on
+// sync() while values.mpFunction() is non-null.
 // Inactive controls (data-active="false") ignore input and keep the "not available in this
 // simulation" tooltip the generator writes; they are not Controls.
 
@@ -220,8 +223,15 @@ export function createPanel({ svgText, model, onEvent, values }) {
   svg.addEventListener('click', onClick);
   svg.addEventListener('keydown', onKeyDown);
 
-  /** Redraw every knob's rotation (and accessible value) from the engine. */
+  const mpLeds = [...svg.querySelectorAll('.osc-control[data-kind="led"][data-control^="mp-led"]')];
+
+  /** Redraw every knob's rotation (and accessible value) and the knob LEDs from the engine. */
   function sync() {
+    const lit = String(Boolean(values.mpFunction?.()));
+    for (const led of mpLeds) {
+      led.dataset.lit = lit;
+      led.classList.toggle('bs-lit', lit === 'true');
+    }
     for (const [name, { ctl, node, kind }] of byName) {
       if (kind !== 'knob') continue;
       const rot = node.querySelector('.osc-knob-rot');

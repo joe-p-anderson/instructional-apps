@@ -10,10 +10,10 @@ const readout = (frame, id) => frame.readouts.find((r) => r.id === id);
 
 test('the horizontal Scale knob steps s/div through the TBS 1-2-4 sequence, 1 µs to 1 s', () => {
   const engine = createEngine(tbs());
-  assert.equal(engine.state().hScale, 200e-6);
-  assert.equal(readout(engine.acquire(0), 'timebase').text, 'M 200µs');
+  assert.equal(engine.state().hScale, 1e-3);
+  assert.equal(readout(engine.acquire(0), 'timebase').text, 'M 1.00ms');
   engine.turn('hor-scale', -1); // anticlockwise: slower
-  assert.equal(engine.state().hScale, 400e-6);
+  assert.equal(engine.state().hScale, 2e-3);
   engine.turn('hor-scale', -100);
   assert.equal(engine.state().hScale, 1);
   const seen = [];
@@ -44,14 +44,14 @@ function phase(frame, freq) {
 }
 
 test('the horizontal Position knob moves the trigger point on screen, and a push recentres it', () => {
-  const engine = createEngine(tbs(), { gen1Freq: 100 }); // 10 ms period: one rise on screen at 200 µs/div
+  const engine = createEngine(tbs(), { gen1Freq: 50 }); // 20 ms period: one rise on screen at 1 ms/div
   const centre = tbs().screen.divX / 2;
   assert.ok(Math.abs(firstRise(engine.acquire(0)) - centre) < 0.05, 'trigger point at the centre');
-  engine.turn('hor-position', 5); // 0.2 div per detent: 1 div = 200 µs
-  assert.equal(engine.state().hPosition, 200e-6);
+  engine.turn('hor-position', 5); // 0.2 div per detent: 1 div = 1 ms
+  assert.equal(engine.state().hPosition, 1e-3);
   assert.ok(Math.abs(firstRise(engine.acquire(0)) - (centre + 1)) < 0.05, 'moved right one division');
   engine.turn('hor-position', 1000);
-  assert.equal(engine.state().hPosition, 1.5e-3, 'stops with the trigger point at the screen edge');
+  assert.equal(engine.state().hPosition, 7.5e-3, 'stops with the trigger point at the screen edge');
   engine.push('hor-position');
   assert.equal(engine.state().hPosition, 0);
   engine.turn('hor-position', -3);
@@ -224,6 +224,7 @@ test('the noise is small but present on a flat signal', () => {
 test('a level near a peak gives trigger jitter; a level mid-signal does not', () => {
   const spread = (level) => {
     const engine = createEngine(tbs(), { gen1Freq: 100 });
+    engine.apply({ type: 'set', control: 'hor-scale', value: 200e-6 });
     engine.apply({ type: 'set', control: 'trig-level', value: level });
     const xs = [];
     for (let i = 0; i < 20; i++) {
