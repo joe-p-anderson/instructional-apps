@@ -15,7 +15,8 @@
 //   'v' (slider with number box), 'gamma' (number box), 'flip' (button)
 //   'grid-K', 'grid-Kp' (toggles), 'kp-panel' (toggle; hidden also hides the K′ diagram)
 //   'primed' (toggle "x′, t′ readouts"; hidden or off hides every x′/t′ readout and input in the
-//       sidebar, including an event's K′ coordinate entry; a rod's frame select stays)
+//       sidebar, including an event's K′ coordinate entry, and the K′ tick numbers on the K
+//       diagram, whose K′ axes stay; a rod's frame select stays)
 //   'measurements' (the measurements panel of the sidebar; get() is the number of measurements)
 //   'undo', 'redo', 'export-json', 'import-json' (set(json string or object) imports it),
 //   'new' (back to the Setup's diagram, undoable), 'reset-view', 'save-png' (downloads the snapshot)
@@ -456,7 +457,7 @@ function mount(container, modeId = 'diagram', setup = {}) {
     let x = gap, y = 0;
     for (let i = 0; i < frames.length; i++) {
       const P = frames[i], { w, h: hh } = g[i];
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${hh}" viewBox="0 0 ${w} ${hh}">${drawPanel(P, S, w, hh)}</svg>`;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${hh}" viewBox="0 0 ${w} ${hh}">${drawPanel(P, S, w, hh, { primed: showPrimed() })}</svg>`;
       const img = await new Promise((res, rej) => {
         const im = new Image();
         im.onload = () => res(im);
@@ -1023,7 +1024,7 @@ function mount(container, modeId = 'diagram', setup = {}) {
     const w = svg.clientWidth, hh = svg.clientHeight;
     if (!w || !hh) { delete geom[P]; return; }
     svg.setAttribute('viewBox', `0 0 ${w} ${hh}`);
-    svg.innerHTML = drawPanel(P, S, w, hh, { sel, connectIds, tool, preview });
+    svg.innerHTML = drawPanel(P, S, w, hh, { sel, connectIds, tool, preview, primed: showPrimed() });
     geom[P] = panelGeometry(S.view, w, hh);
   }
   function doRender() {

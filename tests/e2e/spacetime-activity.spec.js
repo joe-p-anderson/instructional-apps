@@ -135,6 +135,16 @@ test('rocket coordinates aren\'t visible anywhere', async ({ page }) => {
   await expect(p1.getByRole('img', { name: /frame K′/ })).toBeHidden();
   const text = await p1.locator('.st-tool').innerText();
   for (const leak of ['K′: (', 'Rocket: (', '(0, 4)', '(2.5, 2.5)', 'x′ =', 't′ =']) expect(text).not.toContain(leak);
+  // The K diagram keeps the K′ axes and their names, but no K′ tick numbers to read coordinates off.
+  const kTexts = await p1.getByRole('img', { name: 'Spacetime diagram in frame K', exact: true }).locator('text')
+    .evaluateAll((els) => els.map((el) => ({ text: el.textContent, fill: el.getAttribute('fill') })));
+  const kpName = kTexts.find((t) => t.text === 't′');
+  expect(kpName).toBeTruthy();
+  expect(kTexts.find((t) => t.text === 'x′')).toBeTruthy();
+  const kpTicks = kTexts.filter((t) => t.fill === kpName.fill && /^[−\d.]+$/.test(t.text));
+  expect(kpTicks).toEqual([]);
+  // The K axes keep their tick numbers.
+  expect(kTexts.filter((t) => t.fill !== kpName.fill && /^[−\d.]+$/.test(t.text)).length).toBeGreaterThan(0);
 });
 
 test('a reload restores progress, the drawing and the staged Controls', async ({ page }) => {

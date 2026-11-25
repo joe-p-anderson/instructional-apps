@@ -35,10 +35,11 @@ export function panelGeometry(V, w, h) {
 
 /**
  * SVG content (no outer <svg>) for frame P's panel of diagram D at w × h pixels.
- * ui: { sel, connectIds, tool, preview } (selection, Join picks, active tool, drawing preview).
+ * ui: { sel, connectIds, tool, preview, primed } (selection, Join picks, active tool, drawing preview;
+ * primed false leaves the K′ tick numbers off the K panel, keeping its K′ axes and their names).
  */
 export function drawPanel(P, D, w, h, ui = {}) {
-  const { sel = null, connectIds = [], tool = 'select', preview = null } = ui;
+  const { sel = null, connectIds = [], tool = 'select', preview = null, primed = true } = ui;
   const v = D.v;
   const V = D.view;
   const { s, R } = panelGeometry(V, w, h);
@@ -70,7 +71,7 @@ export function drawPanel(P, D, w, h, ui = {}) {
     lo = Math.ceil(Math.min(...cs.map((c) => c[1])) / step); hi = Math.floor(Math.max(...cs.map((c) => c[1])) / step);
     if (hi - lo < 900) for (let n = lo; n <= hi; n++) if (n) seg(conv(G, P, [0, n * step]), ex, -Infinity, Infinity, attr);
   }
-  // Axes, tick numbers and axis names (always shown)
+  // Axes, tick numbers and axis names (K′ tick numbers on the K panel only with primed readouts)
   for (const G of order) {
     if (G !== P && Math.abs(v) < 1e-9) continue; // frames coincide: one set of axes
     const col = COLORS[G], o = conv(G, P, [0, 0]);
@@ -79,7 +80,7 @@ export function drawPanel(P, D, w, h, ui = {}) {
       if (!c) continue;
       seg(o, dir, -Infinity, Infinity, `stroke="${col}" stroke-width="${G === P ? 1.8 : 1.5}"`);
       const n0 = Math.ceil(c[0] / ls), n1 = Math.floor(c[1] / ls);
-      if (n1 - n0 < 300) {
+      if (n1 - n0 < 300 && (primed || G === P || G !== 'Kp')) {
         for (let n = n0; n <= n1; n++) {
           if (!n) continue;
           const p = [o[0] + n * ls * dir[0], o[1] + n * ls * dir[1]];
