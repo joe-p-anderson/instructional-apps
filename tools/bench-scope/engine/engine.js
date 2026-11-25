@@ -18,6 +18,8 @@
 //   engine.detent(control)            integer knob position: rotation = detent · the knob's detent
 //                                     angle. From the feature's value if it has one, otherwise the
 //                                     net detents turned so far (not saved).
+//   engine.mpFunction()               what the multipurpose knob does now (a short label, e.g.
+//                                     'Cursor 1'), or null; the TDS lights its knob LEDs when non-null
 //
 // Output:
 //   engine.acquire(now) -> frame      now in ms (e.g. performance.now()); see FRAME below
@@ -45,6 +47,7 @@
 //   frame(ctx, frame)                   add readouts, menu, markers... to an acquired frame
 //   controls: { [control]: { get(ctx), set(ctx, value), detent?(ctx) } }   Control values; give
 //                                       detent() for a knob whose rotation follows its value
+//   mpFunction(ctx) -> string|null      the multipurpose knob's current function, if this feature owns it
 // where ctx = { settings, profile }. Add a feature by writing a module and listing it here.
 
 import { acquireTraces } from './acquire.js';
@@ -101,6 +104,11 @@ export function createEngine(profile, setup = {}) {
       return hook?.detent ? hook.detent(ctx) : (spins.get(control) ?? 0);
     },
 
+    mpFunction() {
+      for (const f of FEATURES) { const fn = f.mpFunction?.(ctx); if (fn) return fn; }
+      return null;
+    },
+
     acquire(now = 0) {
       const { width, height, divX, divY } = profile.screen;
       const frame = {
@@ -138,4 +146,15 @@ export function createEngine(profile, setup = {}) {
       for (const f of FEATURES) (f.restore ?? f.init)?.(ctx.settings, s, profile);
     },
   };
+}
+
+/**
+ * A new engine on another skin, carrying over `engine`'s settings: everything both models
+ * support is kept, values are clamped to the new profile's ranges (each feature's restore),
+ * and menu state resets (features keep it out of restore).
+ */
+export function switchSkin(engine, profile) {
+  const next = createEngine(profile);
+  next.restore(engine.serialize());
+  return next;
 }

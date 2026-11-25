@@ -1,10 +1,15 @@
 // Skin renderer: draws an engine frame onto the screen canvas at native resolution,
 // in the skin's on-screen style (profile.style). Needs only a CanvasRenderingContext2D.
 //
-// Readouts are placed by id through READOUT_SLOTS; ids without a slot are laid out along
-// the bottom bar after the placed ones, so a new readout shows up before it gets a slot.
+// Organisation: the graticule and traces are drawn the same way for every skin, from
+// profile.style (plot rectangle, colours). What differs per skin is keyed by profile.id:
+//   READOUT_SLOTS[skin]   where each readout id goes
+//   CHANNEL_READOUT[skin] how a channel readout is drawn (TBS: coloured number badge; TDS:
+//                         "CH1" in the channel colour)
+// Readouts without a slot are laid out along the bottom bar from style.readouts.spareX, so a
+// new readout shows up before it gets a slot.
 
-/** Where each readout id goes on the TBS2072B screen: [x, y, align]. */
+/** Where each readout id goes on each skin's screen: [x, y, align]. */
 const READOUT_SLOTS = {
   tbs2072b: {
     status: [8, 15, 'left'],
@@ -12,6 +17,37 @@ const READOUT_SLOTS = {
     'ch2-scale': [150, 455, 'left'],
     timebase: [330, 455, 'left'],
     trigger: [560, 455, 'left'],
+  },
+  // TDS1000C/2000C: trigger status top left, CH readouts then time base along the bottom.
+  tds2001c: {
+    status: [30, 7, 'left'],
+    'ch1-scale': [6, 228, 'left'],
+    'ch2-scale': [70, 228, 'left'],
+    timebase: [134, 228, 'left'],
+    trigger: [196, 228, 'left'],
+  },
+};
+
+/** Draw a channel readout (r.channel set) at (x, y) in the skin's style. */
+const CHANNEL_READOUT = {
+  tbs2072b(g, r, x, y, colors) {
+    // Channel badge in the channel colour, as on the real screen.
+    g.fillStyle = colors[r.channel] ?? colors.text;
+    const label = r.channel.toUpperCase().replace('CH', '');
+    g.fillRect(x, y - 10, 20, 20);
+    g.fillStyle = colors.background;
+    g.textAlign = 'center';
+    g.fillText(label, x + 10, y + 1);
+    g.textAlign = 'left';
+    g.fillStyle = colors[r.channel] ?? colors.text;
+    g.fillText(r.text, x + 26, y + 1);
+  },
+  tds2001c(g, r, x, y, colors) {
+    g.textAlign = 'left';
+    g.fillStyle = colors[r.channel] ?? colors.text;
+    const label = r.channel.toUpperCase();
+    g.fillText(label, x, y + 1);
+    g.fillText(r.text, x + g.measureText(label).width + 4, y + 1);
   },
 };
 
@@ -69,24 +105,17 @@ export function renderScreen(g, frame, profile) {
   g.font = font;
   g.textBaseline = 'middle';
   const slots = READOUT_SLOTS[profile.id] ?? {};
+  const drawChannel = CHANNEL_READOUT[profile.id] ?? CHANNEL_READOUT.tbs2072b;
   const readouts = [{ id: 'status', text: STATUS_TEXT[frame.status] ?? frame.status }, ...frame.readouts];
-  let spareX = 620;
+  const bar = profile.style.readouts ?? { y: height - 25, spareX: width * 0.75 };
+  let spareX = bar.spareX;
   for (const r of readouts) {
-    const slot = slots[r.id] ?? [spareX, 455, 'left'];
+    const slot = slots[r.id] ?? [spareX, bar.y, 'left'];
     if (!slots[r.id]) spareX += g.measureText(r.text).width + 16;
     const [x, y, align] = slot;
     g.textAlign = align;
     if (r.channel) {
-      // Channel badge in the channel colour, as on the real screen.
-      g.fillStyle = colors[r.channel] ?? colors.text;
-      const label = r.channel.toUpperCase().replace('CH', '');
-      g.fillRect(x, y - 10, 20, 20);
-      g.fillStyle = colors.background;
-      g.textAlign = 'center';
-      g.fillText(label, x + 10, y + 1);
-      g.textAlign = 'left';
-      g.fillStyle = colors[r.channel] ?? colors.text;
-      g.fillText(r.text, x + 26, y + 1);
+      drawChannel(g, r, x, y, colors);
     } else {
       g.fillStyle = colors.text;
       g.fillText(r.text, x, y + 1);
