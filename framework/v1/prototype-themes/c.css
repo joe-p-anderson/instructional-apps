@@ -1,0 +1,74 @@
+/* PROTOTYPE theme C: Bench Instrument. Cool grey equipment casing, a phosphor scope screen for
+   the Display, monospace "LCD" readouts. Structural change: the current Task is a banner above
+   the Display; other Tasks shrink to a row of numbered steps; Part tabs carry progress badges. */
+
+:root {
+  --fw-page:      #C9CED3;
+  --fw-bg:        #E4E7EA;
+  --fw-surface:   #F3F4F6;
+  --fw-border:    #C3C9CF;
+  --fw-border-dk: #7D8790;
+  --fw-blue:      #0E6E8C;
+  --fw-blue-dk:   #0A5269;
+  --fw-red:       #B3261E;
+  --fw-yellow:    #7A5200;
+  --fw-green:     #22744A;
+  --fw-text:      #14191E;
+  --fw-text-dim:  #3E4750;
+  --fw-text-muted:#5A646E;
+  --fw-font: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --proto-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+}
+html.fw-root, html.fw-root body { font-size: 15px; }
+
+.fw-app { border-color: var(--fw-border-dk); }
+.fw-header { background: #2A3138; color: #EEF1F3; border-bottom: none; padding: 10px 18px; }
+.fw-title { font-variant: normal; letter-spacing: 0.02em; font-size: 19px; font-weight: 600; }
+.fw-subtitle, .fw-student { color: #B9C2CA; font-style: normal; font-size: 13px; font-family: var(--proto-mono); }
+.fw-header .fw-button { border-color: #9FB4C2; color: #EEF1F3; }
+.fw-header .fw-button:hover { background: #EEF1F3; color: #2A3138; }
+.fw-tabs { background: #353D45; border-bottom: none; }
+.fw-tab { color: #C8D0D7; font-variant: normal; letter-spacing: 0.04em; text-transform: uppercase; font-size: 12px; font-weight: 600; border-right: 1px solid #47505A; padding: 10px 16px; bottom: 0; }
+.fw-tab:hover { color: #fff; }
+.fw-tab[aria-selected="true"] { color: #fff; background: var(--fw-bg); color: var(--fw-text); border-bottom-color: var(--fw-blue); }
+.proto-badge { margin-left: 8px; font-family: var(--proto-mono); font-size: 11px; padding: 1px 6px; border-radius: 3px; background: #1B2025; color: #9FE0B8; }
+.fw-tab[aria-selected="true"] .proto-badge { background: #2A3138; }
+
+.fw-button { font-variant: normal; letter-spacing: 0.04em; text-transform: uppercase; font-size: 12px; font-weight: 600; border-radius: 4px; padding: 6px 12px; }
+.fw-reset { border-radius: 3px; font-family: var(--proto-mono); font-size: 12px; color: var(--fw-text-dim); border-color: var(--fw-border-dk); }
+.fw-number { font-family: var(--proto-mono); font-size: 14px; background: #1B2025; color: #9FE0B8; border: 1px solid #1B2025; border-radius: 3px; width: 80px; }
+.fw-number:focus { background: #1B2025; border-color: var(--fw-blue); }
+
+.fw-controls { background: var(--fw-surface); border-right: 1px solid var(--fw-border-dk); }
+.fw-section-label { font-variant: normal; font-size: 11px; letter-spacing: 0.12em; font-weight: 600; color: var(--fw-text-dim); }
+.fw-control-name { font-style: normal; font-weight: 600; font-size: 14px; }
+.fw-hint { font-style: normal; color: var(--fw-text-muted); font-size: 13px; }
+.fw-metric { font-family: var(--proto-mono); font-size: 13px; line-height: 1.9; }
+.fw-metric-value { color: var(--fw-text); }
+.fw-range { height: 6px; border-radius: 3px; background: #B7BEC5; }
+.fw-range::-webkit-slider-thumb { width: 14px; height: 22px; border-radius: 3px; background: #E9ECEF; border: 1px solid #5A646E; box-shadow: inset 0 -3px 0 #C3C9CF; }
+.fw-control.fw-locked { opacity: 0.5; }
+.fw-displays { background: var(--fw-bg); }
+.fw-display { border: 10px solid #2A3138; border-radius: 8px; background: #0B1410; }
+
+/* Tasks: current Task banner above the Display, other Tasks as compact steps */
+.fw-part-tasks { order: -1; max-height: none; border-top: none; border-bottom: 1px solid var(--fw-border-dk); background: var(--fw-surface); }
+.fw-progress { display: none; }
+.fw-tasks { align-items: stretch; }
+.fw-task-card { flex: 0 0 auto; min-width: 0; padding: 8px 14px; }
+.fw-task-card[data-status="open"] { flex: 1 1 auto; background: #fff; box-shadow: inset 0 3px 0 var(--fw-blue); }
+.fw-task-card:not([data-status="open"]) { opacity: 1; max-width: 190px; color: var(--fw-text-muted); }
+.fw-task-card:not([data-status="open"]) .fw-task-prompt,
+.fw-task-card:not([data-status="open"]) .fw-question,
+.fw-task-card:not([data-status="open"]) .fw-task-submit,
+.fw-task-card:not([data-status="open"]) .fw-task-hint { display: none; }
+.fw-task-card[data-status="passed"] .fw-task-title { color: var(--fw-green); }
+.fw-task-heading { margin-bottom: 3px; }
+.fw-task-check { border-radius: 3px; }
+.fw-task-title { font-variant: normal; letter-spacing: 0; font-size: 14px; font-weight: 600; }
+.fw-task-prompt { font-style: normal; color: var(--fw-text); font-size: 14px; margin-bottom: 6px; }
+.fw-task-prompt, .fw-question, .fw-task-submit, .fw-task-hint { margin-left: 26px; }
+.fw-question-prompt { color: var(--fw-text); font-style: normal; font-weight: 600; font-size: 14px; }
+.fw-task-feedback { font-style: normal; font-family: var(--proto-mono); font-size: 13px; }
+.fw-task-hint { font-style: normal; color: var(--fw-text); background: #FFF4D6; border-left: 3px solid #C98A00; padding: 4px 8px; font-size: 13px; }
+.fw-button:focus-visible, .fw-tab:focus-visible, .fw-reset:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: 2px; }

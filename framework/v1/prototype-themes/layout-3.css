@@ -1,0 +1,29 @@
+/* PROTOTYPE layout 3 (on theme A): Task banner on top, Display full width, Controls in a
+   horizontal strip underneath (Parameters | Live metrics | Legend side by side). The current
+   Task is the banner; the others shrink to numbered steps beside it. Widest plot of the set. */
+
+.proto-badge { margin-left: 8px; font-variant: normal; font-size: 12px; padding: 0 6px; border: 1px solid var(--fw-border-dk); color: var(--fw-text-dim); }
+.proto-badge[data-done="true"] { background: var(--fw-green); border-color: var(--fw-green); color: #fff; }
+
+/* Task banner */
+.fw-part-tasks { order: -1; max-height: none; border-top: none; border-bottom: 2px solid var(--fw-border-dk); }
+.fw-progress { display: none; }
+.fw-task-card { flex: 0 0 auto; min-width: 0; padding: 8px 14px; }
+.fw-task-card[data-status="open"] { flex: 1 1 auto; background: var(--fw-bg); box-shadow: inset 0 3px 0 var(--fw-blue); }
+.fw-task-card:not([data-status="open"]) { opacity: 1; max-width: 200px; }
+.fw-task-card:not([data-status="open"]) .fw-task-prompt,
+.fw-task-card:not([data-status="open"]) .fw-question,
+.fw-task-card:not([data-status="open"]) .fw-task-submit,
+.fw-task-card:not([data-status="open"]) .fw-task-hint { display: none; }
+.fw-task-card[data-status="locked"] .fw-task-title { color: var(--fw-text-dim); }
+.fw-task-card[data-status="locked"] .fw-task-title::after { content: ""; }
+.fw-task-card[data-status="open"] .fw-task-submit { margin-bottom: 0; }
+
+/* Controls strip under the Display */
+.fw-tool { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+.fw-tool > .fw-controls { order: 2; display: flex; overflow: auto hidden; border-right: none; border-top: 2px solid var(--fw-border-dk); }
+.fw-controls > .fw-section { flex: 0 0 260px; border-bottom: none; border-right: 1px solid var(--fw-border); }
+.fw-controls > .fw-section:first-child { flex-basis: 540px; display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; align-content: start; }
+.fw-controls > .fw-section:first-child > .fw-section-label,
+.fw-controls > .fw-section:first-child > .fw-hint { grid-column: 1 / -1; }
+.fw-metric { line-height: 1.6; }

@@ -1,0 +1,20 @@
+/* PROTOTYPE layout 2 (on theme A): three columns in reading order. Tasks (what to do) on the
+   left, the Display in the middle, Controls and readouts (how to do it) on the right, next to
+   the plot they drive. */
+
+.proto-badge { margin-left: 8px; font-variant: normal; font-size: 12px; padding: 0 6px; border: 1px solid var(--fw-border-dk); color: var(--fw-text-dim); }
+.proto-badge[data-done="true"] { background: var(--fw-green); border-color: var(--fw-green); color: #fff; }
+
+.fw-tabpanel { flex-direction: row; }
+.fw-tabpanel > .fw-tool { flex: 1; min-width: 0; grid-template-columns: minmax(0, 1fr) 240px; }
+.fw-tool > .fw-controls { order: 2; border-right: none; border-left: 2px solid var(--fw-border-dk); }
+.fw-part-tasks { order: -1; width: 300px; max-height: none; border-top: none; border-right: 2px solid var(--fw-border-dk); }
+.fw-progress-bar { flex: 1; }
+.fw-tasks { flex-direction: column; overflow-y: auto; }
+.fw-task-card { flex: none; min-width: 0; border-right: none; border-bottom: 1px solid var(--fw-border); padding: 12px 14px; }
+.fw-task-card[data-status="open"] { background: var(--fw-bg); box-shadow: inset 3px 0 0 var(--fw-blue); }
+.fw-task-card[data-status="locked"] { opacity: 0.6; }
+.fw-task-card[data-status="locked"] .fw-question,
+.fw-task-card[data-status="locked"] .fw-task-submit { display: none; }
+.fw-task-card[data-status="passed"] .fw-task-prompt,
+.fw-task-card[data-status="passed"] .fw-task-hint { display: none; }

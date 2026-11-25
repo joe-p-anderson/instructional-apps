@@ -1,0 +1,71 @@
+/* PROTOTYPE theme D: Projector / High Contrast. Built to be read from the back of a lecture
+   room: Atkinson Hyperlegible, 18-20px type, pure black on white, thick strokes, large targets.
+   Structural change: only the current Task is shown, full width under the Display with a big
+   Submit; a numbered step row says where you are; wider Controls column. */
+
+:root {
+  --fw-page:      #FFFFFF;
+  --fw-bg:        #FFFFFF;
+  --fw-surface:   #FFFFFF;
+  --fw-border:    #000000;
+  --fw-border-dk: #000000;
+  --fw-blue:      #0047B3;
+  --fw-blue-dk:   #00337F;
+  --fw-red:       #C8102E;
+  --fw-yellow:    #7A4A00;
+  --fw-green:     #00703C;
+  --fw-text:      #000000;
+  --fw-text-dim:  #1F1F1F;
+  --fw-text-muted:#3A3A3A;
+  --fw-font: 'Atkinson Hyperlegible', Verdana, system-ui, sans-serif;
+}
+html.fw-root, html.fw-root body { font-size: 19px; }
+
+.fw-app { max-width: none; border: none; }
+.fw-header { border-bottom: 3px solid #000; padding: 10px 20px; }
+.fw-title { font-variant: normal; letter-spacing: 0; font-size: 26px; }
+.fw-subtitle, .fw-student { font-style: normal; font-size: 16px; color: #000; }
+.fw-tabs { border-bottom: 3px solid #000; }
+.fw-tab { font-variant: normal; letter-spacing: 0; font-size: 18px; font-weight: 700; color: #000; border-right: 2px solid #000; padding: 10px 20px; bottom: -3px; border-bottom-width: 6px; }
+.fw-tab[aria-selected="true"] { background: #000; color: #fff; border-bottom-color: #000; }
+.proto-badge { margin-left: 10px; font-size: 15px; padding: 0 8px; border: 2px solid currentColor; border-radius: 4px; }
+
+.fw-button { font-variant: normal; letter-spacing: 0; font-size: 18px; font-weight: 700; border-width: 3px; padding: 6px 16px; }
+.fw-reset { font-size: 15px; color: #000; border: 2px solid #000; padding: 3px 8px; }
+.fw-number { font-size: 19px; color: #000; border: 2px solid #000; width: 84px; background: #fff; }
+
+.fw-tool { grid-template-columns: 300px minmax(0, 1fr); }
+.fw-controls { border-right: 3px solid #000; }
+.fw-section { padding: 12px 16px; border-bottom: 2px solid #000; }
+.fw-section-label { font-variant: normal; text-transform: uppercase; font-size: 15px; letter-spacing: 0.08em; font-weight: 700; color: #000; }
+.fw-control-name { font-style: normal; font-weight: 700; font-size: 20px; }
+.fw-unit { font-size: 17px; color: #000; }
+.fw-hint { font-style: normal; color: #000; font-size: 16px; }
+.fw-metric { font-size: 18px; color: #000; line-height: 1.7; }
+.fw-legend-row { font-size: 17px; }
+.fw-legend-line { height: 5px; }
+.fw-range { height: 8px; background: #000; }
+.fw-range::-webkit-slider-thumb { width: 28px; height: 28px; border-radius: 50%; border: 3px solid #000; background: #FFD400; }
+.fw-range::-moz-range-thumb { width: 28px; height: 28px; border-radius: 50%; border: 3px solid #000; background: #FFD400; }
+.fw-control.fw-locked { opacity: 1; }
+.fw-control.fw-locked .fw-range, .fw-control.fw-locked .fw-number { opacity: 0.4; }
+.fw-control.fw-locked .fw-control-name::after { content: " (locked)"; font-weight: 400; font-size: 16px; }
+.fw-display { border: 3px solid #000; }
+
+/* Tasks: only the current one, full width */
+.fw-part-tasks { border-top: 3px solid #000; max-height: none; }
+.fw-progress { font-size: 16px; color: #000; border-bottom: 2px solid #000; padding: 6px 16px; }
+.fw-progress-bar { width: 220px; height: 14px; }
+.fw-task-card:not([data-status="open"]) { display: none; }
+.fw-task-card { padding: 12px 20px; border-right: none; }
+.fw-task-title { font-variant: normal; letter-spacing: 0; font-size: 21px; }
+.fw-task-check { width: 24px; height: 24px; border: 3px solid #000; }
+.fw-task-prompt, .fw-question, .fw-task-submit, .fw-task-hint { margin-left: 32px; }
+.fw-task-prompt { font-style: normal; color: #000; font-size: 20px; }
+.fw-question-prompt { color: #000; font-style: normal; font-weight: 700; font-size: 19px; }
+.fw-question-input { font-size: 18px; border: 2px solid #000; }
+.fw-task-submit .fw-button { font-size: 20px; padding: 8px 28px; background: var(--fw-blue); color: #fff; border-color: var(--fw-blue); }
+.fw-task-feedback { font-style: normal; font-size: 19px; font-weight: 700; }
+.fw-task-hint { font-style: normal; color: #000; font-size: 18px; background: #FFF1A8; border: 2px solid #000; padding: 6px 10px; }
+.fw-tasks:not(:has(.fw-task-card[data-status="open"]))::before { content: "All Tasks in this Part are done. Download your Report from the top right."; padding: 14px 20px; font-size: 20px; font-weight: 700; color: var(--fw-green); }
+:focus-visible { outline: 4px solid #FFD400 !important; outline-offset: 2px; box-shadow: 0 0 0 7px #000; }

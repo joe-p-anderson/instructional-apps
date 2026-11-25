@@ -1,0 +1,24 @@
+/* PROTOTYPE layout 1 (on theme A): Task column on the right. Controls | Display | Tasks.
+   Tasks stack top to bottom; the current one is outlined, finished ones collapse to their title,
+   locked ones show only a one-line reason. The plot keeps its full height. */
+
+.proto-badge { margin-left: 8px; font-variant: normal; font-size: 12px; padding: 0 6px; border: 1px solid var(--fw-border-dk); color: var(--fw-text-dim); }
+.proto-badge[data-done="true"] { background: var(--fw-green); border-color: var(--fw-green); color: #fff; }
+
+.fw-tabpanel { flex-direction: row; }
+.fw-tabpanel > .fw-tool { flex: 1; min-width: 0; }
+.fw-part-tasks { width: 330px; max-height: none; border-top: none; border-left: 2px solid var(--fw-border-dk); }
+.fw-progress-bar { flex: 1; }
+.fw-tasks { flex-direction: column; overflow-y: auto; padding: 10px; gap: 10px; }
+.fw-task-card { flex: none; min-width: 0; border: 1px solid var(--fw-border); background: var(--fw-bg); }
+.fw-task-card:last-child { border-right: 1px solid var(--fw-border); }
+.fw-task-card[data-status="open"] { border: 1.5px solid var(--fw-blue); background: var(--fw-surface); }
+.fw-task-card[data-status="locked"] { opacity: 1; border-style: dashed; background: transparent; }
+.fw-task-card[data-status="locked"] .fw-task-prompt,
+.fw-task-card[data-status="locked"] .fw-question,
+.fw-task-card[data-status="locked"] .fw-task-submit { display: none; }
+.fw-task-card[data-status="locked"] .fw-task-title { color: var(--fw-text-dim); }
+.fw-task-card[data-status="locked"] .fw-task-title::after { content: "Opens when the Task above is done"; display: block; font: italic 13px var(--fw-font); color: var(--fw-text-dim); margin-top: 2px; }
+.fw-task-card[data-status="passed"] .fw-task-prompt,
+.fw-task-card[data-status="passed"] .fw-task-hint { display: none; }
+.fw-task-card[data-status="passed"] .fw-task-submit { margin-bottom: 0; }

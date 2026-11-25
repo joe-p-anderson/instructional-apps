@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<!--
+  PROTOTYPE (throwaway): four theme options for framework v1, shown on the real
+  phase-period-amplitude Activity. Switch with ?variant=A|B|C|D or the bottom bar / ← →.
+  Question it answers: what should the framework's look be after the UX review's contrast/type fixes?
+  Each variant is one CSS file in framework/v1/prototype-themes/ loaded after theme.css,
+  plus a plot recolour (the oscilloscope's Plotly colours are hard-coded in JS, so this page
+  wraps Plotly.newPlot/react to remap them). Not for production; delete once a theme is chosen.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROTOTYPE themes: Phase Shift, Period and Amplitude</title>
+<link rel="stylesheet" href="../../../framework/v1/theme.css">
+<link rel="stylesheet" id="variant-css">
+<link rel="stylesheet" id="variant-fonts">
+<style>
+  .proto-bar { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 9999;
+    display: flex; align-items: center; gap: 4px; padding: 4px; border-radius: 999px;
+    background: #111; color: #fff; font: 600 13px/1 system-ui, sans-serif; box-shadow: 0 4px 18px rgba(0,0,0,.35); }
+  .proto-bar button { all: unset; cursor: pointer; padding: 8px 12px; border-radius: 999px; }
+  .proto-bar button:hover, .proto-bar button:focus-visible { background: #333; }
+  .proto-bar span { padding: 0 8px; min-width: 15em; text-align: center; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="proto-bar" role="toolbar" aria-label="Prototype theme switcher">
+  <button type="button" id="proto-prev" aria-label="Previous theme">←</button>
+  <span id="proto-label"></span>
+  <button type="button" id="proto-next" aria-label="Next theme">→</button>
+</div>
+<script type="module">
+  import { loadPlotly } from '../../../framework/v1/vendor.js';
+
+  // Each variant: CSS file, Google Fonts URL (prototype only; production would vendor woff2),
+  // and how to restyle the Plotly plot.
+  const VARIANTS = {
+    A: { name: 'Refined Cream', fonts: 'family=Libre+Baskerville:ital,wght@0,400;0,700;1,400',
+      plot: { font: "'Libre Baskerville', Georgia, serif", size: 14, width: 2.5, colors: {} } },
+    B: { name: 'Lab Notebook', badges: true, fonts: 'family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700',
+      plot: { font: "'Source Sans 3', system-ui, sans-serif", size: 14, width: 2.5, colors: {
+        '#FAF8F2': '#FFFFFF', '#DDD5C0': '#D3E1EE', '#8B7D5E': '#5B7590', '#5C4F38': '#3D4F61',
+        '#1B4F8A': '#1D4ED8', '#B81C1C': '#C2185B', '#1A1008': '#0F172A', '#C8BFA0': '#B8C4D0' } } },
+    C: { name: 'Bench Instrument', badges: true, fonts: 'family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600',
+      plot: { font: "'IBM Plex Mono', ui-monospace, monospace", size: 13, width: 2.2, colors: {
+        '#FAF8F2': '#0B1410', '#DDD5C0': '#1F3A2C', '#8B7D5E': '#4E7A63', '#5C4F38': '#9DB8A8',
+        '#1B4F8A': '#F2D33B', '#B81C1C': '#3FC6E8', '#E8720C': '#FF7A45', '#1A1008': '#E8F5EC', '#C8BFA0': '#3A5446' } } },
+    D: { name: 'Projector / High Contrast', badges: true, fonts: 'family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400',
+      plot: { font: "'Atkinson Hyperlegible', system-ui, sans-serif", size: 18, width: 4.5, colors: {
+        '#FAF8F2': '#FFFFFF', '#DDD5C0': '#D0D0D0', '#8B7D5E': '#000000', '#5C4F38': '#000000',
+        '#1B4F8A': '#0047B3', '#B81C1C': '#C8102E', '#1A1008': '#000000', '#C8BFA0': '#9A9A9A' } } },
+  };
+  // Round 2: theme A chosen; panel layouts on top of it (layout-N.css after a.css).
+  const LAYOUTS = {
+    L1: 'Task column right', L2: 'Three columns: Tasks · Display · Controls',
+    L3: 'Task banner + control strip', L4: 'Worksheet split',
+  };
+  for (const [k, name] of Object.entries(LAYOUTS)) VARIANTS[k] = { ...VARIANTS.A, name: `A + ${name}`, badges: true, layout: k.slice(1) };
+  const KEYS = ['A', ...Object.keys(LAYOUTS)]; // the switcher cycles theme A's layouts; B–D still load by URL
+  const asked = new URLSearchParams(location.search).get('variant');
+  const key = asked in VARIANTS ? asked : 'A';
+  const v = VARIANTS[key];
+  document.documentElement.dataset.protoTheme = key;
+  document.getElementById('variant-css').href = `../../../framework/v1/prototype-themes/${v.layout ? 'a' : key.toLowerCase()}.css`;
+  if (v.layout) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = `../../../framework/v1/prototype-themes/layout-${v.layout}.css`;
+    document.head.append(link);
+  }
+  document.getElementById('variant-fonts').href = `https://fonts.googleapis.com/css2?${v.fonts}&display=swap`;
+  document.getElementById('proto-label').textContent = `${key} · ${v.name}`;
+
+  // Switcher: URL param, reload (the Run autosaves, so progress carries across variants).
+  const go = (d) => { const i = (Math.max(0, KEYS.indexOf(key)) + d + KEYS.length) % KEYS.length; const u = new URL(location.href); u.searchParams.set('variant', KEYS[i]); location.href = u.href; };
+  document.getElementById('proto-prev').onclick = () => go(-1);
+  document.getElementById('proto-next').onclick = () => go(1);
+  addEventListener('keydown', (e) => {
+    if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+    if (e.key === 'ArrowLeft') go(-1); else if (e.key === 'ArrowRight') go(1);
+  });
+
+  // Plot restyle: wrap Plotly before the Tool loads it.
+  const Plotly = await loadPlotly();
+  const remap = (obj) => {
+    let s = JSON.stringify(obj);
+    for (const [from, to] of Object.entries(v.plot.colors)) s = s.split(from).join(to);
+    return JSON.parse(s);
+  };
+  const restyle = (data, layout) => {
+    data = remap(data).map((t) => t.mode === 'lines' ? { ...t, line: { ...t.line, width: v.plot.width } } : t);
+    layout = remap(layout);
+    layout.font = { ...layout.font, family: v.plot.font, size: v.plot.size };
+    return [data, layout];
+  };
+  for (const fn of ['newPlot', 'react']) {
+    const orig = Plotly[fn].bind(Plotly);
+    Plotly[fn] = (div, data, layout, config) => orig(div, ...restyle(data, layout), config);
+  }
+
+  const { default: oscilloscope } = await import('../oscilloscope.js');
+  const { default: activity } = await import('./phase-period-amplitude.js');
+  const { mountActivity } = await import('../../../framework/v1/activity-ui.js');
+  window.activityHost = mountActivity(oscilloscope, activity, document.getElementById('app'));
+
+  // Legend swatches carry the Tool's hard-coded colours inline; recolour them to match the plot.
+  const hex = (rgb) => '#' + (rgb.match(/\d+/g) || []).slice(0, 3).map((n) => Number(n).toString(16).padStart(2, '0')).join('').toUpperCase();
+  for (const line of document.querySelectorAll('.fw-legend-line')) {
+    const to = v.plot.colors[hex(getComputedStyle(line).backgroundColor)];
+    if (to) line.style.background = to;
+  }
+
+  // Progress badge on each Part tab (from the review: conductor_properties' tab badges).
+  if (v.badges) {
+    const sync = () => {
+      for (const panel of document.querySelectorAll('.fw-tabpanel')) {
+        const tab = document.getElementById(panel.getAttribute('aria-labelledby'));
+        const bar = panel.querySelector('.fw-progress-bar');
+        if (!tab || !bar) continue;
+        let badge = tab.querySelector('.proto-badge');
+        if (!badge) { badge = document.createElement('span'); badge.className = 'proto-badge'; tab.append(badge); }
+        const text = `${bar.value}/${bar.max}`, done = String(bar.value === bar.max);
+        if (badge.textContent !== text) badge.textContent = text; // only on change: this runs inside a MutationObserver
+        if (badge.dataset.done !== done) badge.dataset.done = done;
+      }
+    };
+    new MutationObserver(sync).observe(document.getElementById('app'), { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['data-status', 'value'] });
+    sync();
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+/* PROTOTYPE theme A: Refined Cream. Keeps today's identity and layout; applies only the review's
+   fixes: a real webfont, AA contrast tokens, upright labels, neutral Question prompts, readable
+   locked states, bigger slider thumbs. */
+
+:root {
+  --fw-text-muted: #6E604A;   /* 5.8:1 on surface (was 3.09) */
+  --fw-yellow:     #8A5F00;   /* 5.3:1 (was 2.65) */
+  --fw-font: 'Libre Baskerville', Georgia, serif;
+}
+html.fw-root, html.fw-root body { font-size: 16px; }
+
+.fw-title { font-size: 22px; }
+.fw-tab { font-size: 15px; color: var(--fw-text-dim); }
+.fw-section-label { font-variant: normal; font-size: 11px; letter-spacing: 0.16em; color: var(--fw-text-dim); }
+.fw-hint, .fw-task-prompt { font-style: normal; color: var(--fw-text-dim); }
+.fw-control-name { font-size: 15px; }
+.fw-metric, .fw-legend-row { font-size: 14px; }
+
+.fw-range { height: 4px; }
+.fw-range::-webkit-slider-thumb { width: 18px; height: 18px; border-radius: 50%; }
+.fw-range::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; }
+.fw-reset { color: var(--fw-text-dim); }
+
+.fw-question-prompt { color: var(--fw-text); font-style: normal; border-left: 3px solid var(--fw-blue); padding-left: 8px; }
+.fw-task-hint { color: var(--fw-yellow); font-style: normal; background: #FBF3DF; padding: 4px 8px; border-left: 3px solid var(--fw-yellow); }
+.fw-task-card[data-status="locked"] { opacity: 0.6; }
+.fw-task-card[data-status="locked"] .fw-task-title::after { content: " · locked"; font-weight: normal; font-variant: normal; font-style: italic; color: var(--fw-text-dim); }
+.fw-control.fw-locked { opacity: 0.55; }
+.fw-button:focus-visible, .fw-tab:focus-visible, .fw-reset:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: 2px; }
