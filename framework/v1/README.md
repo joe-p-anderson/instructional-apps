@@ -62,13 +62,17 @@ Tools keep no global state; mount the same Tool as many times as needed. Example
 
 `layout` is optional: `'side'` (the default), `'strip'` or `'banner'`, checked by `defineTool()`. It is fixed per
 Tool; an Activity cannot change it. The frame (`createFrame` in `tool-host.js`) puts `fw-layout-<layout>` on
-`.fw-app`, in Standalone mode and in the Activity runner, and every layout rule lives in `theme.css` keyed on it.
-The Tool itself only builds `.fw-tool` with `.fw-controls` (made of `.fw-section`s) and `.fw-displays`.
+`.fw-app`, in Standalone mode and in the Activity runner, and the layout rules live in `theme.css` keyed on it.
+The Tool itself builds `.fw-tool` with `.fw-controls` (made of `.fw-section`s) and `.fw-displays`. A Tool may
+refine a layout for its own Controls or Display (sizes, spacing, how a section's Controls are arranged) in its
+own CSS, scoped under its root class, such as bench-scope's compact Controls strip under `.bs-tool`; it does not
+move the panels themselves, and anything every Tool would want belongs in `theme.css`.
 
 | Layout | Arrangement |
 | --- | --- |
 | `side` | Controls \| Display \| Tasks. Tasks stack in a 330 px column on the right; the current Task is outlined, finished Tasks show their title and result, locked Tasks one line saying why. |
 | `strip` | Controls \| Display, with the Tasks in a row across the bottom (the original v1 layout). |
-| `banner` | The current Task is a banner above a full-width Display, the other Tasks compact steps beside it; the Controls' sections sit side by side in a strip below the Display. In Standalone mode only the banner is absent. For wide Tools. |
+| `banner` | The current Task is a banner above a full-width Display, the other Tasks compact steps beside it (a locked step says why it is locked); the Controls' sections sit side by side in a strip below the Display. In Standalone mode only the banner is absent. For wide Tools. |
 
-In every layout each Part tab carries a progress badge ("1/3"), filled once the Part is complete.
+In every layout a locked Task says which Task unlocks it, and each Part tab carries a progress badge ("1/3"),
+filled once the Part is complete; the tab's accessible name reads it as "(1 of 3 Tasks done)".

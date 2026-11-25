@@ -12,7 +12,7 @@
 // The same frame/tab helpers are exported for the Activity runner UI, whose Part tabs
 // look the same as Standalone Mode tabs.
 
-import { defineTool } from './tool.js';
+import { defineTool, LAYOUTS } from './tool.js';
 import { h } from './ui-kit.js';
 import { browserStorage, standaloneStore, shareHash, readShareHash } from './persistence.js';
 
@@ -20,7 +20,7 @@ import { browserStorage, standaloneStore, shareHash, readShareHash } from './per
  * Header + tab strip + panel area, laid out by the Tool's panel layout (tool.js): .fw-app gets
  * the class fw-layout-<layout> and theme.css does the rest. Returns elements to fill.
  */
-export function createFrame(root, { title, subtitle, layout = 'side' }) {
+export function createFrame(root, { title, subtitle, layout = LAYOUTS[0] }) {
   document.documentElement.classList.add('fw-root');
   const tablist = h('div', { class: 'fw-tabs', role: 'tablist' });
   const panels = h('div', { class: 'fw-tabpanel-area', style: 'flex:1;min-height:0;display:flex;flex-direction:column' });
@@ -44,7 +44,8 @@ export function createTabs(frame, tabs, onSelect = () => {}) {
     const tabId = `fw-tab-${t.id}`;
     const panelId = `fw-panel-${t.id}`;
     buttons[t.id] = h('button', { type: 'button', class: 'fw-tab', role: 'tab', id: tabId,
-      'aria-controls': panelId, 'aria-selected': 'false', onclick: () => select(t.id) }, t.title);
+      'aria-controls': panelId, 'aria-selected': 'false', onclick: () => select(t.id) },
+      h('span', { class: 'fw-tab-title' }, t.title));
     panels[t.id] = h('section', { class: 'fw-tabpanel', role: 'tabpanel', id: panelId,
       'aria-labelledby': tabId, hidden: true });
     frame.tablist.append(buttons[t.id]);
@@ -62,8 +63,8 @@ export function createTabs(frame, tabs, onSelect = () => {}) {
   return { panels, buttons, select };
 }
 
-export function mountStandalone(tool, root, { setups = {}, subtitle = 'Standalone', storage = browserStorage() } = {}) {
-  defineTool(tool);
+export function mountStandalone(definition, root, { setups = {}, subtitle = 'Standalone', storage = browserStorage() } = {}) {
+  const tool = defineTool(definition);
   if (!document.title) document.title = tool.title;
   const frame = createFrame(root, { title: tool.title, subtitle, layout: tool.layout });
   const host = { tool, modes: tool.modes, instances: [], activeMode: null, select: null, shareLink };

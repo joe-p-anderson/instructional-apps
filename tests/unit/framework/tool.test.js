@@ -18,3 +18,11 @@ test('any other layout is rejected', () => {
     assert.throws(() => defineTool(tool({ layout })), /layout/);
   }
 });
+
+test('defineTool leaves the definition it is given unchanged', () => {
+  const definition = tool();
+  const defined = defineTool(definition);
+  assert.equal(definition.layout, undefined);
+  assert.equal(defined.layout, 'side');
+  assert.equal(defined.mount, definition.mount);
+});

@@ -33,21 +33,15 @@ const STATE_INFO = {
   ratio: { label: 'Δt / T', unit: '' },
 };
 
-// The plot palette, from the theme's plot tokens (read per mount, so it follows the page's theme).
-function palette() {
-  const t = plotTheme();
-  return { blue: t.traces[0], red: t.traces[1], orange: t.traces[2], ink: t.ink, paper: t.background,
-    dim: t.text, grid: t.grid, axis: t.axis, muted: t.muted, font: t.font };
-}
-
 function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 
-function layout(C) {
-  const axis = { gridcolor: C.grid, zerolinecolor: C.axis, zerolinewidth: 1.5, color: C.dim, fixedrange: true };
+// Plotly layout from the theme's plot tokens (plotTheme()).
+function layout(theme) {
+  const axis = { gridcolor: theme.grid, zerolinecolor: theme.axis, zerolinewidth: 1.5, color: theme.text, fixedrange: true };
   return {
-    paper_bgcolor: C.paper,
-    plot_bgcolor: C.paper,
-    font: { family: C.font.family, size: C.font.size, color: C.dim },
+    paper_bgcolor: theme.background,
+    plot_bgcolor: theme.background,
+    font: { family: theme.font.family, size: theme.font.size, color: theme.text },
     xaxis: { ...axis, title: { text: 'Time (s)', standoff: 8 }, range: [0, WINDOW], dtick: 1 },
     yaxis: { ...axis, title: { text: 'Voltage (V)', standoff: 8 }, range: [-4, 4] },
     margin: { l: 56, r: 12, t: 14, b: 48 },
@@ -60,7 +54,7 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
   const start = { ...DEFAULTS, ...(setup || {}) };
   const signal = { Va: start.Va, f: start.f, Dt: start.Dt };
   const changes = createEmitter();
-  const C = palette();
+  const theme = plotTheme(); // read per mount, so the plot follows the page's theme
   let ready = false;
 
   // ── State ──
@@ -96,18 +90,18 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
         h('div', { class: 'fw-hint' }, '◯ Drag the dots on the plot to adjust Va, Δt and f.')),
       section('Live Metrics', ...Object.values(readouts).map((r) => r.el)),
       section('Legend',
-        legendRow(C.blue, 'V<sub>a</sub> cos(2π f t)'),
-        legendRow(C.red, 'V<sub>a</sub> cos(2π f (t + Δt))'))),
+        legendRow(theme.traces[0], 'V<sub>a</sub> cos(2π f t)'),
+        legendRow(theme.traces[1], 'V<sub>a</sub> cos(2π f (t + Δt))'))),
     h('div', { class: 'fw-displays' }, h('div', { class: 'fw-display' }, plotDiv)));
   container.append(root);
 
   // ── Draggable markers: Controls that live inside the Display ──
   const markerSpecs = {
-    'Va-marker': { key: 'Va', label: 'Va marker', fill: C.blue,
+    'Va-marker': { key: 'Va', label: 'Va marker', fill: theme.traces[0],
       at: (s) => [0, s.Va], drag: (x, y) => ({ Va: clamp(y, ...RANGES.Va) }) },
-    'Dt-marker': { key: 'Dt', label: 'Δt marker', fill: C.orange,
+    'Dt-marker': { key: 'Dt', label: 'Δt marker', fill: theme.traces[2],
       at: (s) => [1 / s.f - s.Dt, s.Va], drag: (x) => ({ Dt: clamp(1 / signal.f - x, ...RANGES.Dt) }) },
-    'f-marker': { key: 'f', label: 'f marker', fill: C.blue,
+    'f-marker': { key: 'f', label: 'f marker', fill: theme.traces[0],
       at: (s) => [1 / s.f, 0], drag: (x) => ({ f: Math.round((1 / clamp(x, 1, WINDOW)) * 10) / 10 }) },
   };
   const markerIds = Object.keys(markerSpecs);
@@ -136,22 +130,22 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
       x: c.isHidden() ? [] : [x],
       y: c.isHidden() ? [] : [y],
       mode: 'markers',
-      marker: { color: locked ? C.muted : spec.fill, size: 11, line: { color: locked ? C.axis : C.ink, width: 2 } },
+      marker: { color: locked ? theme.muted : spec.fill, size: 11, line: { color: locked ? theme.axis : theme.ink, width: 2 } },
       hovertemplate: locked ? `${spec.label} (locked)<extra></extra>` : `Drag: ${spec.label}<extra></extra>`,
     };
   }
 
   function traces() {
     return [
-      { x: TS, y: cosWave(TS, signal.Va, signal.f, 0), mode: 'lines', line: { color: C.blue, width: 2.5 }, hoverinfo: 'skip' },
-      { x: TS, y: cosWave(TS, signal.Va, signal.f, signal.Dt), mode: 'lines', line: { color: C.red, width: 2.5 }, hoverinfo: 'skip' },
+      { x: TS, y: cosWave(TS, signal.Va, signal.f, 0), mode: 'lines', line: { color: theme.traces[0], width: 2.5 }, hoverinfo: 'skip' },
+      { x: TS, y: cosWave(TS, signal.Va, signal.f, signal.Dt), mode: 'lines', line: { color: theme.traces[1], width: 2.5 }, hoverinfo: 'skip' },
       ...markerIds.map(markerTrace),
     ];
   }
 
   function redraw() {
     if (!ready) return;
-    Plotly.react(plotDiv, traces(), layout(C), { displayModeBar: false, scrollZoom: false, responsive: true });
+    Plotly.react(plotDiv, traces(), layout(theme), { displayModeBar: false, scrollZoom: false, responsive: true });
   }
   function redrawMarkers() { redraw(); }
 
@@ -162,7 +156,7 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
     changes.emit(s);
   }
 
-  Plotly.newPlot(plotDiv, traces(), layout(C), { displayModeBar: false, scrollZoom: false, responsive: true });
+  Plotly.newPlot(plotDiv, traces(), layout(theme), { displayModeBar: false, scrollZoom: false, responsive: true });
   ready = true;
 
   // Keep the plot sized to its box: it may be mounted into a hidden tab and shown later.

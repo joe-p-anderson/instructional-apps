@@ -49,9 +49,10 @@ const CSS = `
 .bs-tool .fw-displays { container-type: size; overflow: hidden; padding: 0; align-items: center; justify-content: flex-end; }
 .bs-panel { position: relative; flex: none; width: min(100cqw, 100cqh * var(--bs-aspect, 2.28)); line-height: 0; }
 .bs-panel-svg { width: 100%; height: auto; display: block; user-select: none; }
-/* Controls strip (banner layout): each section is its label, set vertically, then its Controls
-   in columns of two rows, compacted so the strip stays about 90 px tall and the panel can fill
-   the Display. */
+/* Bench-scope's refinement of the banner layout's Controls strip, under its own root class
+   (README, "Panel layouts"): each section is its label, set vertically, then its Controls in
+   columns of two rows, compacted so the strip stays about 90 px tall and the front panel can
+   fill the Display. */
 .fw-layout-banner .bs-tool .bs-source-panel { display: contents; }
 .fw-layout-banner .bs-tool .fw-controls { line-height: 1.2; }
 .fw-layout-banner .bs-tool .fw-controls .fw-section,
@@ -64,7 +65,7 @@ const CSS = `
 .fw-layout-banner .bs-tool .fw-controls .fw-section:last-child { border-right: none; }
 .fw-layout-banner .bs-tool .fw-controls .fw-section > .fw-section-label {
   grid-row: 1 / span 2; margin: 0; writing-mode: vertical-rl; transform: rotate(180deg);
-  inline-size: 84px; text-align: center; font-size: 10px; letter-spacing: 0.04em; line-height: 1.1;
+  inline-size: 84px; text-align: center; font-size: 11px; letter-spacing: 0.02em; line-height: 1.1;
 }
 .fw-layout-banner .bs-tool .fw-controls .fw-section > :not(.fw-section-label) { width: 170px; }
 .fw-layout-banner .bs-tool .fw-controls .fw-section > :is(.bs-freq-dial, .bs-source-slot:has(.bs-freq-dial)),
@@ -154,11 +155,11 @@ function mount(container, modeId = 'scope', setup = {}) {
     const r = canvas.getBoundingClientRect();
     if (!r.width || !r.height) return;
     const dpr = window.devicePixelRatio || 1;
-    const w = Math.round(r.width * dpr);
-    const hgt = Math.round(r.height * dpr);
-    if (canvas.width === w && canvas.height === hgt) return;
-    canvas.width = w;
-    canvas.height = hgt;
+    const width = Math.round(r.width * dpr);
+    const height = Math.round(r.height * dpr);
+    if (canvas.width === width && canvas.height === height) return;
+    canvas.width = width;
+    canvas.height = height;
     redraw();
   }
   sizer.observe(panel.canvas);

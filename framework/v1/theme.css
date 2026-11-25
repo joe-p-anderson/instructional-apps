@@ -1,7 +1,8 @@
 /* Framework v1 theme: Refined Cream, the cream-and-serif look of the original lecture apps
    (oscilloscope_lab, conductor_properties) with WCAG AA text contrast and a self-hosted
    typeface. Everything is scoped under .fw-* classes; Tools read the --fw-plot-* tokens
-   (plot-theme.js) so their plots match. */
+   (plot-theme.js) so their plots match. Text is upright and never in small caps, which
+   Libre Baskerville does not have and the browser would synthesise. */
 
 /* Libre Baskerville (SIL OFL 1.1, vendor/libre-baskerville/OFL.txt), latin and latin-ext subsets
    from @fontsource/libre-baskerville 5.3.0. */
@@ -108,8 +109,7 @@ html.fw-root, html.fw-root body {
   margin: 0;
   font-size: 22px;
   font-weight: bold;
-  font-variant: small-caps;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.01em;
 }
 .fw-subtitle { font-size: 16px; color: var(--fw-text-dim); font-style: italic; }
 
@@ -128,8 +128,7 @@ html.fw-root, html.fw-root body {
   color: var(--fw-text-dim);
   font-family: var(--fw-font);
   font-size: 15px;
-  font-variant: small-caps;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.01em;
   padding: 7px 20px 5px;
   cursor: pointer;
   position: relative;
@@ -178,7 +177,7 @@ html.fw-root, html.fw-root body {
 
 .fw-section { padding: 10px 12px; border-bottom: 1px solid var(--fw-border); }
 .fw-section:last-child { border-bottom: none; }
-/* Upright capitals: no small caps, which Libre Baskerville would have to synthesise. */
+/* Upright capitals (not small caps: see the top of this file). */
 .fw-section-label {
   font-size: 11px;
   letter-spacing: 0.16em;
@@ -255,7 +254,7 @@ html.fw-root, html.fw-root body {
   cursor: pointer;
   white-space: nowrap;
 }
-.fw-button { border: 1.5px solid var(--fw-blue); color: var(--fw-blue); font-size: 16px; font-variant: small-caps; letter-spacing: 0.08em; padding: 3px 10px; }
+.fw-button { border: 1.5px solid var(--fw-blue); color: var(--fw-blue); font-size: 16px; letter-spacing: 0.08em; padding: 3px 10px; }
 .fw-button:hover:not(:disabled) { background: var(--fw-blue); color: #fff; }
 .fw-reset { min-width: 48px; }
 .fw-reset:hover:not(:disabled) { border-color: var(--fw-blue); color: var(--fw-blue); }
@@ -277,6 +276,9 @@ html.fw-root, html.fw-root body {
 /* ── Legend ── */
 .fw-legend-row { display: flex; align-items: center; gap: 7px; font-size: 14px; margin-bottom: 6px; }
 .fw-legend-line { display: inline-block; width: 22px; height: 2.5px; flex-shrink: 0; }
+
+/* Read by screen readers, not shown. */
+.fw-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .fw-controls::-webkit-scrollbar { width: 5px; }
 .fw-controls::-webkit-scrollbar-thumb { background: var(--fw-border); }
@@ -301,7 +303,7 @@ html.fw-root, html.fw-root body {
   flex-direction: column;
   gap: 8px;
 }
-.fw-gate-title { margin: 0; font-size: 20px; font-variant: small-caps; letter-spacing: 0.04em; }
+.fw-gate-title { margin: 0; font-size: 20px; letter-spacing: 0.04em; }
 .fw-gate-label { margin-top: 10px; font-size: 16px; }
 .fw-gate-row { display: flex; gap: 8px; }
 .fw-name-input, .fw-question-input {
@@ -338,8 +340,9 @@ html.fw-root, html.fw-root body {
 }
 .fw-task-card:last-child { border-right: none; }
 .fw-task-card[data-status="locked"] { opacity: 0.6; }
-/* The one line saying why a Task is locked, under its title. */
-.fw-task-locked { flex-basis: 100%; margin: -6px 0 0 26px; font-size: 14px; font-style: italic; color: var(--fw-text-dim); }
+/* The line saying why a Task is locked, under its title, in every layout. Text colour, so that
+   at the card's 0.6 opacity it still reads at 4.5:1. */
+.fw-task-locked { flex-basis: 100%; margin: -6px 0 0 26px; font-size: 14px; font-style: italic; color: var(--fw-text); }
 .fw-task-locked[hidden] { display: none; }
 .fw-task-heading { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin-bottom: 5px; }
 .fw-task-check {
@@ -349,7 +352,7 @@ html.fw-root, html.fw-root body {
   font-size: 13px; color: #fff;
 }
 .fw-task-card[data-status="passed"] .fw-task-check { background: var(--fw-green); border-color: var(--fw-green); }
-.fw-task-title { flex: 1 1 0; min-width: 0; margin: 0; font-size: 16px; font-weight: bold; font-variant: small-caps; letter-spacing: 0.04em; }
+.fw-task-title { flex: 1 1 0; min-width: 0; margin: 0; font-size: 16px; font-weight: bold; }
 .fw-task-prompt, .fw-question, .fw-task-submit, .fw-task-hint { margin-left: 26px; }
 .fw-task-prompt { font-size: 15px; color: var(--fw-text-dim); margin-bottom: 7px; line-height: 1.5; }
 .fw-question { margin-bottom: 8px; display: flex; flex-direction: column; gap: 4px; }
@@ -366,15 +369,15 @@ html.fw-root, html.fw-root body {
 .fw-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Part progress badge on each Part tab ("1/3"), filled once the Part is complete. */
-.fw-tab-badge { margin-left: 8px; padding: 0 6px; border: 1px solid var(--fw-border-dk); font-size: 12px; font-weight: normal; font-variant: normal; letter-spacing: 0; color: var(--fw-text-dim); }
+.fw-tab-badge { margin-left: 10px; padding: 0 6px; border: 1px solid var(--fw-border-dk); font-size: 12px; font-weight: normal; letter-spacing: 0; color: var(--fw-text-dim); }
 .fw-tab-badge:empty { display: none; }
 .fw-tab-badge[data-done="true"] { background: var(--fw-green); border-color: var(--fw-green); color: #fff; }
 
-/* ── Panel layouts (tool.js `layout`): the frame puts fw-layout-<layout> on .fw-app.
-   The rules above are shared, and on their own they give `strip`: Controls | Display, with the
-   Tasks in a row across the bottom. `side` and `banner` rearrange them below. ── */
+/* ── Panel layouts: keyed on fw-layout-<layout> on .fw-app; what each looks like is in
+   README.md, "Panel layouts". The rules above are shared and on their own give `strip`;
+   `side` and `banner` rearrange them below. ── */
 
-/* side: Controls | Display | Tasks, the Tasks stacked in a 330 px column on the right. */
+/* side */
 .fw-layout-side .fw-tabpanel { flex-direction: row; }
 .fw-layout-side .fw-tabpanel > .fw-tool { flex: 1; min-width: 0; }
 .fw-layout-side .fw-part-tasks { width: 330px; max-height: none; border-top: none; border-left: 2px solid var(--fw-border-dk); }
@@ -388,15 +391,15 @@ html.fw-root, html.fw-root body {
 .fw-layout-side .fw-task-card[data-status="passed"] :is(.fw-task-prompt, .fw-question, .fw-task-hint) { display: none; }
 .fw-layout-side .fw-task-card[data-status="passed"] .fw-task-submit { margin-bottom: 0; }
 
-/* banner: the current Task is a banner above the Display, the other Tasks compact steps beside
-   it; the Display is full width with the Controls' sections side by side in a strip below it
-   (in Standalone mode too, where there are no Tasks). */
+/* banner */
 .fw-layout-banner .fw-part-tasks { order: -1; max-height: none; border-top: none; border-bottom: 2px solid var(--fw-border-dk); }
 .fw-layout-banner .fw-progress { display: none; }  /* the Part tab's badge shows progress */
 .fw-layout-banner .fw-task-card { flex: 0 1 auto; min-width: 0; max-width: 200px; padding: 8px 14px; }
 .fw-layout-banner .fw-task-card[data-status="open"] { flex: 1 1 auto; max-width: none; background: var(--fw-bg); box-shadow: inset 0 3px 0 var(--fw-blue); }
 .fw-layout-banner .fw-task-card[data-status="open"] .fw-task-submit { margin-bottom: 0; }
-.fw-layout-banner .fw-task-card:not([data-status="open"]) :is(.fw-task-prompt, .fw-question, .fw-task-submit, .fw-task-hint, .fw-task-locked) { display: none; }
+/* Steps: the title, and for a locked one the line saying why (smaller, to keep the step compact). */
+.fw-layout-banner .fw-task-card:not([data-status="open"]) :is(.fw-task-prompt, .fw-question, .fw-task-submit, .fw-task-hint) { display: none; }
+.fw-layout-banner .fw-task-locked { margin-top: -4px; font-size: 13px; line-height: 1.3; }
 .fw-layout-banner .fw-tool { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
 .fw-layout-banner .fw-tool > .fw-controls { order: 2; display: flex; overflow: auto hidden; border-right: none; border-top: 2px solid var(--fw-border-dk); }
 .fw-layout-banner .fw-controls > .fw-section { flex: 0 0 260px; border-bottom: none; border-right: 1px solid var(--fw-border); }
@@ -418,7 +421,7 @@ html.fw-root:has(.fw-viewer), html.fw-root:has(.fw-viewer) body { height: auto; 
   border: 2px dashed var(--fw-border-dk); background: var(--fw-surface);
 }
 .fw-viewer-drop.fw-dragging { border-color: var(--fw-blue); background: #fff; }
-.fw-viewer-drop-label { font-variant: small-caps; letter-spacing: 0.06em; font-size: 18px; color: var(--fw-blue); display: block; margin-bottom: 6px; }
+.fw-viewer-drop-label { letter-spacing: 0.06em; font-size: 18px; color: var(--fw-blue); display: block; margin-bottom: 6px; }
 .fw-viewer-input { font-family: var(--fw-font); font-size: 15px; max-width: 100%; }
 .fw-viewer-drop-help { margin: 8px 0 0; font-size: 14px; color: var(--fw-text-dim); font-style: italic; }
 .fw-viewer-message { margin: 0 20px 16px; padding: 8px 12px; border: 1px solid var(--fw-red); color: var(--fw-red); background: var(--fw-surface); }
@@ -428,18 +431,18 @@ html.fw-root:has(.fw-viewer), html.fw-root:has(.fw-viewer) body { height: auto; 
 .fw-report-actions { display: flex; justify-content: flex-end; margin-bottom: 8px; }
 .fw-report-head { border-bottom: 3px double var(--fw-border-dk); padding-bottom: 10px; margin-bottom: 12px; }
 .fw-report-course { font-size: 15px; color: var(--fw-text-dim); font-style: italic; }
-.fw-report-title { margin: 2px 0 8px; font-size: 24px; font-variant: small-caps; letter-spacing: 0.04em; }
+.fw-report-title { margin: 2px 0 8px; font-size: 24px; letter-spacing: 0.04em; }
 .fw-report-meta { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px 16px; margin: 0; font-size: 15px; }
-.fw-report-meta dt, .fw-report-answers dt { font-variant: small-caps; color: var(--fw-text-dim); display: inline; }
+.fw-report-meta dt, .fw-report-answers dt { color: var(--fw-text-dim); display: inline; }
 .fw-report-meta dt::after, .fw-report-answers dt::after { content: ': '; }
 .fw-report-meta dd, .fw-report-answers dd { display: inline; margin: 0; overflow-wrap: anywhere; }
 .fw-report-warning { color: var(--fw-red); font-weight: bold; margin: 8px 0 0; }
 .fw-report-part { margin-bottom: 18px; }
-.fw-report-part h3 { margin: 12px 0 2px; font-size: 20px; font-variant: small-caps; border-bottom: 1px solid var(--fw-border-dk); }
+.fw-report-part h3 { margin: 12px 0 2px; font-size: 20px; border-bottom: 1px solid var(--fw-border-dk); }
 .fw-report-points { font-size: 14px; color: var(--fw-text-dim); font-style: italic; }
 .fw-report-task { margin: 10px 0 0 8px; padding: 8px 10px; background: var(--fw-surface); border: 1px solid var(--fw-border); break-inside: avoid; }
 .fw-report-task[data-status="passed"] { border-left: 4px solid var(--fw-green); }
-.fw-report-task h4 { margin: 0; font-size: 16px; font-variant: small-caps; letter-spacing: 0.03em; }
+.fw-report-task h4 { margin: 0; font-size: 16px; letter-spacing: 0.03em; }
 .fw-report-attempts { margin: 6px 0 0; padding-left: 22px; font-size: 15px; }
 .fw-report-attempt { margin-bottom: 6px; }
 .fw-report-attempt.fw-pass .fw-report-attempt-head { color: var(--fw-green); }
@@ -453,7 +456,7 @@ html.fw-root:has(.fw-viewer), html.fw-root:has(.fw-viewer) body { height: auto; 
 .fw-class { padding: 0 20px 24px; overflow-x: auto; }
 .fw-class-table { border-collapse: collapse; width: 100%; font-size: 15px; background: var(--fw-surface); }
 .fw-class-table th, .fw-class-table td { border: 1px solid var(--fw-border); padding: 4px 10px; text-align: left; }
-.fw-class-table th { font-variant: small-caps; letter-spacing: 0.04em; color: var(--fw-text-dim); }
+.fw-class-table th { letter-spacing: 0.04em; color: var(--fw-text-dim); }
 .fw-class-name { font: inherit; color: var(--fw-blue); background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; text-align: left; }
 .fw-class-flags { list-style: none; margin: 0; padding: 0; }
 .fw-class-flag { display: inline-block; margin-right: 6px; color: var(--fw-red); }

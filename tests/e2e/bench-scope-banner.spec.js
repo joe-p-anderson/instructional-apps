@@ -86,6 +86,15 @@ test('with CH2 on its independent generator every Control fits the strip, and th
   expect(await noPageScroll(page)).toBe(true);
 });
 
+test('the Controls strip section labels are at least 11 px', async ({ page }) => {
+  await open(page);
+  for (const name of ['CH1 generator', 'CH2 source']) {
+    const label = page.locator('.fw-controls').getByText(name, { exact: true });
+    await expect(label).toBeVisible();
+    expect(parseFloat(await label.evaluate((e) => getComputedStyle(e).fontSize)), name).toBeGreaterThanOrEqual(11);
+  }
+});
+
 test('the screen canvas backing store matches its displayed size times devicePixelRatio', async ({ browser }) => {
   for (const dpr of [1, 2]) {
     const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 }, deviceScaleFactor: dpr });

@@ -19,7 +19,7 @@ const part = (page, n) => page.getByRole('tabpanel', { name: new RegExp(`Part ${
 // WCAG contrast audit: every visible framework text run against its effective background,
 // with ancestor opacity blended in. Plot and math SVG are the Tool's, not framework text.
 // Inactive components (locked Task cards, locked Controls, disabled inputs) are exempt
-// (WCAG 1.4.3).
+// (WCAG 1.4.3), except a locked Task's "Locked until …" line, which must stay readable.
 function lowContrastText(page) {
   return page.evaluate(() => {
     const parse = (c) => {
@@ -56,13 +56,16 @@ function lowContrastText(page) {
       return o;
     }
     const exempt = 'svg, mjx-container, .fw-display, .fw-task-card[data-status="locked"], .fw-control.fw-locked, :disabled';
+    const lockedReason = /^Locked until /;
 
     const failures = [];
+    let reasons = 0;
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
       const text = node.textContent.trim();
       const el = node.parentElement;
-      if (!text || !el || !el.closest('.fw-app') || el.closest(exempt)) continue;
+      if (!text || !el || !el.closest('.fw-app')) continue;
+      if (el.closest(exempt) && !lockedReason.test(text)) continue;
       if (!el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) continue;
       const range = document.createRange();
       range.selectNodeContents(node);
@@ -71,26 +74,34 @@ function lowContrastText(page) {
       const fg = parse(getComputedStyle(el).color);
       const seen = over({ ...fg, a: fg.a * opacity(el) }, bg);
       const r = ratio(seen, bg);
+      if (lockedReason.test(text)) reasons++;
       if (r < 4.5) failures.push(`${text.slice(0, 40)} (.${[...el.classList].join('.')}): ${r.toFixed(2)}:1`);
     }
-    return failures;
+    return { failures, reasons };
   });
+}
+
+/** The audit's failures, checking that `reasons` "Locked until …" lines were audited. */
+async function contrastFailures(page, reasons = 0) {
+  const audit = await lowContrastText(page);
+  expect(audit.reasons, 'locked reasons audited').toBe(reasons);
+  return audit.failures;
 }
 
 test('no visible framework text is below 4.5:1 contrast on the Activity page', async ({ page }) => {
   await open(page);
-  expect(await lowContrastText(page), 'name gate').toEqual([]);
+  expect(await contrastFailures(page), 'name gate').toEqual([]);
 
   await enterName(page);
   const p1 = part(page, 1);
-  // Reveal miss feedback and the Hint on Task 1.1.
+  // Reveal miss feedback and the Hint on Task 1.1; Tasks 1.2 and 1.3 are locked.
   const submit = p1.getByRole('button', { name: 'Submit Task 1.1' });
   for (let i = 0; i < 3; i++) await submit.click();
   await expect(p1.getByText(/Hint:/)).toBeVisible();
-  expect(await lowContrastText(page), 'Part 1').toEqual([]);
+  expect(await contrastFailures(page, 2), 'Part 1').toEqual([]);
 
   await page.getByRole('tab', { name: /Part 2/ }).click();
-  expect(await lowContrastText(page), 'Part 2').toEqual([]);
+  expect(await contrastFailures(page, 1), 'Part 2').toEqual([]);
 });
 
 test('Libre Baskerville is self-hosted and is the framework typeface', async ({ page }) => {
@@ -144,6 +155,20 @@ test('Question prompts read as text with a blue rule, and the Hint sits in a tin
   expect(label).toEqual({ variant: 'normal', transform: 'uppercase', fontStyle: 'normal' });
 });
 
+test('no text is set in small caps, which Libre Baskerville would have to synthesise', async ({ page }) => {
+  const smallCaps = () => page.evaluate(() => [...document.querySelectorAll('body *')]
+    .filter((e) => e.checkVisibility() && e.textContent.trim() && getComputedStyle(e).fontVariantCaps !== 'normal')
+    .map((e) => e.textContent.trim().slice(0, 30)));
+  await open(page);
+  expect(await smallCaps(), 'name gate').toEqual([]);
+  await enterName(page);
+  // The page title, the Part tabs, the Task titles and the buttons among them.
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /Part 1/ })).toBeVisible();
+  await expect(part(page, 1).getByRole('heading', { level: 3 }).first()).toBeVisible();
+  expect(await smallCaps(), 'Part 1').toEqual([]);
+});
+
 test('locked Task cards stay readable and say they are locked; locked Controls are at 0.55', async ({ page }) => {
   await open(page);
   await enterName(page);
@@ -191,15 +216,34 @@ test('the oscilloscope plot takes its palette and font from the --fw-plot-* toke
 test('slider thumbs are 18 px and round on a 4 px track', async ({ page }) => {
   await open(page);
   await enterName(page);
-  const range = part(page, 1).locator('.fw-range').first();
-  await expect(range).toHaveCSS('height', '4px');
-  // getComputedStyle can't see the thumb pseudo-element, so read the rule that styles it.
-  const thumb = await page.evaluate(() => {
-    const rules = [...document.styleSheets].flatMap((s) => [...s.cssRules]);
-    const rule = rules.find((r) => r.selectorText === '.fw-range::-webkit-slider-thumb');
-    return rule && { width: rule.style.width, height: rule.style.height, radius: rule.style.borderRadius };
-  });
-  expect(thumb).toEqual({ width: '18px', height: '18px', radius: '50%' });
+  const slider = part(page, 1).getByRole('slider').first();
+  await expect(slider).toHaveCSS('height', '4px');
+  // The thumb is a pseudo-element no style query can see, so measure it as rendered: the dark
+  // pixels in a screenshot around the slider (the track and background are light).
+  const s = await slider.boundingBox();
+  const pad = 10; // the thumb overhangs the track by 7 px; the Control's name is further up
+  const png = await page.screenshot({ clip: { x: s.x, y: s.y - pad, width: s.width, height: s.height + 2 * pad } });
+  const thumb = await page.evaluate(async (src) => {
+    const img = new Image();
+    img.src = src;
+    await img.decode();
+    const canvas = Object.assign(document.createElement('canvas'), { width: img.width, height: img.height });
+    const g = canvas.getContext('2d');
+    g.drawImage(img, 0, 0);
+    const { data } = g.getImageData(0, 0, img.width, img.height);
+    const dark = (x, y) => { const i = 4 * (y * img.width + x); return data[i] + data[i + 1] + data[i + 2] < 3 * 128; };
+    let [left, top, right, bottom] = [Infinity, Infinity, -1, -1];
+    for (let y = 0; y < img.height; y++) for (let x = 0; x < img.width; x++) {
+      if (dark(x, y)) { left = Math.min(left, x); right = Math.max(right, x); top = Math.min(top, y); bottom = Math.max(bottom, y); }
+    }
+    const corners = [[left, top], [right, top], [left, bottom], [right, bottom]].filter(([x, y]) => dark(x, y)).length;
+    return { width: right - left + 1, height: bottom - top + 1, corners };
+  }, `data:image/png;base64,${png.toString('base64')}`);
+  expect(thumb.width).toBeGreaterThanOrEqual(17);
+  expect(thumb.width).toBeLessThanOrEqual(19);
+  expect(thumb.height).toBeGreaterThanOrEqual(17);
+  expect(thumb.height).toBeLessThanOrEqual(19);
+  expect(thumb.corners, 'round, so its bounding box corners are empty').toBe(0);
 });
 
 test('buttons, tabs and reset buttons show a focus-visible outline', async ({ page }) => {

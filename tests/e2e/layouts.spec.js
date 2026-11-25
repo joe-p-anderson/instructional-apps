@@ -71,6 +71,26 @@ const tasks = (scope) => scope.locator('.fw-part-tasks');
 const card = (scope, n) => scope.getByRole('region', { name: `Task ${n}` });
 const BLUE = 'rgb(27, 79, 138)';
 
+/** How many lines of text an element renders. */
+const lines = (locator) => locator.evaluate((e) => {
+  const range = document.createRange();
+  range.selectNodeContents(e);
+  return new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size;
+});
+
+for (const layout of LAYOUTS) {
+  test(`${layout}: each locked Task says, in at most two lines, which Task unlocks it`, async ({ page }) => {
+    await openActivity(page, fixture(layout));
+    const p1 = part(page, 1);
+    for (const [n, previous] of [['1.2', '1.1'], ['1.3', '1.2']]) {
+      const reason = card(p1, n).getByText(`Locked until Task ${previous} is done`);
+      await expect(reason).toBeVisible();
+      expect(await lines(reason)).toBeLessThanOrEqual(2);
+    }
+    await expect(card(p1, '1.1').getByText(/^Locked until/)).toBeHidden();
+  });
+}
+
 test('side: Tasks in a 330 px column right of the Display; finished Tasks show title and result, locked ones one line why', async ({ page }) => {
   await openActivity(page, fixture('side'));
   const p1 = part(page, 1);
@@ -92,8 +112,7 @@ test('side: Tasks in a 330 px column right of the Display; finished Tasks show t
   await expect(locked.locator('.fw-task-prompt')).toBeHidden();
   await expect(locked.locator('.fw-question')).toBeHidden();
   await expect(locked.getByRole('button', { name: 'Submit Task 1.3' })).toBeHidden();
-  const note = await locked.locator('.fw-task-locked').evaluate((e) => [e.getBoundingClientRect().height, parseFloat(getComputedStyle(e).lineHeight) || 20]);
-  expect(note[0]).toBeLessThan(note[1] * 1.5);
+  expect(await lines(locked.getByText('Locked until Task 1.2 is done'))).toBe(1);
 
   // Finished: the title and the result only.
   await setNumber(p1, 'Δt', 0.5);
@@ -175,23 +194,27 @@ test('side in Standalone mode: Controls | Display, as before', async ({ page }) 
 for (const layout of LAYOUTS) {
   test(`${layout}: each Part tab shows a progress badge, filled when the Part is complete`, async ({ page }) => {
     await openActivity(page, fixture(layout));
+    // The badge shows "1/3"; the tab's accessible name says it in words, apart from the title.
     const tab1 = page.getByRole('tab', { name: /Part 1/ });
-    const badge1 = tab1.locator('.fw-tab-badge');
-    await expect(badge1).toHaveText('0/3');
-    await expect(page.getByRole('tab', { name: /Part 2/ }).locator('.fw-tab-badge')).toHaveText(/^0\/\d+$/);
-    const empty = await badge1.evaluate((e) => getComputedStyle(e).backgroundColor);
+    await expect(tab1).toHaveAccessibleName('Part 1: Phase Shift (0 of 3 Tasks done)');
+    await expect(page.getByRole('tab', { name: /Part 2/ })).toHaveAccessibleName(/^Part 2: Period and Amplitude \(0 of \d+ Tasks done\)$/);
+    const badge = (text) => tab1.getByText(text, { exact: true });
+    await expect(badge('0/3')).toBeVisible();
+    const title = await box(tab1.getByText('Part 1: Phase Shift'));
+    expect((await box(badge('0/3'))).left).toBeGreaterThan(title.right + 4);
+    const empty = await badge('0/3').evaluate((e) => getComputedStyle(e).backgroundColor);
 
     const p1 = part(page, 1);
     await setNumber(p1, 'Δt', 0.5);
     await p1.getByRole('button', { name: 'Submit Task 1.1' }).click();
-    await expect(badge1).toHaveText('1/3');
-    await expect(badge1).toHaveCSS('background-color', empty);
+    await expect(tab1).toHaveAccessibleName('Part 1: Phase Shift (1 of 3 Tasks done)');
+    await expect(badge('1/3')).toHaveCSS('background-color', empty);
 
     await setNumber(p1, 'f', 0.25);
     await p1.getByRole('button', { name: 'Submit Task 1.2' }).click();
     await p1.getByRole('textbox', { name: /difficult to measure/ }).fill('The traces must be lined up by eye.');
     await p1.getByRole('button', { name: 'Submit Task 1.3' }).click();
-    await expect(badge1).toHaveText('3/3');
-    await expect(badge1).toHaveCSS('background-color', 'rgb(42, 110, 42)');
+    await expect(tab1).toHaveAccessibleName('Part 1: Phase Shift (3 of 3 Tasks done)');
+    await expect(badge('3/3')).toHaveCSS('background-color', 'rgb(42, 110, 42)');
   });
 }

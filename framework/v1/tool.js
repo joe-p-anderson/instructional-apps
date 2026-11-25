@@ -10,14 +10,8 @@
 //     mount(container, modeId, setup) -> ToolInstance
 //   }
 //
-// layout (optional, default 'side') is how the page frame arranges the Tool's panels and the
-// Activity's Tasks. It is fixed per Tool; an Activity cannot change it. The frame sets a
-// fw-layout-<layout> class on .fw-app and theme.css does the rest:
-//   'side'    Controls | Display | Tasks: Tasks in a column on the right.
-//   'strip'   Controls | Display, with the Tasks in a strip across the bottom.
-//   'banner'  the current Task in a banner above a full-width Display, the other Tasks as
-//             compact steps beside it, and the Controls' sections side by side below the
-//             Display (also in Standalone mode, where there are no Tasks).
+// layout (optional, one of LAYOUTS, default the first) is the Tool's panel layout, fixed per
+// Tool. What each layout looks like: framework/v1/README.md, "Panel layouts".
 //
 // mount() takes a DOM container, a Mode id and a Setup (plain object of starting values,
 // Tool-specific; may be partial or omitted) and returns an instance. A Tool keeps no global
@@ -53,7 +47,10 @@
 /** The panel layouts a Tool may declare; the first is the default. */
 export const LAYOUTS = ['side', 'strip', 'banner'];
 
-/** Throw if `tool` does not look like a v1 Tool definition. Returns the tool, its layout defaulted. */
+/**
+ * Throw if `tool` does not look like a v1 Tool definition. Returns a copy with its layout
+ * defaulted; `tool` itself is left unchanged.
+ */
 export function defineTool(tool) {
   const problems = [];
   if (!tool || typeof tool !== 'object') throw new TypeError('Tool definition must be an object');
@@ -62,10 +59,10 @@ export function defineTool(tool) {
   if (!Array.isArray(tool.modes) || tool.modes.length === 0) problems.push('modes');
   else tool.modes.forEach((m, i) => { if (!m || typeof m.id !== 'string') problems.push(`modes[${i}].id`); });
   if (typeof tool.mount !== 'function') problems.push('mount');
-  if (tool.layout === undefined) tool.layout = LAYOUTS[0];
-  else if (!LAYOUTS.includes(tool.layout)) problems.push(`layout (one of ${LAYOUTS.join(', ')})`);
+  const layout = tool.layout === undefined ? LAYOUTS[0] : tool.layout;
+  if (!LAYOUTS.includes(layout)) problems.push(`layout (one of ${LAYOUTS.join(', ')})`);
   if (problems.length) throw new TypeError(`Invalid Tool definition: bad ${problems.join(', ')}`);
-  return tool;
+  return { ...tool, layout };
 }
 
 /** Minimal listener set used by Tools for onChange. */

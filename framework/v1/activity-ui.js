@@ -23,8 +23,8 @@ import { defineTool } from './tool.js';
 import { h } from './ui-kit.js';
 import { typeset } from './vendor.js';
 
-export function mountActivity(tool, activity, root, { conditionTypes, storage = browserStorage() } = {}) {
-  defineTool(tool);
+export function mountActivity(definition, activity, root, { conditionTypes, storage = browserStorage() } = {}) {
+  const tool = defineTool(definition);
   if (activity.tool !== tool.id) throw new Error(`Activity "${activity.id}" is for Tool "${activity.tool}", not "${tool.id}".`);
   if (!document.title) document.title = activity.title;
 
@@ -42,7 +42,7 @@ export function mountActivity(tool, activity, root, { conditionTypes, storage = 
     host.instances[part.id] = tool.mount(panel, part.mode, part.setup);
     views[part.id] = partView(part, p);
     panel.append(views[part.id].el);
-    tabs.buttons[part.id].append(views[part.id].badge);
+    tabs.buttons[part.id].append(views[part.id].badgeText, views[part.id].badge);
   });
 
   host.runner = createRunner(activity, { tools: host.instances, conditionTypes });
@@ -119,20 +119,23 @@ export function mountActivity(tool, activity, root, { conditionTypes, storage = 
     const progressBar = h('progress', { class: 'fw-progress-bar', max: part.tasks.length, value: 0,
       'aria-label': `${stripTags(part.title)} progress` });
     const progressText = h('span', { class: 'fw-progress-text' });
-    const badge = h('span', { class: 'fw-tab-badge' });
+    // The badge shows "1/3"; screen readers get " (1 of 3 Tasks done)" in the tab's name instead.
+    const badgeText = h('span', { class: 'fw-sr-only' });
+    const badge = h('span', { class: 'fw-tab-badge', 'aria-hidden': 'true' });
     const cards = {};
     const row = h('div', { class: 'fw-tasks' });
     part.tasks.forEach((task, t) => {
-      cards[task.id] = taskCard(part, task, `Task ${p + 1}.${t + 1}`, `Task ${p + 1}.${t}`);
+      cards[task.id] = taskCard(part, task, taskNumber(p, t), t > 0 ? taskNumber(p, t - 1) : null);
       row.append(cards[task.id].el);
     });
     const el = h('div', { class: 'fw-part-tasks' },
       h('div', { class: 'fw-progress' }, progressBar, progressText),
       row);
-    return { el, cards, progressBar, progressText, badge };
+    return { el, cards, progressBar, progressText, badge, badgeText };
   }
 
-  // previous: the number of the Task before this one, which unlocks it.
+  // previous: the number of the Task before this one, which unlocks it; null for a Part's first
+  // Task, which is never locked.
   function taskCard(part, task, number, previous) {
     const answers = []; // [{ id, read(), write(value), field }]
     const questions = (task.questions ?? []).map((q, i) => {
@@ -145,7 +148,7 @@ export function mountActivity(tool, activity, root, { conditionTypes, storage = 
     const given = () => Object.fromEntries(answers.map((a) => [a.id, a.read()]).filter(([, v]) => v !== undefined));
 
     const check = h('span', { class: 'fw-task-check', 'aria-hidden': 'true' });
-    const lockedNote = h('span', { class: 'fw-task-locked', hidden: true }, `Locked until ${previous} is done`);
+    const lockedNote = previous ? h('span', { class: 'fw-task-locked', hidden: true }, `Locked until ${previous} is done`) : null;
     const submit = h('button', { type: 'button', class: 'fw-button', 'aria-label': `Submit ${number}` }, 'Submit');
     const feedback = h('span', { class: 'fw-task-feedback', role: 'status', 'aria-label': `${number} feedback` });
     const hint = h('div', { class: 'fw-task-hint', hidden: true });
@@ -193,7 +196,7 @@ export function mountActivity(tool, activity, root, { conditionTypes, storage = 
       const done = state.status === 'passed';
       const operable = state.status === 'open';
       check.textContent = done ? '✓' : '';
-      lockedNote.hidden = state.status !== 'locked';
+      if (lockedNote) lockedNote.hidden = state.status !== 'locked';
       submit.hidden = done;
       submit.disabled = !operable;
       for (const a of answers) {
@@ -220,6 +223,7 @@ export function mountActivity(tool, activity, root, { conditionTypes, storage = 
       const passed = part.tasks.filter((t) => t.status === 'passed').length;
       view.progressBar.value = passed;
       view.progressText.textContent = `${passed} of ${part.tasks.length} Tasks done`;
+      view.badgeText.textContent = ` (${view.progressText.textContent})`;
       view.badge.textContent = `${passed}/${part.tasks.length}`;
       view.badge.dataset.done = String(passed === part.tasks.length);
       for (const t of part.tasks) view.cards[t.id].update();
@@ -272,6 +276,11 @@ function reportButton(host) {
     }
   });
   return button;
+}
+
+/** "Task 1.2": the Task's number as the page shows it, from 0-based Part and Task indexes. */
+function taskNumber(partIndex, taskIndex) {
+  return `Task ${partIndex + 1}.${taskIndex + 1}`;
 }
 
 function stripTags(html) {
