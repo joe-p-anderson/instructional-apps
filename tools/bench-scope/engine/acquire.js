@@ -226,6 +226,11 @@ export function acquiredTrace(ctx, ch) {
   return scaledTrace(ctx.settings[ch], ctx.profile, (i) => vs[i], x, x.map((_, i) => i));
 }
 
+/** The s/div of the last capture (the current setting if nothing has been captured yet). */
+export function acquiredSPerDiv({ settings }) {
+  return liveOf(settings).last?.sPerDiv ?? settings.horizontal.sPerDiv;
+}
+
 function seedFrom(v, fallback) { return Number.isInteger(v) ? v : fallback; }
 
 /** Feature: the acquisition settings (noise seed) and the Run/Stop, Single and Force Trig buttons. */

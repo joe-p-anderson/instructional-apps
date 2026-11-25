@@ -20,6 +20,9 @@ const READOUT_SLOTS = {
     'ch2-scale': [150, 455, 'left'],
     timebase: [330, 455, 'left'],
     trigger: [560, 455, 'left'],
+    // Measure readouts (measure.js): two rows of three along the bottom of the graticule, left
+    // of the menu column. (The TDS shows its readouts in the Measure menu boxes instead.)
+    ...Object.fromEntries([0, 1, 2, 3, 4, 5].map((i) => [`measure-${i + 1}`, [32 + (i % 3) * 205, 392 + Math.floor(i / 3) * 24, 'left']])),
   },
   // TDS1000C/2000C: trigger status top left, CH readouts then time base along the bottom.
   tds2001c: {

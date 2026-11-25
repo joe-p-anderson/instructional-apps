@@ -39,6 +39,12 @@ function liveOf(settings) {
   return lives.get(settings);
 }
 
+/** The id of the menu on screen for an engine's settings, or null (for features that act only while their menu shows). */
+export function menuShown(settings) {
+  const live = lives.get(settings);
+  return live?.open && live.visible ? live.open : null;
+}
+
 /** A softkey that cycles through `options` ([{ value, text }]). */
 export function choiceItem(label, options, get, set) {
   return (ctx) => {
