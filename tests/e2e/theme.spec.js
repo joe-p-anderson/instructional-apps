@@ -161,6 +161,33 @@ test('locked Task cards stay readable and say they are locked; locked Controls a
   await expect(va).toHaveCSS('opacity', '0.55');
 });
 
+test('the oscilloscope plot takes its palette and font from the --fw-plot-* tokens', async ({ page }) => {
+  // Retheme the plot before the page's scripts run: the Tool must follow the tokens.
+  await page.addInitScript(() => {
+    const set = (html) => {
+      html.style.setProperty('--fw-plot-trace-1', '#007a33');
+      html.style.setProperty('--fw-plot-bg', '#fffdf0');
+      html.style.setProperty('--fw-plot-font-size', '13px');
+    };
+    if (document.documentElement) set(document.documentElement);
+    else new MutationObserver((_, obs) => { if (document.documentElement) { set(document.documentElement); obs.disconnect(); } })
+      .observe(document, { childList: true });
+  });
+  await open(page);
+  await enterName(page);
+  const plot = await part(page, 1).locator('.js-plotly-plot').evaluate((div) => ({
+    trace: div.data[0].line.color,
+    paper: div.layout.paper_bgcolor,
+    font: div.layout.font,
+    token: getComputedStyle(document.documentElement).getPropertyValue('--fw-plot-font').trim(),
+  }));
+  expect(plot.trace).toBe('#007a33');
+  expect(plot.paper).toBe('#fffdf0');
+  expect(plot.font.family).toBe(plot.token);
+  expect(plot.font.family).toMatch(/^'?"?Libre Baskerville/);
+  expect(plot.font.size).toBe(13);
+});
+
 test('slider thumbs are 18 px and round on a 4 px track', async ({ page }) => {
   await open(page);
   await enterName(page);

@@ -11,6 +11,7 @@
 import { controlRegistry, createControl } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
 import { h, metric, section, slider } from '../../framework/v1/ui-kit.js';
+import { plotTheme } from '../../framework/v1/plot-theme.js';
 import { loadPlotly } from '../../framework/v1/vendor.js';
 import { cosWave, linspace, metrics } from './signal.js';
 
@@ -32,17 +33,21 @@ const STATE_INFO = {
   ratio: { label: 'Δt / T', unit: '' },
 };
 
-const C = { blue: '#1B4F8A', red: '#B81C1C', orange: '#E8720C', ink: '#1A1008', paper: '#FAF8F2',
-  dim: '#5C4F38', grid: '#DDD5C0', axis: '#8B7D5E', muted: '#C8BFA0' };
+// The plot palette, from the theme's plot tokens (read per mount, so it follows the page's theme).
+function palette() {
+  const t = plotTheme();
+  return { blue: t.traces[0], red: t.traces[1], orange: t.traces[2], ink: t.ink, paper: t.background,
+    dim: t.text, grid: t.grid, axis: t.axis, muted: t.muted, font: t.font };
+}
 
 function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 
-function layout() {
+function layout(C) {
   const axis = { gridcolor: C.grid, zerolinecolor: C.axis, zerolinewidth: 1.5, color: C.dim, fixedrange: true };
   return {
     paper_bgcolor: C.paper,
     plot_bgcolor: C.paper,
-    font: { family: "'Baskerville Old Face', Baskerville, Georgia, serif", size: 16, color: C.dim },
+    font: { family: C.font.family, size: C.font.size, color: C.dim },
     xaxis: { ...axis, title: { text: 'Time (s)', standoff: 8 }, range: [0, WINDOW], dtick: 1 },
     yaxis: { ...axis, title: { text: 'Voltage (V)', standoff: 8 }, range: [-4, 4] },
     margin: { l: 56, r: 12, t: 14, b: 48 },
@@ -55,6 +60,7 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
   const start = { ...DEFAULTS, ...(setup || {}) };
   const signal = { Va: start.Va, f: start.f, Dt: start.Dt };
   const changes = createEmitter();
+  const C = palette();
   let ready = false;
 
   // ── State ──
@@ -145,7 +151,7 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
 
   function redraw() {
     if (!ready) return;
-    Plotly.react(plotDiv, traces(), layout(), { displayModeBar: false, scrollZoom: false, responsive: true });
+    Plotly.react(plotDiv, traces(), layout(C), { displayModeBar: false, scrollZoom: false, responsive: true });
   }
   function redrawMarkers() { redraw(); }
 
@@ -156,7 +162,7 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
     changes.emit(s);
   }
 
-  Plotly.newPlot(plotDiv, traces(), layout(), { displayModeBar: false, scrollZoom: false, responsive: true });
+  Plotly.newPlot(plotDiv, traces(), layout(C), { displayModeBar: false, scrollZoom: false, responsive: true });
   ready = true;
 
   // Keep the plot sized to its box: it may be mounted into a hidden tab and shown later.
