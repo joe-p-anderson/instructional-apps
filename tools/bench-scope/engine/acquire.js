@@ -6,7 +6,11 @@
 // No crossing: Auto (or Force Trig) captures at an arbitrary phase (now/1000 s), so successive
 // captures drift; Normal and an armed Single wait and keep showing the last capture.
 //
-// Noise: NOISE_RMS volts of Gaussian noise per sample (TRIGGER_NOISE_RMS on the trigger comparator), from a
+// Signals: each channel's conditioned signal (vertical.js channelSignal: coupling, probe, invert),
+// so captures and the trigger work in displayed volts.
+//
+// Noise: NOISE_RMS volts of Gaussian noise per sample at the input (times the probe setting,
+// times BW_LIMIT_NOISE with BW limit on, none with GND coupling; TRIGGER_NOISE_RMS on the trigger comparator), from a
 // PRNG seeded by (settings.acquisition.seed, now). The same seed, events and `now` values give
 // identical frames; acquire(0) twice gives the same frame.
 //
@@ -18,8 +22,8 @@
 // settings.acquisition: { seed (integer) }. Setup key: seed.
 // State: runState 'running' | 'stopped' | 'single', traceStable (bool).
 
-import { inputSignal, source } from './source.js';
-import { channelTrace, VERTICAL_CHANNELS } from './vertical.js';
+import { source } from './source.js';
+import { channelSignal, channelTrace, scaledTrace, VERTICAL_CHANNELS } from './vertical.js';
 
 export const CHANNELS = VERTICAL_CHANNELS;
 
@@ -27,6 +31,8 @@ export const CHANNELS = VERTICAL_CHANNELS;
 export const NOISE_RMS = 0.008;
 /** Noise on the trigger comparator, volts rms (band-limited: less than on the samples). */
 export const TRIGGER_NOISE_RMS = 0.002;
+/** Noise left with the bandwidth limit on (the 20 MHz filter cuts the broadband noise). */
+export const BW_LIMIT_NOISE = 0.35;
 const DEFAULT_SEED = 1;
 const GRID = 2048; // points per period when searching for crossings
 
@@ -108,11 +114,18 @@ function nextCrossing(v, P, level, slope, from) {
 /** Whether the trigger settings give a valid crossing on the ideal source signal (noise margin). */
 function validCrossing(settings) {
   const { source: ch, level } = settings.trigger;
-  const v = inputSignal(settings, ch);
+  const v = channelSignal(settings, ch);
   const f = sourceFreq(settings, ch);
   if (!v || !(f > 0)) return false;
   const { min, max } = range(v, 1 / f);
-  return level > min + 3 * NOISE_RMS && level < max - 3 * NOISE_RMS;
+  const margin = 3 * NOISE_RMS * noiseFactor(settings[ch]);
+  return level > min + margin && level < max - margin;
+}
+
+/** A channel's noise relative to NOISE_RMS, in displayed volts. */
+function noiseFactor(ch) {
+  if (ch.coupling === 'gnd') return 0;
+  return ch.probe * (ch.bwLimit ? BW_LIMIT_NOISE : 1);
 }
 
 // --- capture --------------------------------------------------------------------------------
@@ -127,10 +140,11 @@ function captureVolts(settings, profile, t0, sPerDiv, now) {
   const x = sampleX(profile);
   const volts = {};
   CHANNELS.forEach((ch, idx) => {
-    const v = inputSignal(settings, ch);
+    const v = channelSignal(settings, ch);
     if (!v) return;
     const g = gaussians(settings.acquisition.seed, now, idx + 1);
-    volts[ch] = x.map((xi) => v(t0 + xi * sPerDiv) + NOISE_RMS * g());
+    const rms = NOISE_RMS * noiseFactor(settings[ch]);
+    volts[ch] = x.map((xi) => v(t0 + xi * sPerDiv) + rms * g());
   });
   return volts;
 }
@@ -168,7 +182,7 @@ export function acquireTraces({ settings, profile }, now = 0) {
   const { sPerDiv, position } = settings.horizontal;
   const trig = settings.trigger;
   const from = now / 1000;
-  const v = inputSignal(settings, trig.source);
+  const v = channelSignal(settings, trig.source);
   const level = trig.level + TRIGGER_NOISE_RMS * gaussians(settings.acquisition.seed, now, 0)();
   const crossing = v ? nextCrossing(v, 1 / sourceFreq(settings, trig.source), level, trig.slope, from) : null;
 
@@ -185,8 +199,8 @@ export function acquireTraces({ settings, profile }, now = 0) {
   return show(settings, profile, live.last, status);
 }
 
-/** Min and max volts of a channel in the last capture (or a fresh one at the last `now`). */
-export function acquiredRange(ctx, ch) {
+/** A channel's volts in the last capture (or a fresh one at the last `now`), or null if unwired. */
+function acquiredVolts(ctx, ch) {
   const { settings, profile } = ctx;
   const live = liveOf(settings);
   let vs = live.last?.volts[ch];
@@ -194,8 +208,22 @@ export function acquiredRange(ctx, ch) {
     const { sPerDiv, position } = settings.horizontal;
     vs = captureVolts(settings, profile, -(profile.screen.divX / 2) * sPerDiv - position, sPerDiv, live.lastNow)[ch];
   }
+  return vs ?? null;
+}
+
+/** Min and max volts of a channel in the last capture (or a fresh one at the last `now`). */
+export function acquiredRange(ctx, ch) {
+  const vs = acquiredVolts(ctx, ch);
   if (!vs) return null;
   return { min: Math.min(...vs), max: Math.max(...vs) };
+}
+
+/** A channel's last capture as a trace at its scale, even if the channel is off (Trig View). */
+export function acquiredTrace(ctx, ch) {
+  const vs = acquiredVolts(ctx, ch);
+  if (!vs) return null;
+  const x = sampleX(ctx.profile);
+  return scaledTrace(ctx.settings[ch], ctx.profile, (i) => vs[i], x, x.map((_, i) => i));
 }
 
 function seedFrom(v, fallback) { return Number.isInteger(v) ? v : fallback; }

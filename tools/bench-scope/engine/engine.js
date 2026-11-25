@@ -12,6 +12,8 @@
 //     { type: 'turn', control, detents } | { type: 'push', control } | { type: 'press', control }
 //     | { type: 'softkey', n } | { type: 'setSource', patch }
 //     | { type: 'set', control, value }   a Control's set(value), e.g. ch1-scale to 0.5 V/div
+//     | { type: 'hold', control } | { type: 'release', control }   a button went down / came up
+//       (the panel sends these around each press; only hold-to-act buttons such as Trig View use them)
 //
 // Control values (what the panel's Controls get/set and how knobs are drawn):
 //   engine.value(control)             the control's value, or undefined if no feature gives one
@@ -36,7 +38,8 @@
 //     timebase: { sPerDiv, t0 },                     t = t0 + x · sPerDiv
 //     traces: { ch1: { x[], y[], vPerDiv, position } }   divisions; x 0..divX, y up from centre
 //     readouts: [{ id, text, channel? }],            the renderer places them by id
-//     menu: null | { ... },  cursors: null | { ... },
+//     menu: null | { id, title, items: [{ label, value, options } | null] }   (menus.js)
+//     cursors: null | { ... },  trigView: true while Trig View is held (traces = the trigger signal),
 //     markers: { triggerLevel: { y, channel }, triggerPoint: { x } } }   divisions, see trigger.js
 //
 // Behaviour is split into feature modules (FEATURES below), each owning one part of the
@@ -51,21 +54,28 @@
 //   controls: { [control]: { get(ctx), set(ctx, value), detent?(ctx) } }   Control values; give
 //                                       detent() for a knob whose rotation follows its value
 //   mpFunction(ctx) -> string|null      the multipurpose knob's current function, if this feature owns it
-// where ctx = { settings, profile }. Add a feature by writing a module and listing it here.
+//   menus: { [id]: menu }               softkey menus it adds (see menus.js); softkeys go to the
+//                                       menu on screen, so a feature rarely needs softkey()
+//   hold / release: { [control]: (ctx) => void }   a button went down / came up (Trig View)
+// where ctx = { settings, profile }. Add a feature by writing a module and listing it in
+// SETTINGS_FEATURES below (its menus come with it).
 
 import { acquireTraces, acquisition } from './acquire.js';
 import { horizontal } from './horizontal.js';
+import { menuSystem } from './menus.js';
 import { source } from './source.js';
 import { trigger } from './trigger.js';
 import { vertical } from './vertical.js';
 
-const FEATURES = [
+const SETTINGS_FEATURES = [
   source,
   vertical,
   horizontal,
   trigger,
   acquisition,
 ];
+// Plus the softkey menus those features define (each feature's `menus` hook, see menus.js).
+const FEATURES = [...SETTINGS_FEATURES, menuSystem(SETTINGS_FEATURES)];
 
 const SERIAL_VERSION = 1;
 
@@ -86,7 +96,7 @@ export function createEngine(profile, setup = {}) {
       for (const f of FEATURES) f.setSource?.(ctx.settings, event.patch);
     } else if (type === 'softkey') {
       for (const f of FEATURES) f.softkey?.(ctx, event.n);
-    } else if (type === 'turn' || type === 'push' || type === 'press') {
+    } else if (type === 'turn' || type === 'push' || type === 'press' || type === 'hold' || type === 'release') {
       const arg = type === 'turn' ? Math.trunc(Number(event.detents) || 0) : undefined;
       if (type === 'turn') spins.set(event.control, (spins.get(event.control) ?? 0) + arg);
       for (const f of FEATURES) f[type]?.[event.control]?.(ctx, arg);

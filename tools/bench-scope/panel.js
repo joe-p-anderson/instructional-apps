@@ -6,14 +6,16 @@
 //   model     the skin's entry in controls.json (controls[] with the screen rectangle)
 //   onEvent   (event) => void, called with engine events: { type: 'turn', control, detents },
 //             { type: 'push', control }, { type: 'press', control }, { type: 'softkey', n },
-//             { type: 'set', control, value }
+//             { type: 'set', control, value }, and { type: 'hold' | 'release', control } when a
+//             button goes down / comes up (Trig View acts while held)
 //   values    { value(control), detent(control), mpFunction() }: the engine (see engine.js,
 //             "Control values")
 //
 // Input. Knobs: the wheel turns one detent per notch (small trackpad deltas add up to one), a
 // vertical drag turns continuously (up = clockwise, DRAG_PX per detent), the arrow keys turn a
 // focused knob (Up/Right clockwise), and a click without a drag, or Enter/Space, pushes it.
-// Buttons and softkeys: click or Enter/Space presses, shown pressed while held.
+// Buttons and softkeys: click or Enter/Space presses, shown pressed while held. Buttons also send
+// hold on pointerdown / keydown and release on pointerup (anywhere) / keyup.
 // Knob rotation is drawn from values.detent() on sync(), never accumulated here; call sync()
 // after every engine change.
 //
@@ -134,6 +136,26 @@ export function createPanel({ svgText, model, onEvent, values }) {
     releaseLater(node);
   }
 
+  // ---- Hold / release (buttons) -------------------------------------------------------------
+  let held = null; // control name of the button held down
+  function hold(c) {
+    if (c.kind !== 'button' || held) return;
+    held = c.node.dataset.control;
+    onEvent({ type: 'hold', control: held });
+    window.addEventListener('pointerup', release, true);
+    window.addEventListener('pointercancel', release, true);
+    window.addEventListener('blur', release);
+  }
+  function release() {
+    window.removeEventListener('pointerup', release, true);
+    window.removeEventListener('pointercancel', release, true);
+    window.removeEventListener('blur', release);
+    if (!held) return;
+    const control = held;
+    held = null;
+    onEvent({ type: 'release', control });
+  }
+
   // ---- Input ------------------------------------------------------------------------------
   const turn = (c, detents) => onEvent({ type: 'turn', control: c.node.dataset.control, detents });
   const push = (c) => { if (c.node.dataset.push) onEvent({ type: 'push', control: c.node.dataset.control }); };
@@ -170,6 +192,7 @@ export function createPanel({ svgText, model, onEvent, values }) {
       svg.setPointerCapture?.(e.pointerId);
     } else {
       c.node.classList.add('bs-pressed');
+      hold(c);
     }
   }
   function onPointerMove(e) {
@@ -211,8 +234,12 @@ export function createPanel({ svgText, model, onEvent, values }) {
     } else if (isActivateKey(e.key)) {
       e.preventDefault();
       flashPressed(c.node);
+      if (!e.repeat) hold(c);
       press(c.node);
     }
+  }
+  function onKeyUp(e) {
+    if (isActivateKey(e.key) && held) release();
   }
 
   svg.addEventListener('wheel', onWheel, { passive: false });
@@ -222,6 +249,7 @@ export function createPanel({ svgText, model, onEvent, values }) {
   svg.addEventListener('pointercancel', onPointerUp);
   svg.addEventListener('click', onClick);
   svg.addEventListener('keydown', onKeyDown);
+  svg.addEventListener('keyup', onKeyUp);
 
   const mpLeds = [...svg.querySelectorAll('.osc-control[data-kind="led"][data-control^="mp-led"]')];
 
@@ -261,6 +289,8 @@ export function createPanel({ svgText, model, onEvent, values }) {
       svg.removeEventListener('pointercancel', onPointerUp);
       svg.removeEventListener('click', onClick);
       svg.removeEventListener('keydown', onKeyDown);
+      svg.removeEventListener('keyup', onKeyUp);
+      release();
       el.remove();
     },
   };

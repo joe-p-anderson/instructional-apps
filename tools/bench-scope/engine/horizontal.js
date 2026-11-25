@@ -9,9 +9,13 @@
 //   hor-position  turn: moves the trigger point POSITION_STEP divisions per detent (at the current
 //                 s/div), kept within the screen; push (TBS) recentres. Control value: seconds.
 //   set-to-zero   press (TDS button): recentres, like the TBS push.
+//   horiz-menu    press (TDS): opens the Horiz menu, with only the items the active controls
+//                 need: the Main time base (no window/zoom) and the trigger knob as Level (no
+//                 holdoff). Its softkeys change nothing.
 // When s/div changes, the position keeps its time and is clamped to the new screen.
 // State: hScale (s/div), hPosition (s).
 
+import { infoItem } from './menus.js';
 import { clamp, clampNumber, si } from './util.js';
 
 /** Divisions the trigger point moves per Position detent. */
@@ -45,7 +49,16 @@ function fromSaved(saved, profile) {
   return h;
 }
 
+const menus = {
+  horiz: {
+    button: 'horiz-menu',
+    title: 'Horiz',
+    items: () => [infoItem('Time Base', 'Main'), null, null, infoItem('Trig Knob', 'Level')],
+  },
+};
+
 export const horizontal = {
+  menus,
   init(settings, setup, profile) { settings.horizontal = fromSaved({}, profile); },
   restore(settings, saved, profile) { settings.horizontal = fromSaved(saved?.horizontal, profile); },
   turn: {

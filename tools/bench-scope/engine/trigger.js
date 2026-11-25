@@ -8,13 +8,21 @@
 //                per detent, within ±divY divisions of the source's screen centre. push (TBS):
 //                Set to 50%. Control value: volts.
 //   trig-50      press (TDS "Set To 50%"): the level to the midpoint of the source's acquired range.
-// Source, slope and mode come from the trigger menu (ticket 05); here only Setup/restore set them.
+//   trig-menu    press: opens the Trigger menu: softkeys 1 Type (Edge only), 2 Source CH1/CH2,
+//                3 Slope Rising/Falling, 4 Mode Auto/Normal.
+//   trig-view    (TDS) hold: while it is held, the screen shows the trigger signal (the source's
+//                conditioned signal, shown even if that channel is off) in place of the channels;
+//                release: back to normal. Live, not saved. Control value: held (bool).
+// The level is in displayed volts (after the source channel's probe and coupling, vertical.js).
 // Frame: readout 'trigger' (source badge, slope, level); markers.triggerLevel { y (div), channel }
-// at the level on the source's trace, and markers.triggerPoint { x (div) } at the trigger time.
+// at the level on the source's trace, and markers.triggerPoint { x (div) } at the trigger time;
+// frame.trigView = true while Trig View is held.
 // State: trigSource, trigSlope, trigLevel (V), trigMode.
 
-import { acquiredRange } from './acquire.js';
+import { acquiredRange, acquiredTrace } from './acquire.js';
+import { choiceItem, infoItem } from './menus.js';
 import { clamp, oneOf, si } from './util.js';
+import { shownVPerDiv } from './vertical.js';
 
 /** Divisions (of the source channel's V/div) the level moves per detent. */
 export const LEVEL_STEP = 1 / 25;
@@ -27,13 +35,14 @@ const SLOPE_GLYPH = { rising: '↑', falling: '↓' };
 
 const tidy = (v) => Math.round(v * 1e9) / 1e9;
 const srcCh = (settings) => settings[settings.trigger.source];
-const step = (settings) => LEVEL_STEP * srcCh(settings).vPerDiv;
+const step = (settings) => LEVEL_STEP * shownVPerDiv(srcCh(settings));
+const views = new WeakMap(); // settings -> Trig View held (live, not saved)
 
 /** The level clamped to ±divY divisions about the source channel's screen centre. */
 function clampLevel(settings, profile, v) {
   const ch = srcCh(settings);
-  const centre = -ch.position * ch.vPerDiv;
-  const span = profile.screen.divY * ch.vPerDiv;
+  const centre = -ch.position * shownVPerDiv(ch);
+  const span = profile.screen.divY * shownVPerDiv(ch);
   return tidy(clamp(v, centre - span, centre + span));
 }
 
@@ -52,12 +61,34 @@ function setTo50(ctx) {
   if (r) ctx.settings.trigger.level = clampLevel(ctx.settings, ctx.profile, (r.min + r.max) / 2);
 }
 
+const field = (key) => [({ settings }) => settings.trigger[key], ({ settings, profile }, v) => {
+  settings.trigger[key] = v;
+  settings.trigger.level = clampLevel(settings, profile, settings.trigger.level);
+}];
+
+const menus = {
+  trigger: {
+    button: 'trig-menu',
+    title: 'Trigger',
+    items: () => [
+      infoItem('Type', 'Edge'),
+      choiceItem('Source', [{ value: 'ch1', text: 'CH1' }, { value: 'ch2', text: 'CH2' }], ...field('source')),
+      choiceItem('Slope', [{ value: 'rising', text: 'Rising' }, { value: 'falling', text: 'Falling' }], ...field('slope')),
+      choiceItem('Mode', [{ value: 'auto', text: 'Auto' }, { value: 'normal', text: 'Normal' }], ...field('mode')),
+    ],
+  },
+};
+
 export const trigger = {
-  init(settings) { settings.trigger = { ...DEFAULTS }; },
+  init(settings) { settings.trigger = { ...DEFAULTS }; views.set(settings, false); },
   restore(settings, saved, profile) {
     settings.trigger = fromSaved(saved?.trigger);
     settings.trigger.level = clampLevel(settings, profile, settings.trigger.level);
+    views.set(settings, false);
   },
+  menus,
+  hold: { 'trig-view': ({ settings }) => { views.set(settings, true); } },
+  release: { 'trig-view': ({ settings }) => { views.set(settings, false); } },
   turn: {
     'trig-level'({ settings, profile }, detents) {
       settings.trigger.level = clampLevel(settings, profile, settings.trigger.level + detents * step(settings));
@@ -73,6 +104,10 @@ export const trigger = {
       },
       detent: ({ settings }) => Math.round(settings.trigger.level / step(settings)),
     },
+    'trig-view': {
+      get: ({ settings }) => views.get(settings) === true,
+      set: ({ settings }, v) => { if (typeof v === 'boolean') views.set(settings, v); },
+    },
   },
   state({ settings }) {
     const t = settings.trigger;
@@ -84,12 +119,18 @@ export const trigger = {
     trigLevel: { label: 'Trigger level', unit: 'V' },
     trigMode: { label: 'Trigger mode (auto or normal)', unit: '' },
   }),
-  frame({ settings, profile }, frame) {
+  frame(ctx, frame) {
+    const { settings, profile } = ctx;
     const t = settings.trigger;
     const ch = srcCh(settings);
     const h = settings.horizontal;
     frame.readouts.push({ id: 'trigger', channel: t.source, text: `${SLOPE_GLYPH[t.slope]} ${si(t.level)}V` });
-    frame.markers.triggerLevel = { y: t.level / ch.vPerDiv + ch.position, channel: t.source };
+    frame.markers.triggerLevel = { y: t.level / shownVPerDiv(ch) + ch.position, channel: t.source };
+    if (views.get(settings)) {
+      const tr = acquiredTrace(ctx, t.source);
+      frame.traces = tr ? { [t.source]: tr } : {};
+      frame.trigView = true;
+    }
     frame.markers.triggerPoint = { x: profile.screen.divX / 2 + h.position / h.sPerDiv };
   },
 };

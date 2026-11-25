@@ -12,7 +12,9 @@
 //     plot                     { x, y, w, h } graticule rectangle in screen pixels
 //     colors                   background, grid, text, per-channel trace colours
 //     font                     canvas font for readouts
-//     menu                     { x, y, w, h, items } the softkey menu area and its item count
+//     menu                     { x, y, w, h, items, titleY } the softkey menu area (one slot per
+//                              softkey, lined up with the bezel buttons), its item count, and the
+//                              baseline of the menu title above it
 //     readouts                 { y, spareX } bottom readout baseline and where unslotted ones start
 //
 // Readout positions per id and the skin-specific drawing live in render.js, keyed by profile.id.
@@ -47,9 +49,12 @@ const PROFILES = {
         text: '#dddddd',
         ch1: '#f0e130',
         ch2: '#22c4e8',
+        menu: '#1c2a3a',
+        menuText: '#ffffff',
       },
       font: '16px monospace',
-      menu: { x: 650, y: 30, w: 150, h: 400, items: 7 },
+      // Slots line up with softkeys 1..7 (centres 73..427 px on this screen).
+      menu: { x: 650, y: 43, w: 150, h: 413, items: 7, titleY: 15 },
       readouts: { y: 455, spareX: 620 },
     },
     onlyControls: ['fine', 'menu-onoff', 'trig-level:push', 'hor-position:push', 'softkey-6', 'softkey-7'],
@@ -75,9 +80,11 @@ const PROFILES = {
         ch1: '#ffff00',
         ch2: '#00c8ff',
         menu: '#1e3c78',
+        menuText: '#ffffff',
       },
       font: '10px monospace',
-      menu: { x: 258, y: 0, w: 62, h: 240, items: 5 },
+      // Slots line up with softkeys 1..5 (centres 31..194 px on this screen).
+      menu: { x: 258, y: 11, w: 62, h: 204, items: 5, titleY: 5 },
       readouts: { y: 228, spareX: 196 },
     },
     onlyControls: ['horiz-menu', 'set-to-zero', 'trig-50', 'trig-view', 'mp-led-left', 'mp-led-right'],

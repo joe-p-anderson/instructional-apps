@@ -95,9 +95,10 @@ test('CH2 starts off; its menu button turns it on as a copy of CH1, with its own
   assert.equal(engine.acquire(0).traces.ch2, undefined);
 });
 
-test('the CH1 menu button toggles the CH1 trace and its readout', () => {
+test('the CH1 menu button (pressed with its menu showing) turns the CH1 trace and its readout off', () => {
   const engine = createEngine(tbs());
-  engine.press('ch1-menu');
+  engine.press('ch1-menu'); // opens the CH1 menu
+  engine.press('ch1-menu'); // turns CH1 off
   const frame = engine.acquire(0);
   assert.equal(frame.traces.ch1, undefined);
   assert.equal(readout(frame, 'ch1-scale'), undefined);

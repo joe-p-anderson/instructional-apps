@@ -8,6 +8,9 @@
 //                         "CH1" in the channel colour)
 // Readouts without a slot are laid out along the bottom bar from style.readouts.spareX, so a
 // new readout shows up before it gets a slot.
+// The softkey menu (frame.menu) is drawn last, over the graticule, in style.menu: the title at
+// style.menu.titleY, then one box per softkey slot with the item's label and its current value
+// (highlighted). Colours: style.colors.menu / menuText.
 
 /** Where each readout id goes on each skin's screen: [x, y, align]. */
 const READOUT_SLOTS = {
@@ -52,6 +55,38 @@ const CHANNEL_READOUT = {
 };
 
 const STATUS_TEXT = { triggered: "Trig'd", auto: 'Auto', waiting: 'Trig?', stopped: 'Stop' };
+
+/** The open softkey menu in the skin's menu column. */
+function drawMenu(g, menu, style) {
+  const { colors } = style;
+  const m = style.menu;
+  const slotH = m.h / m.items;
+  const lineH = parseInt(style.font, 10) || 12;
+  const fg = colors.menuText ?? colors.text;
+  g.textAlign = 'center';
+  g.fillStyle = colors.text;
+  g.fillText(menu.title, m.x + m.w / 2, (m.titleY ?? m.y - lineH / 2) + 1);
+  menu.items.slice(0, m.items).forEach((it, i) => {
+    const y = m.y + i * slotH;
+    g.fillStyle = colors.menu ?? '#203040';
+    g.fillRect(m.x + 1, y + 1, m.w - 2, slotH - 2);
+    g.strokeStyle = colors.gridMajor;
+    g.lineWidth = 1;
+    g.strokeRect(m.x + 1.5, y + 1.5, m.w - 3, slotH - 3);
+    if (!it) return;
+    const mid = y + slotH / 2;
+    g.fillStyle = fg;
+    g.fillText(it.label, m.x + m.w / 2, mid - lineH * 0.55 + 1);
+    if (it.value) {
+      const w = Math.min(m.w - 6, g.measureText(it.value).width + 8);
+      g.fillStyle = fg;
+      g.fillRect(m.x + (m.w - w) / 2, mid + lineH * 0.05, w, lineH * 1.1);
+      g.fillStyle = colors.menu ?? '#203040';
+      g.fillText(it.value, m.x + m.w / 2, mid + lineH * 0.6 + 1);
+    }
+  });
+  g.textAlign = 'left';
+}
 
 export function renderScreen(g, frame, profile) {
   const { width, height, divX, divY } = frame.screen;
@@ -132,7 +167,8 @@ export function renderScreen(g, frame, profile) {
   g.textBaseline = 'middle';
   const slots = READOUT_SLOTS[profile.id] ?? {};
   const drawChannel = CHANNEL_READOUT[profile.id] ?? CHANNEL_READOUT.tbs2072b;
-  const readouts = [{ id: 'status', text: STATUS_TEXT[frame.status] ?? frame.status }, ...frame.readouts];
+  const status = STATUS_TEXT[frame.status] ?? frame.status;
+  const readouts = [{ id: 'status', text: frame.trigView ? `${status} Trig View` : status }, ...frame.readouts];
   const bar = profile.style.readouts ?? { y: height - 25, spareX: width * 0.75 };
   let spareX = bar.spareX;
   for (const r of readouts) {
@@ -147,5 +183,6 @@ export function renderScreen(g, frame, profile) {
       g.fillText(r.text, x, y + 1);
     }
   }
+  if (frame.menu && profile.style.menu) drawMenu(g, frame.menu, profile.style);
   g.restore();
 }
