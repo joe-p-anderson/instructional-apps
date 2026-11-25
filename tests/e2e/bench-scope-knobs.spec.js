@@ -133,14 +133,14 @@ test('the CH2 menu button shows the CH2 trace, with a pressed state', async ({ p
   await expect.poll(() => ch2Pixels(page)).toBeLessThan(50);
 });
 
-test('every active front-panel control is a registered Control; hiding one keeps the layout', async ({ page }) => {
+test('every front-panel control is a registered Control; hiding one keeps the layout', async ({ page }) => {
   await open(page);
   const ids = await page.evaluate(() => window.toolHost.instances[0].controls.ids());
   for (const id of ['ch1-scale', 'ch2-scale', 'ch1-position', 'ch2-position', 'ch1-menu', 'ch2-menu',
-    'hor-scale', 'trig-level', 'mp-knob', 'run-stop', 'softkey-1', 'softkey-7', 'gen1-freq']) {
+    'hor-scale', 'trig-level', 'mp-knob', 'run-stop', 'softkey-1', 'softkey-7', 'gen1-freq',
+    'math', 'utility', 'ch1-input', 'probe-comp', 'usb', 'power']) { // inactive and passive ones too
     expect(ids, id).toContain(id);
   }
-  expect(ids).not.toContain('math'); // inactive: drawn greyed, not a Control
   await expect(control(page, 'math')).toHaveAttribute('data-active', 'false');
 
   const panel = page.locator('svg[data-model]');
@@ -155,4 +155,31 @@ test('every active front-panel control is a registered Control; hiding one keeps
   expect(await panel.boundingBox()).toEqual(box);
   await page.evaluate(() => window.toolHost.instances[0].controls.get('ch1-menu').show());
   await expect(control(page, 'ch1-menu')).toBeVisible();
+});
+
+test('an inactive control (Utility) is a Control an Activity can lock and hide; it stays greyed and inert', async ({ page }) => {
+  await open(page);
+  const utility = control(page, 'utility');
+  await expect(utility).toHaveAttribute('data-active', 'false');
+  const before = await snapshot(page);
+  await utility.click();
+  const after = await page.evaluate(() => {
+    const c = window.toolHost.instances[0].controls.get('utility');
+    c.set(1);
+    c.lock();
+    return { label: c.label, locked: c.isLocked(), get: c.get() };
+  });
+  expect(after).toEqual({ label: 'Utility', locked: true, get: null });
+  const { runState, ...settings } = await snapshot(page);
+  const { runState: r0, ...settings0 } = before;
+  expect(settings).toEqual(settings0); // nothing happened
+  await expect(utility).toHaveAttribute('aria-disabled', 'true');
+
+  const panel = page.locator('svg[data-model]');
+  const box = await panel.boundingBox();
+  await page.evaluate(() => window.toolHost.instances[0].controls.get('utility').hide());
+  await expect(utility).toBeHidden();
+  expect(await panel.boundingBox()).toEqual(box);
+  await page.evaluate(() => window.toolHost.instances[0].controls.get('utility').show());
+  await expect(utility).toBeVisible();
 });

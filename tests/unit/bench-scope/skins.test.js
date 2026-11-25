@@ -54,12 +54,6 @@ test('the skin profile holds the per-skin differences', () => {
   const tds = skinProfile('tds2001c');
   assert.equal(tds.model, 'TDS2001C');
   assert.equal(tds.panel, 'tds2001c.svg');
-  // Controls only one model has.
-  for (const c of ['fine', 'menu-onoff']) assert.ok(tbs.onlyControls.includes(c), c);
-  for (const c of ['horiz-menu', 'set-to-zero', 'trig-50', 'trig-view', 'mp-led-left', 'mp-led-right']) {
-    assert.ok(tds.onlyControls.includes(c), c);
-  }
-  assert.ok(!tds.onlyControls.includes('fine'));
   // Where XY lives in the menus.
   assert.deepEqual(tbs.xyMenu, { button: 'acquire', item: 'XY Display' });
   assert.deepEqual(tds.xyMenu, { button: 'display', item: 'Format' });

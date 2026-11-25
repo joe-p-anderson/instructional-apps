@@ -19,8 +19,8 @@
 // Knob rotation is drawn from values.detent() on sync(), never accumulated here; call sync()
 // after every engine change.
 //
-// Controls: every active knob, button and softkey in the control map is a Control (framework
-// control.js), id = its control-map name. get() is the engine value (values.value), or for
+// Controls: every element in the control map is a Control (framework control.js), id = its
+// control-map name. For an active knob, button or softkey, get() is the engine value (values.value), or for
 // controls no feature gives a value: the knob's detent count, or the button's press count.
 // set(v) sends { type: 'set' } for valued controls, otherwise turns the knob to detent v or
 // presses the button once. A locked control ignores all input, is greyed with a "(locked)"
@@ -29,8 +29,10 @@
 // gets data-disabled="true" and class bs-disabled (dimmed) on sync(); the engine drops its events.
 // LEDs: the multipurpose-knob LEDs (mp-led-*, TDS) are lit (data-lit="true", class bs-lit) on
 // sync() while values.mpFunction() is non-null.
-// Inactive controls (data-active="false") ignore input and keep the "not available in this
-// simulation" tooltip the generator writes; they are not Controls.
+// Inactive controls (data-active="false"), LEDs, input connectors, terminals and ports are
+// Controls too, so an Activity can lock or hide them, but inert: they ignore input, keep the
+// "not available in this simulation" tooltip the generator writes (inactive ones stay greyed),
+// get() is an LED's lit state or null, and set() does nothing. The screen is the Display, not a Control.
 
 import { createControl } from '../../framework/v1/control.js';
 
@@ -78,11 +80,33 @@ export function createPanel({ svgText, model, onEvent, values }) {
     else onEvent({ type: 'press', control });
   }
 
+  const lockedTitle = (node, tooltip) => (locked) => {
+    node.classList.toggle('bs-locked', locked);
+    node.setAttribute('aria-disabled', String(locked));
+    const title = node.querySelector(':scope > title');
+    if (title) title.textContent = locked ? `${tooltip} (locked)` : tooltip;
+  };
+
   for (const entry of model.controls) {
-    if (!entry.active || !CONTROL_KINDS.has(entry.kind)) continue;
+    if (entry.kind === 'screen') continue; // the screen is the Display, not a Control
     const node = controlEl(entry.control);
     if (!node) continue;
     const name = entry.control;
+    if (!entry.active || !CONTROL_KINDS.has(entry.kind)) {
+      // Inactive controls, LEDs, inputs and terminals: Controls an Activity can lock or hide,
+      // but inert (get() is an LED's lit state, else null; set() does nothing).
+      const tooltip = node.querySelector(':scope > title')?.textContent ?? entry.label ?? name;
+      const ctl = createControl({
+        id: name,
+        label: entry.label || name,
+        get: () => (entry.kind === 'led' ? node.dataset.lit === 'true' : null),
+        set: () => {},
+        onLock: lockedTitle(node, tooltip),
+        onHide: (hidden) => { node.style.visibility = hidden ? 'hidden' : ''; },
+      });
+      byName.set(name, { ctl, node, kind: entry.kind, passive: true });
+      continue;
+    }
     const label = entry.label || (entry.kind === 'softkey' ? `Softkey ${name.replace('softkey-', '')}` : name);
     const title = node.querySelector(':scope > title');
     const tooltip = title?.textContent ?? label;
@@ -105,11 +129,7 @@ export function createPanel({ svgText, model, onEvent, values }) {
           if (detents) onEvent({ type: 'turn', control: name, detents });
         } else press(node);
       },
-      onLock: (locked) => {
-        node.classList.toggle('bs-locked', locked);
-        node.setAttribute('aria-disabled', String(locked));
-        if (title) title.textContent = locked ? `${tooltip} (locked)` : tooltip;
-      },
+      onLock: lockedTitle(node, tooltip),
       onHide: (hidden) => {
         node.style.visibility = hidden ? 'hidden' : '';
         node.setAttribute('tabindex', hidden ? '-1' : '0');
@@ -122,7 +142,7 @@ export function createPanel({ svgText, model, onEvent, values }) {
   function operable(target, kind) {
     const node = target?.closest?.('.osc-control');
     const c = node && byName.get(node.dataset.control);
-    if (!c || c.ctl.isLocked() || c.ctl.isHidden()) return null;
+    if (!c || c.passive || c.ctl.isLocked() || c.ctl.isHidden()) return null;
     if (kind && c.kind !== kind) return null;
     return c;
   }
@@ -262,7 +282,8 @@ export function createPanel({ svgText, model, onEvent, values }) {
       led.dataset.lit = lit;
       led.classList.toggle('bs-lit', lit === 'true');
     }
-    for (const [name, { ctl, node, kind }] of byName) {
+    for (const [name, { ctl, node, kind, passive }] of byName) {
+      if (passive) continue;
       const off = Boolean(values.disabled?.(name));
       if (node.dataset.disabled !== String(off)) {
         node.dataset.disabled = String(off);

@@ -107,27 +107,62 @@ export function generator({ wave, freq, vpp, offset }) {
   return (t) => offset + a * Math.sin(2 * Math.PI * freq * t);
 }
 
-const gen1Of = (s) => ({ wave: s.gen1Wave, freq: s.gen1Freq, vpp: s.gen1Vpp, offset: s.gen1Offset });
-const gen2Of = (s) => ({ wave: s.gen2Wave, freq: s.gen2Freq, vpp: s.gen2Vpp, offset: s.gen2Offset });
+/** A generator's settings from the source keys with prefix `p` ('gen1' | 'gen2'). */
+const genOf = (s, p) => ({ wave: s[`${p}Wave`], freq: s[`${p}Freq`], vpp: s[`${p}Vpp`], offset: s[`${p}Offset`] });
 
-/** The CH2 filter for a filtered source, or null. */
-export function ch2Filter(s) {
-  if (s.ch2Source === 'lowpass' || s.ch2Source === 'highpass') return { type: s.ch2Source, fc: s.ch2Fc };
-  if (s.ch2Source === 'bandpass') return { type: 'bandpass', f0: s.ch2F0, q: s.ch2Q };
-  return null;
-}
-
-// The filtered CH2 series, cached on the settings it depends on (synthesis is the costly part).
-let filtered = { key: '', series: null, signal: null };
-function filteredCh2(s) {
-  const filter = ch2Filter(s);
-  const key = JSON.stringify([gen1Of(s), filter]);
-  if (filtered.key !== key) {
-    const series = filterSeries(waveSeries(gen1Of(s)), filter);
-    filtered = { key, series, signal: seriesSignal(series) };
+// The filtered CH2 series per engine, keyed by its settings.source and cached on the settings it
+// depends on (synthesis is the costly part). Per instance: Tools keep no global state.
+const filterCaches = new WeakMap(); // settings.source -> { key, series, signal }
+function filtered(s, filter) {
+  const gen = genOf(s, 'gen1');
+  const key = JSON.stringify([gen, filter]);
+  let c = filterCaches.get(s);
+  if (c?.key !== key) {
+    const series = filterSeries(waveSeries(gen), filter);
+    c = { key, series, signal: seriesSignal(series) };
+    filterCaches.set(s, c);
   }
-  return filtered;
+  return c;
 }
+
+const NO_CH2 = { ch2TrueFreq: null, ch2TrueVpp: null, ch2Gain: null, ch2GainDb: null, ch2Phase: null };
+const withGain = (gain, phase) => ({ ch2Gain: gain, ch2GainDb: gain > 0 ? 20 * Math.log10(gain) : null, ch2Phase: phase });
+
+/** A CH2 source that is CH1 through `filter(s)`. */
+const filteredKind = (filter) => ({
+  signal: (s) => filtered(s, filter(s)).signal,
+  truth(s) {
+    const f = filter(s);
+    const { min, max } = seriesRange(filtered(s, f).series);
+    const { gain, phase } = gainAndPhase(f, s.gen1Freq);
+    return { ch2TrueFreq: s.gen1Freq, ch2TrueVpp: max - min, ...withGain(gain, phase) };
+  },
+});
+
+/** Each CH2 source: its signal v(t) (or null) and its ground truth, from settings.source. */
+const CH2_KINDS = {
+  off: { signal: () => null, truth: () => NO_CH2 },
+  copy: {
+    signal: (s) => generator(genOf(s, 'gen1')),
+    truth: (s) => ({ ch2TrueFreq: s.gen1Freq, ch2TrueVpp: s.gen1Vpp, ...withGain(1, 0) }),
+  },
+  lowpass: filteredKind((s) => ({ type: 'lowpass', fc: s.ch2Fc })),
+  highpass: filteredKind((s) => ({ type: 'highpass', fc: s.ch2Fc })),
+  bandpass: filteredKind((s) => ({ type: 'bandpass', f0: s.ch2F0, q: s.ch2Q })),
+  independent: {
+    signal(s) {
+      const g = generator(genOf(s, 'gen2'));
+      const shift = s.gen2Phase / (360 * s.gen2Freq);
+      return (t) => g(t + shift);
+    },
+    truth(s) {
+      const out = { ...NO_CH2, ch2TrueFreq: s.gen2Freq, ch2TrueVpp: s.gen2Vpp };
+      const a1 = fundamentalAmplitude(s.gen1Wave, s.gen1Vpp);
+      if (s.gen2Freq !== s.gen1Freq || a1 === 0) return out;
+      return { ...out, ...withGain(fundamentalAmplitude(s.gen2Wave, s.gen2Vpp) / a1, s.gen2Phase) };
+    },
+  },
+};
 
 /**
  * The signal v(t) at a scope input ('ch1' | 'ch2'), or null if nothing is wired to it.
@@ -136,45 +171,9 @@ function filteredCh2(s) {
  */
 export function inputSignal(settings, channel) {
   const s = settings.source;
-  if (channel === 'ch1') return generator(gen1Of(s));
+  if (channel === 'ch1') return generator(genOf(s, 'gen1'));
   if (channel !== 'ch2') return null;
-  switch (s.ch2Source) {
-    case 'copy': return generator(gen1Of(s));
-    case 'lowpass': case 'highpass': case 'bandpass': return filteredCh2(s).signal;
-    case 'independent': {
-      const g = generator(gen2Of(s));
-      const shift = s.gen2Phase / (360 * s.gen2Freq);
-      return (t) => g(t + shift);
-    }
-    default: return null;
-  }
-}
-
-/** Ground truth for CH2. */
-function ch2Truth(s) {
-  const none = { ch2TrueFreq: null, ch2TrueVpp: null, ch2Gain: null, ch2GainDb: null, ch2Phase: null };
-  const withGain = (gain, phase) => ({
-    ch2Gain: gain,
-    ch2GainDb: gain > 0 ? 20 * Math.log10(gain) : null,
-    ch2Phase: phase,
-  });
-  switch (s.ch2Source) {
-    case 'copy':
-      return { ch2TrueFreq: s.gen1Freq, ch2TrueVpp: s.gen1Vpp, ...withGain(1, 0) };
-    case 'lowpass': case 'highpass': case 'bandpass': {
-      const { min, max } = seriesRange(filteredCh2(s).series);
-      const { gain, phase } = gainAndPhase(ch2Filter(s), s.gen1Freq);
-      return { ch2TrueFreq: s.gen1Freq, ch2TrueVpp: max - min, ...withGain(gain, phase) };
-    }
-    case 'independent': {
-      const out = { ...none, ch2TrueFreq: s.gen2Freq, ch2TrueVpp: s.gen2Vpp };
-      const a1 = fundamentalAmplitude(s.gen1Wave, s.gen1Vpp);
-      if (s.gen2Freq !== s.gen1Freq || a1 === 0) return out;
-      return { ...out, ...withGain(fundamentalAmplitude(s.gen2Wave, s.gen2Vpp) / a1, s.gen2Phase) };
-    }
-    default:
-      return none;
-  }
+  return CH2_KINDS[s.ch2Source].signal(s);
 }
 
 export const source = {
@@ -189,7 +188,7 @@ export const source = {
   setSource(settings, patch) { applyPatch(settings.source, patch); },
   state({ settings }) {
     const s = settings.source;
-    return { ...s, ch1TrueFreq: s.gen1Freq, ch1TrueVpp: s.gen1Vpp, ...ch2Truth(s) };
+    return { ...s, ch1TrueFreq: s.gen1Freq, ch1TrueVpp: s.gen1Vpp, ...CH2_KINDS[s.ch2Source].truth(s) };
   },
   describe: () => INFO,
 };

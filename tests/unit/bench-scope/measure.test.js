@@ -90,6 +90,33 @@ test('a low-pass at fc = f gives a CH1→CH2 phase readout close to −45° and 
   }
 });
 
+test('phase is edge-based: a square wave through a low-pass at fc = f is −45° in the truth but reads about −37°', () => {
+  // The truth is the phase at the fundamental (−45°). Measure, as on the Tek scopes, times the
+  // mid-level crossings: after each edge the RC output crosses zero when
+  // e^(−t/τ) = (1 + e^(−T/2τ)) / 2 with T/2τ = π, i.e. t = 0.1036 T, so phase = −37.3°.
+  // Tolerance 2°: the noise and the sample spacing (TDS: 251 samples over 10 div) move the
+  // interpolated crossings by well under a degree at 200 µs/div.
+  for (const skin of SKIN_IDS) {
+    const engine = scope(skin, { gen1Wave: 'square', ch2Source: 'lowpass', ch2Fc: 1000 });
+    engine.press('ch2-menu'); // CH2 on
+    addReadout(engine, null, 'phase');
+    engine.acquire(0);
+    const s = engine.state();
+    close(s.ch2Phase, -45, 1e-6, 'truth');
+    assert.equal(meas(s, 1).valid, true, skin);
+    close(meas(s, 1).value, -37.3, 2, `${skin} phase`);
+  }
+});
+
+test('each readout value is described with its type\'s unit', () => {
+  const engine = scope('tbs2072b', { ch2Source: 'lowpass', ch2Fc: 1000 });
+  const want = { freq: 'Hz', period: 's', pkpk: 'V', phase: '°' };
+  for (const type of Object.keys(want)) addReadout(engine, type === 'phase' ? null : 'ch1', type);
+  const d = engine.describe();
+  Object.values(want).forEach((unit, i) => assert.equal(d[`measure${i + 1}Value`].unit, unit, `readout ${i + 1}`));
+  assert.equal(d.measure5Value.unit, '', 'an unused readout has no unit');
+});
+
 test('readouts show on screen in each skin\'s style, with "?" when invalid', () => {
   const tbs = scope('tbs2072b');
   addReadout(tbs, 'ch1', 'freq');

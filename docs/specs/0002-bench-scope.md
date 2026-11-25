@@ -308,3 +308,13 @@ Each value has a label and a unit. The groups below are the contract, though exa
   - That manual page also shows the TBS screen layout to copy: a status bar along the top (Run, Trig'd), the side menu down the right edge, and the channel, time-base and trigger readouts along the bottom.
 - **Panel sources:** the control map and the generated SVGs are already in the repo, along with the "Oscilloscope panels: control test" artifact, which binds wheel and push to both skins and overlays a demo canvas. That artifact is the prototype for the panel binding.
 - **Related:** the s/div sequences and the exact on-screen readout layouts per model should be taken from the two user manuals rather than guessed.
+
+### Decisions made during implementation
+
+- **Measure phase is edge-based,** as on the real Tek scopes: it times the mid-level crossings, not the phase at the fundamental. A sine through a low-pass at fc = f reads about −45°, but a square wave reads about −37°, while the ground truth (`ch2Phase`, at the fundamental) says −45° for both.
+- **Measure is disabled in XY,** as on both models: the Measure button does nothing, no readouts show and every readout is invalid. The slots are kept for YT.
+- **The engine has two more event kinds and a hook:** `hold` / `release` events (a button going down and coming up, used by the TDS Trig View), and a `disabled` feature hook. In XY that hook disables the time base, the trigger, the cursors and Measure, and the engine drops their events.
+- **Only animation frames capture.** Input events and display snapshots redraw the last capture with the current settings (`engine.frame()`), so a knob turn can't take an armed Single. The loop stops while the scope is stopped.
+- **The BW limit is a short zero-phase binomial low-pass over neighbouring samples** (signal and noise). It cuts the noise to about 0.44 of its rms and rounds ideal edges over a few samples. It is scaled to the record, not to a real 20 MHz bandwidth.
+- **The UI-kit slider gained a `log` option** (a logarithmic range input for values spanning decades), used by the source panel's frequency, fc and f0 sliders.
+- **s/div sequences:** TBS 1-2-4 and TDS 1-2.5-5. These come from the datasheets and model overviews, and still need checking against the two user manuals.

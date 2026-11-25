@@ -172,6 +172,24 @@ test('Single waits for a trigger, captures once, then stops', () => {
   assert.deepEqual(engine.acquire(2000).traces, shot.traces, 'no further captures');
 });
 
+test('frame() redraws the last capture without capturing: knob turns while Single is armed keep it armed', () => {
+  const engine = createEngine(tbs());
+  const running = engine.acquire(500);
+  engine.press('single');
+  engine.turn('ch1-position', 5);
+  engine.apply({ type: 'set', control: 'ch1-position', value: 2 });
+  const held = engine.frame();
+  assert.equal(engine.state().runState, 'single', 'frame() does not take the Single capture');
+  assert.equal(held.now, 500, 'the frame of the last capture');
+  assert.deepEqual(held.timebase, running.timebase, 'same capture');
+  assert.ok(held.traces.ch1.y[0] > running.traces.ch1.y[0] + 1.9, 'drawn at the new position');
+  assert.ok(held.readouts.some((r) => r.id === 'ch1-scale'), 'with readouts');
+  const shot = engine.acquire(1000);
+  assert.equal(shot.status, 'stopped');
+  assert.equal(engine.state().runState, 'stopped', 'the next acquire takes it');
+  assert.deepEqual(engine.frame().traces, shot.traces, 'and frame() then shows that capture');
+});
+
 test('Force Trig acquires while Single is waiting for a trigger that never comes', () => {
   const engine = createEngine(tbs());
   engine.apply({ type: 'set', control: 'trig-level', value: 3 });

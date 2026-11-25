@@ -238,3 +238,22 @@ test('invert flips the trace; BW limit visibly lowers the noise', () => {
   assert.ok(rms(bw) < 0.6 * rms(plain), `noise ${rms(plain)} → ${rms(bw)}`);
   assert.match(readout(engine.acquire(0), 'ch1-scale').text, /B/);
 });
+
+test('BW limit is a gentle low-pass on the samples: square edges are rounded, a sine keeps its size', () => {
+  for (const skin of SKIN_IDS) {
+    const engine = createEngine(skinProfile(skin), { gen1Wave: 'square', gen1Freq: 1000, gen1Vpp: 2 });
+    engine.apply({ type: 'set', control: 'hor-scale', value: 200e-6 });
+    const maxStep = (v) => Math.max(...v.slice(1).map((y, i) => Math.abs(y - v[i])));
+    const plain = volts(engine.acquire(0).traces.ch1);
+    engine.press('ch1-menu');
+    engine.softkey(2); // BW limit on
+    const bw = volts(engine.acquire(0).traces.ch1);
+    assert.ok(maxStep(plain) > 1.8, `${skin}: an ideal edge is one sample (${maxStep(plain)} V)`);
+    assert.ok(maxStep(bw) < 0.8, `${skin}: the edge spreads over several samples (${maxStep(bw)} V)`);
+    assert.deepEqual(engine.acquire(0).traces.ch1.y, engine.acquire(0).traces.ch1.y, `${skin}: deterministic`);
+    engine.setSource({ gen1Wave: 'sine' });
+    const pk = (v) => Math.max(...v) - Math.min(...v);
+    const sine = pk(volts(engine.acquire(0).traces.ch1));
+    assert.ok(Math.abs(sine - 2) < 0.06, `${skin}: sine pk-pk ${sine} V with BW limit`);
+  }
+});

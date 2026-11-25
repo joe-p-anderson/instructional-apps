@@ -68,3 +68,19 @@ for (const skin of SKINS) {
     await expect.poll(async () => (await snapshot(page)).runState).toBe('running');
   });
 }
+
+test('only animation frames capture: knob turns and snapshots while Single is armed leave it armed', async ({ page }) => {
+  await open(page, SKINS[0]);
+  // One synchronous task, so no animation frame runs between these events.
+  const during = await page.evaluate(() => {
+    const inst = window.toolHost.instances[0];
+    inst.controls.get('single').set();
+    const pos = inst.controls.get('ch1-position');
+    for (let i = 1; i <= 3; i++) pos.set(0.2 * i);
+    inst.controls.get('mp-knob').set(inst.controls.get('mp-knob').get() + 2);
+    inst.displays[0].snapshot();
+    return inst.state.snapshot().runState;
+  });
+  expect(during).toBe('single');
+  await expect.poll(async () => (await snapshot(page)).runState).toBe('stopped'); // the next frame takes it
+});

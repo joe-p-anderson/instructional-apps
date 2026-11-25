@@ -29,7 +29,12 @@
 //   engine.acquire(now) -> frame      now in ms (e.g. performance.now()); see FRAME below. Each
 //                                     call is one capture (acquire.js): it advances Single and
 //                                     Force Trig, and its noise is seeded by (seed, now)
-//   engine.state()                    flat published State { [key]: number|boolean|string }
+//   engine.frame() -> frame           the last capture redrawn with the current settings (menus,
+//                                     readouts, positions...), without capturing: Single and Force
+//                                     Trig stay pending. frame.now is the last capture's. The
+//                                     binding acquires on animation frames and uses this after
+//                                     input events and for snapshots.
+//   engine.state()                   flat published State { [key]: number|boolean|string }
 //   engine.describe()                 { [key]: { label, unit } } for every State key
 //   engine.serialize()                JSON-able settings; engine.restore(saved) puts them back
 //   engine.profile                    the skin profile it was created with
@@ -67,7 +72,7 @@
 // where ctx = { settings, profile }. Add a feature by writing a module and listing it in
 // SETTINGS_FEATURES below (its menus come with it).
 
-import { acquireTraces, acquisition } from './acquire.js';
+import { acquireTraces, acquisition, heldTraces, lastCaptureNow } from './acquire.js';
 import { autosetFeature } from './autoset.js';
 import { cursors } from './cursors.js';
 import { display } from './display.js';
@@ -128,6 +133,23 @@ export function createEngine(profile, setup = {}) {
     }
   }
 
+  /** A whole frame around the acquisition part `traces` ({ status, timebase, traces, xy? }). */
+  function frameOf(now, traces) {
+    const { width, height, divX, divY } = profile.screen;
+    const frame = {
+      now,
+      skin: profile.id,
+      screen: { width, height, divX, divY },
+      ...traces,
+      readouts: [],
+      menu: null,
+      cursors: null,
+      markers: {},
+    };
+    for (const f of FEATURES) f.frame?.(ctx, frame);
+    return frame;
+  }
+
   return {
     profile,
     apply,
@@ -151,21 +173,8 @@ export function createEngine(profile, setup = {}) {
       return null;
     },
 
-    acquire(now = 0) {
-      const { width, height, divX, divY } = profile.screen;
-      const frame = {
-        now,
-        skin: profile.id,
-        screen: { width, height, divX, divY },
-        ...acquireTraces(ctx, now),
-        readouts: [],
-        menu: null,
-        cursors: null,
-        markers: {},
-      };
-      for (const f of FEATURES) f.frame?.(ctx, frame);
-      return frame;
-    },
+    acquire: (now = 0) => frameOf(now, acquireTraces(ctx, now)),
+    frame: () => frameOf(lastCaptureNow(ctx), heldTraces(ctx)),
 
     state() {
       const out = { skin: profile.id };

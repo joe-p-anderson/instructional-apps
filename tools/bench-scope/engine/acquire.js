@@ -10,9 +10,15 @@
 // so captures and the trigger work in displayed volts.
 //
 // Noise: NOISE_RMS volts of Gaussian noise per sample at the input (times the probe setting,
-// times BW_LIMIT_NOISE with BW limit on, none with GND coupling; TRIGGER_NOISE_RMS on the trigger comparator), from a
+// none with GND coupling; TRIGGER_NOISE_RMS on the trigger comparator), from a
 // PRNG seeded by (settings.acquisition.seed, now). The same seed, events and `now` values give
 // identical frames; acquire(0) twice gives the same frame.
+//
+// BW limit: a gentle zero-phase low-pass on each captured record (signal plus noise), the
+// BW_LIMIT_KERNEL binomial FIR over neighbouring samples (renormalised at the record ends). It
+// leaves the noise at about 0.44 of its rms, rounds ideal edges over a few samples and barely
+// touches a sine with tens of samples per cycle. (The real 20 MHz limit is far above these
+// signals; the model scales it to the record so its effect on the noise is visible.)
 //
 // Run state (not saved; restore resets it to running):
 //   run-stop    press: running ⇄ stopped (from an armed Single: running)
@@ -38,8 +44,10 @@ export const CHANNELS = VERTICAL_CHANNELS;
 export const NOISE_RMS = 0.008;
 /** Noise on the trigger comparator, volts rms (band-limited: less than on the samples). */
 export const TRIGGER_NOISE_RMS = 0.002;
-/** Noise left with the bandwidth limit on (the 20 MHz filter cuts the broadband noise). */
-export const BW_LIMIT_NOISE = 0.35;
+/** The BW limit filter: binomial weights C(8, k) / 256 over the 9 samples centred on each one. */
+export const BW_LIMIT_KERNEL = [1, 8, 28, 56, 70, 56, 28, 8, 1].map((w) => w / 256);
+/** The rms of white noise after the BW limit filter, relative to before (about 0.44). */
+const BW_LIMIT_NOISE = Math.sqrt(BW_LIMIT_KERNEL.reduce((s, w) => s + w * w, 0));
 const DEFAULT_SEED = 1;
 const GRID = 2048; // points per period when searching for crossings
 /** XY capture: periods of the slower channel, and points per capture. */
@@ -48,7 +56,7 @@ export const XY_SAMPLES = 1000;
 
 // Live acquisition state per engine, keyed by its settings object: not part of serialize().
 const lives = new WeakMap();
-const freshLive = () => ({ run: 'running', force: false, last: null, lastXY: null, lastNow: 0 });
+const freshLive = () => ({ run: 'running', force: false, last: null, lastXY: null, lastNow: 0, status: 'waiting' });
 function liveOf(settings) {
   if (!lives.has(settings)) lives.set(settings, freshLive());
   return lives.get(settings);
@@ -132,10 +140,33 @@ function validCrossing(settings) {
   return level > min + margin && level < max - margin;
 }
 
-/** A channel's noise relative to NOISE_RMS, in displayed volts. */
-function noiseFactor(ch) {
-  if (ch.coupling === 'gnd') return 0;
-  return ch.probe * (ch.bwLimit ? BW_LIMIT_NOISE : 1);
+/** A channel's noise at the input relative to NOISE_RMS, in displayed volts. */
+const inputNoise = (ch) => (ch.coupling === 'gnd' ? 0 : ch.probe);
+
+/** A channel's noise on the captured record (after any BW limit) relative to NOISE_RMS. */
+const noiseFactor = (ch) => inputNoise(ch) * (ch.bwLimit ? BW_LIMIT_NOISE : 1);
+
+/** The record `v` through the BW limit filter (zero-phase; the kernel renormalised at the ends). */
+function bwLimit(v) {
+  const half = (BW_LIMIT_KERNEL.length - 1) / 2;
+  return v.map((_, i) => {
+    let sum = 0;
+    let weight = 0;
+    for (let k = -half; k <= half; k++) {
+      const j = i + k;
+      if (j < 0 || j >= v.length) continue;
+      sum += BW_LIMIT_KERNEL[k + half] * v[j];
+      weight += BW_LIMIT_KERNEL[k + half];
+    }
+    return sum / weight;
+  });
+}
+
+/** One channel's noisy record at the sample times `times` (BW limited if the channel says so). */
+function record(settings, ch, v, times, g) {
+  const rms = NOISE_RMS * inputNoise(settings[ch]);
+  const raw = times.map((t) => v(t) + rms * g());
+  return settings[ch].bwLimit ? bwLimit(raw) : raw;
 }
 
 // --- capture --------------------------------------------------------------------------------
@@ -153,8 +184,7 @@ function captureVolts(settings, profile, t0, sPerDiv, now) {
     const v = channelSignal(settings, ch);
     if (!v) return;
     const g = gaussians(settings.acquisition.seed, now, idx + 1);
-    const rms = NOISE_RMS * noiseFactor(settings[ch]);
-    volts[ch] = x.map((xi) => v(t0 + xi * sPerDiv) + rms * g());
+    volts[ch] = record(settings, ch, v, x.map((xi) => t0 + xi * sPerDiv), g);
   });
   return volts;
 }
@@ -184,7 +214,27 @@ function show(settings, profile, cap, status) {
  *             edge) to divX, y from the centre line (up positive), so volts = (y − position) · vPerDiv;
  *             clipped at the screen edges (see vertical.js). Channels that are off are absent.
  */
-export function acquireTraces({ settings, profile }, now = 0) {
+export function acquireTraces(ctx, now = 0) {
+  const out = capture(ctx, now);
+  liveOf(ctx.settings).status = out.status;
+  return out;
+}
+
+/**
+ * The acquisition part of a frame without capturing: the last capture (traces or XY figure) drawn
+ * with the current settings, and the status it had ('stopped' if the scope was stopped since).
+ * Single and Force Trig stay pending. For redrawing after an input event.
+ */
+export function heldTraces({ settings, profile }) {
+  const live = liveOf(settings);
+  const status = live.run === 'stopped' ? 'stopped' : live.status;
+  return isXY(settings) ? xyView(settings, profile, live, status) : show(settings, profile, live.last, status);
+}
+
+/** The `now` (ms) of the last capture. */
+export const lastCaptureNow = ({ settings }) => liveOf(settings).lastNow;
+
+function capture({ settings, profile }, now) {
   const live = liveOf(settings);
   live.lastNow = now;
   if (isXY(settings)) return acquireXY(settings, profile, live, now);
@@ -224,8 +274,8 @@ function captureXY(settings, now) {
   const out = {};
   for (const [idx, ch, v] of [[1, 'ch1', v1], [2, 'ch2', v2]]) {
     const g = gaussians(settings.acquisition.seed, now, idx);
-    const rms = NOISE_RMS * noiseFactor(settings[ch]);
-    out[ch] = Array.from({ length: XY_SAMPLES }, (_, i) => v(t0 + (i * span) / (XY_SAMPLES - 1)) + rms * g());
+    const times = Array.from({ length: XY_SAMPLES }, (_, i) => t0 + (i * span) / (XY_SAMPLES - 1));
+    out[ch] = record(settings, ch, v, times, g);
   }
   return out;
 }
@@ -248,6 +298,11 @@ function acquireXY(settings, profile, live, now) {
     status = 'auto';
     if (live.run === 'single') live.run = 'stopped';
   }
+  return xyView(settings, profile, live, status);
+}
+
+/** The XY part of a frame from the last XY capture. */
+function xyView(settings, profile, live, status) {
   const { sPerDiv, position } = settings.horizontal;
   const out = { status, timebase: { sPerDiv, t0: -(profile.screen.divX / 2) * sPerDiv - position }, traces: {} };
   if (live.lastXY) out.xy = xyTrace(settings, profile, live.lastXY);

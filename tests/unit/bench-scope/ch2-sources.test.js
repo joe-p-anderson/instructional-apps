@@ -145,3 +145,18 @@ test('a Setup can choose the CH2 source', () => {
   const engine = createEngine(skinProfile('tbs2072b'), { ch2Source: 'lowpass', ch2Fc: 500, gen1Freq: 500 });
   close(engine.state().ch2Phase, -45, 1e-6, 'phase');
 });
+
+test('two engines with different CH2 filters do not interfere (no shared filter cache)', () => {
+  const a = scope({ gen1Wave: 'square', gen1Freq: 1000, gen1Vpp: 4, gen1Offset: 0, ch2Source: 'lowpass', ch2Fc: 1000 });
+  const b = scope({ gen1Wave: 'sine', gen1Freq: 2000, gen1Vpp: 2, gen1Offset: 0, ch2Source: 'highpass', ch2Fc: 50 });
+  const before = { y: a.acquire(0).traces.ch2.y, state: a.state() };
+  // Interleave: B works, then A; B changes its filter, then A again.
+  b.acquire(0);
+  assert.deepEqual(a.acquire(0).traces.ch2.y, before.y, 'A after B');
+  b.setSource({ ch2Source: 'bandpass', ch2F0: 3000, ch2Q: 10 });
+  b.acquire(0);
+  assert.deepEqual(a.acquire(0).traces.ch2.y, before.y, 'A after B changed its filter');
+  assert.deepEqual(a.state(), before.state, 'A truth after B changed its filter');
+  // Band-pass gain at f: 1 / √(1 + Q²(f/f0 − f0/f)²).
+  close(b.state().ch2Gain, 1 / Math.sqrt(1 + 100 * (2000 / 3000 - 3000 / 2000) ** 2), 1e-9, 'B band-pass gain');
+});

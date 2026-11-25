@@ -3,9 +3,9 @@
 //
 // Setup: { skin: 'tbs2072b' | 'tds2001c', gen1Wave, ..., ch2Source, ch2Fc, ..., gen2Phase } (any subset; source keys in engine/source.js).
 // State: engine.state() (see engine/engine.js and each feature module for keys and units).
-// Controls: 'skin' (the skin switcher, a select), source panel 'gen1-*', 'ch2-source', 'ch2-fc', 'ch2-f0', 'ch2-q', 'gen2-*' (see source-panel.js), and every active
-//   knob, button and softkey on the front panel by its control-map name ('ch1-scale',
-//   'ch1-menu', 'softkey-3', ...; see panel.js for get/set and engine feature modules for values),
+// Controls: 'skin' (the skin switcher, a select), source panel 'gen1-*', 'ch2-source', 'ch2-fc', 'ch2-f0', 'ch2-q', 'gen2-*' (see source-panel.js), and every
+//   element of the front panel's control map by its name ('ch1-scale', 'ch1-menu', 'softkey-3',
+//   and inert ones such as 'utility' or 'ch1-input'; see panel.js for get/set and engine feature modules for values),
 //   and the cursors 'cursor-1', 'cursor-2' (value: position in s from the trigger point or V,
 //   null while cursors are off; see engine/cursors.js). A locked cursor ignores the multipurpose
 //   knob; a hidden one is not drawn.
@@ -14,6 +14,9 @@
 // Layout: source panel in the Controls column, the front panel (inlined SVG with the screen
 // canvas over it) in the Display area. Behaviour lives in the DOM-free engine; this module
 // wires the panel binding, the source panel and the renderer to it.
+// Captures: only the animation-frame loop acquires (one capture per frame while running or with
+// Single armed; the loop stops while the scope is stopped). Input events and snapshots redraw the
+// last capture (engine.frame()), so they never take an armed Single or a pending Force Trig.
 //
 // Switching skin (the 'skin' Control, or restore() of a save from the other skin) swaps the
 // engine for one on the new profile (engine.js switchSkin) and the panel for the new SVG; the
@@ -69,15 +72,18 @@ function mount(container, modeId = 'scope', setup = {}) {
   const changes = createEmitter();
   let lastState = '';
 
-  // One path for every State change: an engine event, then notify if the State moved.
+  // One path for every State change: an engine event, a redraw of the last capture (an event
+  // never captures, so e.g. a knob turn can't take an armed Single), then notify if the State
+  // moved. The loop restarts if the event left the scope running (Run/Stop, Single).
   function dispatch(event) {
     if (event?.type === 'turn' && event.control === 'mp-knob' && engine.mpFunction()) {
       if (cursorControls[engine.state().cursorSelected - 1]?.isLocked()) return;
     }
     engine.apply(event);
     panel.sync();
-    draw();
+    redraw();
     notify();
+    startLoop();
   }
   function notify() {
     const s = engine.state();
@@ -93,7 +99,7 @@ function mount(container, modeId = 'scope', setup = {}) {
     label: `Cursor ${i + 1}`,
     get: () => engine.value(id),
     set: (value) => dispatch({ type: 'set', control: id, value }),
-    onHide: () => draw(),
+    onHide: () => redraw(),
   }));
 
   const source = createSourcePanel({ values: engine.state(), onPatch: (patch) => dispatch({ type: 'setSource', patch }) });
@@ -136,27 +142,41 @@ function mount(container, modeId = 'scope', setup = {}) {
     reskin(id);
     source.sync(engine.state());
     panel.sync();
-    draw();
+    capture();
     notify();
   }
 
-  function draw(now = performance.now()) {
-    const frame = engine.acquire(now);
+  function render(frame) {
     if (frame.cursors) {
       const hidden = new Set(cursorControls.filter((c) => c.isHidden()).map((c) => c.id));
       frame.cursors.lines = frame.cursors.lines.filter((l) => !hidden.has(l.id));
     }
     renderScreen(g, frame, profile);
   }
+  /** Redraw the last capture with the current settings (input events, snapshots): no capture. */
+  const redraw = () => render(engine.frame());
+  /**
+   * Take a capture now: only for an engine that has none yet (mount, a new skin, restore), whose
+   * run state is fresh. Otherwise only the animation-frame loop captures.
+   */
+  function capture() {
+    render(engine.acquire(performance.now()));
+    startLoop();
+  }
 
+  // The animation-frame loop: one capture per frame while running (or Single is armed); it stops
+  // while the scope is stopped and startLoop() restarts it after an event.
   let raf = 0;
   function loop(now) {
-    draw(now);
+    raf = 0;
+    render(engine.acquire(now));
     notify();
-    raf = requestAnimationFrame(loop);
+    startLoop();
   }
-  raf = requestAnimationFrame(loop);
-  draw();
+  function startLoop() {
+    if (!raf && engine.state().runState !== 'stopped') raf = requestAnimationFrame(loop);
+  }
+  capture();
   lastState = JSON.stringify(engine.state());
 
   const registry = () => controlRegistry([switcher.control, ...Object.values(source.controls), ...panel.controls, ...cursorControls]);
@@ -175,7 +195,7 @@ function mount(container, modeId = 'scope', setup = {}) {
       id: 'screen',
       label: 'Oscilloscope screen',
       async snapshot() {
-        draw();
+        redraw();
         return panel.canvas.toDataURL('image/png');
       },
     }],
@@ -186,12 +206,13 @@ function mount(container, modeId = 'scope', setup = {}) {
       else engine.restore(saved);
       source.sync(engine.state());
       panel.sync();
-      draw();
+      capture(); // restore resets the run state: the restored engine has no capture yet
       lastState = '';
       notify();
     },
     destroy() {
       cancelAnimationFrame(raf);
+      raf = -1; // startLoop() never schedules again
       changes.clear();
       panel.destroy();
       root.remove();

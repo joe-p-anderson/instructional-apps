@@ -10,7 +10,8 @@
 // Types (TYPES): freq, period, pkpk, amplitude (histogram high − low), mean and rms (over whole
 // cycles when two rising edges are on screen, else the whole record), rise (10–90 %), and the
 // CH1→CH2 pair types delay (CH2 rising edge − nearest CH1 rising edge, s) and phase
-// (−360 · delay / CH1 period, degrees; + = CH2 leads, so a low-pass at fc = f reads about −45°).
+// (−360 · delay / CH1 period, degrees; + = CH2 leads, so a low-pass at fc = f reads about −45° for a sine; being edge-based, as on the Tek scopes, a
+// square wave there reads about −37° while the truth at the fundamental is −45°).
 // Edges are crossings of the mid level (halfway between min and max) with 10 % hysteresis.
 // Readouts update at most every UPDATE_MS of capture time (as on the real scope), and at once
 // when a setting changes.
@@ -341,12 +342,15 @@ export const measure = {
     }
     return out;
   },
-  describe() {
+  describe({ settings }) {
     const out = { measureCount: { label: 'Number of Measure readouts shown', unit: '' } };
+    const active = settings.measure.slots.filter((s) => s.type !== 'none');
     for (let k = 1; k <= MAX_READOUTS; k++) {
+      // The value's unit is its type's (Hz, s, V or °); '' while readout k is unused.
+      const unit = active[k - 1] ? TYPE[active[k - 1].type].unit : '';
       out[`measure${k}Source`] = { label: `Measure readout ${k} source (ch1, ch2 or ch1-ch2)`, unit: '' };
       out[`measure${k}Type`] = { label: `Measure readout ${k} type (${TYPE_IDS.join(', ')})`, unit: '' };
-      out[`measure${k}Value`] = { label: `Measure readout ${k} value (Hz, s, V or degrees by type; null if invalid)`, unit: '' };
+      out[`measure${k}Value`] = { label: `Measure readout ${k} value (null if invalid)`, unit };
       out[`measure${k}Valid`] = { label: `Measure readout ${k} valid`, unit: '' };
     }
     return out;

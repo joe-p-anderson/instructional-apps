@@ -6,7 +6,6 @@
 //   screen                     { width, height } native pixels; { divX, divY } graticule divisions
 //   recordLength               samples per trace across the full graticule width
 //   sdivSequence               the Horizontal Scale steps (s/div), fastest first, 1 µs .. 1 s
-//   onlyControls               control-map names (or "<knob>:push") that only this model has
 //   xyMenu                     where XY lives: { button (control that opens the menu), item };
 //                              display.js opens only the menu behind this skin's button
 //   style                      on-screen look, used only by render.js:
@@ -58,7 +57,6 @@ const PROFILES = {
       menu: { x: 650, y: 43, w: 150, h: 413, items: 7, titleY: 15 },
       readouts: { y: 455, spareX: 620 },
     },
-    onlyControls: ['fine', 'menu-onoff', 'trig-level:push', 'hor-position:push', 'softkey-6', 'softkey-7'],
     xyMenu: { button: 'acquire', item: 'XY Display' },
   },
   tds2001c: {
@@ -88,7 +86,6 @@ const PROFILES = {
       menu: { x: 258, y: 11, w: 62, h: 204, items: 5, titleY: 5 },
       readouts: { y: 228, spareX: 196 },
     },
-    onlyControls: ['horiz-menu', 'set-to-zero', 'trig-50', 'trig-view', 'mp-led-left', 'mp-led-right'],
     xyMenu: { button: 'display', item: 'Format' },
   },
 };
