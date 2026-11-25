@@ -1,0 +1,835 @@
+{
+ "version": 1,
+ "notes": "data-control names are shared across models. Element id = <prefix>-<data-control>. Knobs rotate via the child g.osc-knob-rot about (data-cx, data-cy). data-push names the knob's push action, if any.",
+ "models": {
+  "TBS2072B": {
+   "file": "tbs2072b.svg",
+   "idPrefix": "tbs",
+   "viewBox": [
+    0,
+    0,
+    2280,
+    1000
+   ],
+   "controls": [
+    {
+     "control": "screen",
+     "kind": "screen",
+     "label": "Display (canvas overlay)",
+     "active": true,
+     "x": 160,
+     "y": 168,
+     "w": 1170,
+     "h": 702,
+     "pixels": [
+      800,
+      480
+     ],
+     "graticule": "15x8"
+    },
+    {
+     "control": "save",
+     "kind": "button",
+     "label": "Save",
+     "active": false,
+     "cx": 1438,
+     "cy": 173
+    },
+    {
+     "control": "softkey-1",
+     "kind": "softkey",
+     "label": "",
+     "active": true,
+     "cx": 1440,
+     "cy": 275
+    },
+    {
+     "control": "softkey-2",
+     "kind": "softkey",
+     "label": "",
+     "active": true,
+     "cx": 1440,
+     "cy": 362
+    },
+    {
+     "control": "softkey-3",
+     "kind": "softkey",
+     "label": "",
+     "active": true,
+     "cx": 1440,
+     "cy": 449
+    },
+    {
+     "control": "softkey-4",
+     "kind": "softkey",
+     "label": "",
+     "active": true,
+     "cx": 1440,
+     "cy": 536
+    },
+    {
+     "control": "softkey-5",
+     "kind": "softkey",
+     "label": "",
+     "active": true,
+     "cx": 1440,
+     "cy": 623
+    },
+    {
+     "control": "softkey-6",
+     "kind": "softkey",
+     "label": "",
+     "active": true,
+     "cx": 1440,
+     "cy": 708
+    },
+    {
+     "control": "softkey-7",
+     "kind": "softkey",
+     "label": "",
+     "active": true,
+     "cx": 1440,
+     "cy": 793
+    },
+    {
+     "control": "menu-onoff",
+     "kind": "button",
+     "label": "Menu On/Off",
+     "active": true,
+     "cx": 1445,
+     "cy": 892
+    },
+    {
+     "control": "help",
+     "kind": "button",
+     "label": "Help",
+     "active": false,
+     "cx": 1575,
+     "cy": 66
+    },
+    {
+     "control": "function",
+     "kind": "button",
+     "label": "Function",
+     "active": false,
+     "cx": 1730,
+     "cy": 66
+    },
+    {
+     "control": "autoset",
+     "kind": "button",
+     "label": "Autoset",
+     "active": true,
+     "cx": 1887,
+     "cy": 66
+    },
+    {
+     "control": "single",
+     "kind": "button",
+     "label": "Single",
+     "active": true,
+     "cx": 2040,
+     "cy": 66
+    },
+    {
+     "control": "run-stop",
+     "kind": "button",
+     "label": "Run/Stop",
+     "active": true,
+     "cx": 2197,
+     "cy": 66
+    },
+    {
+     "control": "cursors",
+     "kind": "button",
+     "label": "cursors",
+     "active": true,
+     "cx": 1543,
+     "cy": 196
+    },
+    {
+     "control": "fine",
+     "kind": "button",
+     "label": "fine",
+     "active": true,
+     "cx": 1543,
+     "cy": 306
+    },
+    {
+     "control": "mp-knob",
+     "kind": "knob",
+     "label": "Multipurpose knob",
+     "active": true,
+     "push": "select",
+     "cx": 1673,
+     "cy": 246,
+     "detentDeg": 15
+    },
+    {
+     "control": "zoom",
+     "kind": "button",
+     "label": "Zoom",
+     "active": false,
+     "cx": 1815,
+     "cy": 196
+    },
+    {
+     "control": "search",
+     "kind": "button",
+     "label": "Search",
+     "active": false,
+     "cx": 1938,
+     "cy": 194
+    },
+    {
+     "control": "measure",
+     "kind": "button",
+     "label": "Measure",
+     "active": true,
+     "cx": 2062,
+     "cy": 192
+    },
+    {
+     "control": "mark-prev",
+     "kind": "button",
+     "label": "\u2190",
+     "active": false,
+     "cx": 1812,
+     "cy": 292
+    },
+    {
+     "control": "mark-set",
+     "kind": "button",
+     "label": "Set/Clear",
+     "active": false,
+     "cx": 1936,
+     "cy": 291
+    },
+    {
+     "control": "mark-next",
+     "kind": "button",
+     "label": "\u2192",
+     "active": false,
+     "cx": 2058,
+     "cy": 289
+    },
+    {
+     "control": "save-recall",
+     "kind": "button",
+     "label": "Save/ Recall",
+     "active": false,
+     "cx": 2192,
+     "cy": 168
+    },
+    {
+     "control": "default-setup",
+     "kind": "button",
+     "label": "Default Setup",
+     "active": false,
+     "cx": 2192,
+     "cy": 242
+    },
+    {
+     "control": "utility",
+     "kind": "button",
+     "label": "Utility",
+     "active": false,
+     "cx": 2192,
+     "cy": 312
+    },
+    {
+     "control": "math",
+     "kind": "button",
+     "label": "Math",
+     "active": false,
+     "cx": 1553,
+     "cy": 443
+    },
+    {
+     "control": "ref",
+     "kind": "button",
+     "label": "Ref",
+     "active": false,
+     "cx": 1553,
+     "cy": 512
+    },
+    {
+     "control": "fft",
+     "kind": "button",
+     "label": "FFT",
+     "active": false,
+     "cx": 1553,
+     "cy": 580
+    },
+    {
+     "control": "bus",
+     "kind": "button",
+     "label": "Bus",
+     "active": false,
+     "cx": 1553,
+     "cy": 650
+    },
+    {
+     "control": "ch1-position",
+     "kind": "knob",
+     "label": "CH1 vertical position",
+     "active": true,
+     "push": "center",
+     "cx": 1698,
+     "cy": 443,
+     "detentDeg": 15
+    },
+    {
+     "control": "ch2-position",
+     "kind": "knob",
+     "label": "CH2 vertical position",
+     "active": true,
+     "push": "center",
+     "cx": 1878,
+     "cy": 443,
+     "detentDeg": 15
+    },
+    {
+     "control": "ch1-menu",
+     "kind": "button",
+     "label": "1",
+     "active": true,
+     "cx": 1693,
+     "cy": 529
+    },
+    {
+     "control": "ch2-menu",
+     "kind": "button",
+     "label": "2",
+     "active": true,
+     "cx": 1867,
+     "cy": 527
+    },
+    {
+     "control": "ch1-scale",
+     "kind": "knob",
+     "label": "CH1 volts/div",
+     "active": true,
+     "push": "trig-source",
+     "cx": 1690,
+     "cy": 635,
+     "detentDeg": 36
+    },
+    {
+     "control": "ch2-scale",
+     "kind": "knob",
+     "label": "CH2 volts/div",
+     "active": true,
+     "push": "trig-source",
+     "cx": 1884,
+     "cy": 635,
+     "detentDeg": 36
+    },
+    {
+     "control": "hor-position",
+     "kind": "knob",
+     "label": "Horizontal position",
+     "active": true,
+     "push": "center",
+     "cx": 2046,
+     "cy": 442,
+     "detentDeg": 15
+    },
+    {
+     "control": "acquire",
+     "kind": "button",
+     "label": "Acquire",
+     "active": true,
+     "cx": 2046,
+     "cy": 526
+    },
+    {
+     "control": "hor-scale",
+     "kind": "knob",
+     "label": "Horizontal sec/div",
+     "active": true,
+     "cx": 2046,
+     "cy": 630,
+     "detentDeg": 36
+    },
+    {
+     "control": "trig-menu",
+     "kind": "button",
+     "label": "Menu",
+     "active": true,
+     "cx": 2186,
+     "cy": 422
+    },
+    {
+     "control": "trig-level",
+     "kind": "knob",
+     "label": "Trigger level",
+     "active": true,
+     "push": "set-50",
+     "cx": 2186,
+     "cy": 512,
+     "detentDeg": 15
+    },
+    {
+     "control": "force-trig",
+     "kind": "button",
+     "label": "Force Trig",
+     "active": true,
+     "cx": 2186,
+     "cy": 630
+    },
+    {
+     "control": "ch1-input",
+     "kind": "bnc",
+     "label": "CH1 input",
+     "active": true,
+     "cx": 1722,
+     "cy": 866
+    },
+    {
+     "control": "ch2-input",
+     "kind": "bnc",
+     "label": "CH2 input",
+     "active": true,
+     "cx": 1908,
+     "cy": 866
+    },
+    {
+     "control": "probe-comp",
+     "kind": "terminal",
+     "label": "Probe comp (5 V square)",
+     "active": false,
+     "cx": 1543,
+     "cy": 846
+    },
+    {
+     "control": "probe-comp-gnd",
+     "kind": "terminal",
+     "label": "Probe comp ground",
+     "active": false,
+     "cx": 1543,
+     "cy": 898
+    },
+    {
+     "control": "usb",
+     "kind": "port",
+     "label": "USB port",
+     "active": false,
+     "cx": 2063,
+     "cy": 860
+    },
+    {
+     "control": "power",
+     "kind": "button",
+     "label": "Power",
+     "active": false,
+     "cx": 2185,
+     "cy": 863
+    }
+   ]
+  },
+  "TDS2001C": {
+   "file": "tds2001c.svg",
+   "idPrefix": "tds",
+   "viewBox": [
+    0,
+    0,
+    2200,
+    1025
+   ],
+   "controls": [
+    {
+     "control": "screen",
+     "kind": "screen",
+     "label": "Display (canvas overlay)",
+     "active": true,
+     "x": 133,
+     "y": 183,
+     "w": 784,
+     "h": 588,
+     "pixels": [
+      320,
+      240
+     ],
+     "graticule": "10x8"
+    },
+    {
+     "control": "softkey-1",
+     "kind": "softkey",
+     "label": "",
+     "active": true,
+     "cx": 1003,
+     "cy": 258
+    },
+    {
+     "control": "softkey-2",
+     "kind": "softkey",
+     "label": "",
+     "active": true,
+     "cx": 1003,
+     "cy": 359
+    },
+    {
+     "control": "softkey-3",
+     "kind": "softkey",
+     "label": "",
+     "active": true,
+     "cx": 1003,
+     "cy": 458
+    },
+    {
+     "control": "softkey-4",
+     "kind": "softkey",
+     "label": "",
+     "active": true,
+     "cx": 1003,
+     "cy": 558
+    },
+    {
+     "control": "softkey-5",
+     "kind": "softkey",
+     "label": "",
+     "active": true,
+     "cx": 1003,
+     "cy": 659
+    },
+    {
+     "control": "probe-check",
+     "kind": "button",
+     "label": "probe-check",
+     "active": false,
+     "cx": 1005,
+     "cy": 757
+    },
+    {
+     "control": "usb",
+     "kind": "port",
+     "label": "USB port",
+     "active": false,
+     "cx": 909,
+     "cy": 922
+    },
+    {
+     "control": "probe-comp",
+     "kind": "terminal",
+     "label": "Probe comp (5 V @ 1 kHz)",
+     "active": false,
+     "cx": 1067,
+     "cy": 890
+    },
+    {
+     "control": "probe-comp-gnd",
+     "kind": "terminal",
+     "label": "Probe comp ground",
+     "active": false,
+     "cx": 1067,
+     "cy": 943
+    },
+    {
+     "control": "mp-led-left",
+     "kind": "led",
+     "label": "Multipurpose knob indicator (left)",
+     "active": true,
+     "cx": 1142,
+     "cy": 81
+    },
+    {
+     "control": "mp-led-right",
+     "kind": "led",
+     "label": "Multipurpose knob indicator (right)",
+     "active": true,
+     "cx": 1268,
+     "cy": 81
+    },
+    {
+     "control": "mp-knob",
+     "kind": "knob",
+     "label": "Multipurpose knob",
+     "active": true,
+     "cx": 1203,
+     "cy": 150,
+     "detentDeg": 15
+    },
+    {
+     "control": "autorange",
+     "kind": "button",
+     "label": "",
+     "active": false,
+     "cx": 1352,
+     "cy": 103
+    },
+    {
+     "control": "save-recall",
+     "kind": "button",
+     "label": "",
+     "active": false,
+     "cx": 1472,
+     "cy": 103
+    },
+    {
+     "control": "measure",
+     "kind": "button",
+     "label": "",
+     "active": true,
+     "cx": 1592,
+     "cy": 103
+    },
+    {
+     "control": "acquire",
+     "kind": "button",
+     "label": "",
+     "active": false,
+     "cx": 1712,
+     "cy": 103
+    },
+    {
+     "control": "help",
+     "kind": "button",
+     "label": "",
+     "active": false,
+     "cx": 1835,
+     "cy": 103
+    },
+    {
+     "control": "ref",
+     "kind": "button",
+     "label": "Ref",
+     "active": false,
+     "cx": 1352,
+     "cy": 195
+    },
+    {
+     "control": "utility",
+     "kind": "button",
+     "label": "",
+     "active": false,
+     "cx": 1472,
+     "cy": 195
+    },
+    {
+     "control": "cursors",
+     "kind": "button",
+     "label": "",
+     "active": true,
+     "cx": 1592,
+     "cy": 195
+    },
+    {
+     "control": "display",
+     "kind": "button",
+     "label": "",
+     "active": true,
+     "cx": 1712,
+     "cy": 195
+    },
+    {
+     "control": "default-setup",
+     "kind": "button",
+     "label": "",
+     "active": false,
+     "cx": 1835,
+     "cy": 195
+    },
+    {
+     "control": "single",
+     "kind": "button",
+     "label": "",
+     "active": true,
+     "cx": 1955,
+     "cy": 195
+    },
+    {
+     "control": "autoset",
+     "kind": "button",
+     "label": "Auto Set",
+     "active": true,
+     "cx": 1955,
+     "cy": 95
+    },
+    {
+     "control": "run-stop",
+     "kind": "button",
+     "label": "Run/ Stop",
+     "active": true,
+     "cx": 2078,
+     "cy": 142
+    },
+    {
+     "control": "save-led",
+     "kind": "led",
+     "label": "Save indicator",
+     "active": true,
+     "cx": 1145,
+     "cy": 273
+    },
+    {
+     "control": "save",
+     "kind": "button",
+     "label": "Save (print)",
+     "active": false,
+     "cx": 1203,
+     "cy": 321
+    },
+    {
+     "control": "ch1-position",
+     "kind": "knob",
+     "label": "CH1 vertical position",
+     "active": true,
+     "cx": 1362.0,
+     "cy": 375,
+     "detentDeg": 15
+    },
+    {
+     "control": "ch2-position",
+     "kind": "knob",
+     "label": "CH2 vertical position",
+     "active": true,
+     "cx": 1586.0,
+     "cy": 375,
+     "detentDeg": 15
+    },
+    {
+     "control": "ch1-menu",
+     "kind": "button",
+     "label": "1",
+     "active": true,
+     "cx": 1362.0,
+     "cy": 485
+    },
+    {
+     "control": "math",
+     "kind": "button",
+     "label": "Math",
+     "active": false,
+     "cx": 1474.0,
+     "cy": 485
+    },
+    {
+     "control": "ch2-menu",
+     "kind": "button",
+     "label": "2",
+     "active": true,
+     "cx": 1586.0,
+     "cy": 485
+    },
+    {
+     "control": "ch1-scale",
+     "kind": "knob",
+     "label": "CH1 volts/div",
+     "active": true,
+     "cx": 1362.0,
+     "cy": 650,
+     "detentDeg": 36
+    },
+    {
+     "control": "ch2-scale",
+     "kind": "knob",
+     "label": "CH2 volts/div",
+     "active": true,
+     "cx": 1586.0,
+     "cy": 650,
+     "detentDeg": 36
+    },
+    {
+     "control": "ch1-input",
+     "kind": "bnc",
+     "label": "CH1 input",
+     "active": true,
+     "cx": 1362.0,
+     "cy": 888
+    },
+    {
+     "control": "ch2-input",
+     "kind": "bnc",
+     "label": "CH2 input",
+     "active": true,
+     "cx": 1586.0,
+     "cy": 888
+    },
+    {
+     "control": "hor-position",
+     "kind": "knob",
+     "label": "Horizontal position",
+     "active": true,
+     "cx": 1806,
+     "cy": 375,
+     "detentDeg": 15
+    },
+    {
+     "control": "horiz-menu",
+     "kind": "button",
+     "label": "Horiz",
+     "active": true,
+     "cx": 1806,
+     "cy": 475
+    },
+    {
+     "control": "set-to-zero",
+     "kind": "button",
+     "label": "Set to Zero",
+     "active": true,
+     "cx": 1806,
+     "cy": 547
+    },
+    {
+     "control": "hor-scale",
+     "kind": "knob",
+     "label": "Horizontal sec/div",
+     "active": true,
+     "cx": 1806,
+     "cy": 685,
+     "detentDeg": 36
+    },
+    {
+     "control": "ext-trig",
+     "kind": "bnc",
+     "label": "External trigger input",
+     "active": false,
+     "cx": 1806,
+     "cy": 888
+    },
+    {
+     "control": "trig-level",
+     "kind": "knob",
+     "label": "Trigger level",
+     "active": true,
+     "cx": 2047,
+     "cy": 375,
+     "detentDeg": 15
+    },
+    {
+     "control": "trig-menu",
+     "kind": "button",
+     "label": "Trig Menu",
+     "active": true,
+     "cx": 2047,
+     "cy": 485
+    },
+    {
+     "control": "trig-50",
+     "kind": "button",
+     "label": "Set To 50%",
+     "active": true,
+     "cx": 2047,
+     "cy": 570
+    },
+    {
+     "control": "force-trig",
+     "kind": "button",
+     "label": "Force Trig",
+     "active": true,
+     "cx": 2047,
+     "cy": 655
+    },
+    {
+     "control": "trig-view",
+     "kind": "button",
+     "label": "Trig View",
+     "active": true,
+     "cx": 2047,
+     "cy": 740
+    }
+   ]
+  }
+ }
+}

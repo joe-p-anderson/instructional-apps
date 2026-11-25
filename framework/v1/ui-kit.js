@@ -32,13 +32,19 @@ function escapeHtml(s) {
 
 /**
  * Slider paired with a number box and a reset button.
- * slider({ id, name, label, unit, min, max, step, value, reset = value, decimals = 2, onChange })
+ * slider({ id, name, label, unit, min, max, step, value, reset = value, decimals = 2, log = false, onChange })
+ *   log: the range input moves on a logarithmic scale (min > 0), for values spanning decades
+ *        such as a frequency; dragging it rounds to 3 significant digits. The number box and
+ *        get/set stay in plain units.
  */
 export function slider({ id, name = id, label, unit = '', min, max, step = 'any', value, reset = value,
-  decimals = 2, onChange = () => {} }) {
+  decimals = 2, log = false, onChange = () => {} }) {
   let current = clamp(Number(value), min, max);
 
-  const range = h('input', { type: 'range', class: 'fw-range', min, max, step, 'aria-label': name });
+  const range = log
+    ? h('input', { type: 'range', class: 'fw-range', min: Math.log10(min), max: Math.log10(max), step: 'any',
+      'aria-label': name })
+    : h('input', { type: 'range', class: 'fw-range', min, max, step, 'aria-label': name });
   const num = h('input', { type: 'number', class: 'fw-number', min, max, step, 'aria-label': name });
   const resetBtn = h('button', { type: 'button', class: 'fw-reset', 'aria-label': `Reset ${name}`,
     title: `Reset to ${reset}` }, `↻ ${reset}`);
@@ -48,7 +54,7 @@ export function slider({ id, name = id, label, unit = '', min, max, step = 'any'
     h('div', { class: 'fw-slider-row' }, range, resetBtn));
 
   function render() {
-    range.value = String(current);
+    range.value = String(log ? Math.log10(current) : current);
     num.value = current.toFixed(decimals);
     num.classList.remove('fw-invalid');
   }
@@ -67,7 +73,7 @@ export function slider({ id, name = id, label, unit = '', min, max, step = 'any'
     set(n);
   }
 
-  range.addEventListener('input', () => set(range.value));
+  range.addEventListener('input', () => set(log ? Number((10 ** Number(range.value)).toPrecision(3)) : range.value));
   num.addEventListener('keydown', (e) => { if (e.key === 'Enter') commitNumber(); });
   num.addEventListener('change', commitNumber);
   resetBtn.addEventListener('click', () => set(reset));

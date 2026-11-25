@@ -1,0 +1,444 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2200 1025" data-model="TDS2001C" id="tds-panel" class="osc-panel" font-family="Arial, Helvetica, sans-serif">
+<rect x="3" y="3" width="2194" height="1018" rx="22" fill="#e9e7e1" stroke="#b9b6ae" stroke-width="2" />
+<rect x="13" y="13" width="1068" height="998" rx="18" fill="#eeece6" stroke="#c4c1b9" stroke-width="2" />
+<rect x="1087" y="21" width="1100" height="980" rx="12" fill="#ecebe6" stroke="#c4c1b9" stroke-width="2" />
+<rect x="40" y="47" width="911" height="63" rx="4" fill="#f7f6f2" stroke="#c9c6be" stroke-width="2" />
+<text x="75" y="79.0" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="bold" fill="#2f3a7a" text-anchor="start" dominant-baseline="central" >2-CHANNEL</text>
+<text x="315" y="79.0" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="normal" fill="#555" text-anchor="start" dominant-baseline="central" id="tds-panel-label">DIGITAL STORAGE OSCILLOSCOPE</text>
+<path d="M795,110 L845,47 H951 V110 Z" fill="#3f3d8c"/>
+<text x="900" y="66.0" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#fff" text-anchor="middle" dominant-baseline="central" >50 MHz</text>
+<text x="907" y="92.0" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#fff" text-anchor="middle" dominant-baseline="central" >500 MS/s</text>
+<rect x="59" y="125" width="898" height="706" rx="10" fill="#dddad2" stroke="#bbb7ad" stroke-width="2" />
+<rect x="123" y="175" width="802" height="604" rx="4" fill="#2a2a2c" stroke="none" stroke-width="0" />
+<rect id="tds-screen" class="osc-screen" data-control="screen" data-kind="screen" data-pixels="320x240" data-graticule="10x8" x="133" y="183" width="784" height="588" fill="#141414"/>
+<line x1="920" y1="258" x2="970" y2="258" stroke="#777" stroke-width="2"/>
+<g id="tds-softkey-1" class="osc-control" data-control="softkey-1" data-kind="softkey" data-active="true" data-label="" data-cx="1003" data-cy="258">
+<title></title>
+<rect x="971.0" y="239.0" width="64.0" height="46.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="971.0" y="235.0" width="64.0" height="46.0" rx="9" fill="#f4f3ef" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+</g>
+<line x1="920" y1="359" x2="970" y2="359" stroke="#777" stroke-width="2"/>
+<g id="tds-softkey-2" class="osc-control" data-control="softkey-2" data-kind="softkey" data-active="true" data-label="" data-cx="1003" data-cy="359">
+<title></title>
+<rect x="971.0" y="340.0" width="64.0" height="46.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="971.0" y="336.0" width="64.0" height="46.0" rx="9" fill="#f4f3ef" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+</g>
+<line x1="920" y1="458" x2="970" y2="458" stroke="#777" stroke-width="2"/>
+<g id="tds-softkey-3" class="osc-control" data-control="softkey-3" data-kind="softkey" data-active="true" data-label="" data-cx="1003" data-cy="458">
+<title></title>
+<rect x="971.0" y="439.0" width="64.0" height="46.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="971.0" y="435.0" width="64.0" height="46.0" rx="9" fill="#f4f3ef" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+</g>
+<line x1="920" y1="558" x2="970" y2="558" stroke="#777" stroke-width="2"/>
+<g id="tds-softkey-4" class="osc-control" data-control="softkey-4" data-kind="softkey" data-active="true" data-label="" data-cx="1003" data-cy="558">
+<title></title>
+<rect x="971.0" y="539.0" width="64.0" height="46.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="971.0" y="535.0" width="64.0" height="46.0" rx="9" fill="#f4f3ef" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+</g>
+<line x1="920" y1="659" x2="970" y2="659" stroke="#777" stroke-width="2"/>
+<g id="tds-softkey-5" class="osc-control" data-control="softkey-5" data-kind="softkey" data-active="true" data-label="" data-cx="1003" data-cy="659">
+<title></title>
+<rect x="971.0" y="640.0" width="64.0" height="46.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="971.0" y="636.0" width="64.0" height="46.0" rx="9" fill="#f4f3ef" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+</g>
+<g id="tds-probe-check" class="osc-control" data-control="probe-check" data-kind="button" data-active="false" data-label="probe-check" data-cx="1005" data-cy="757">
+<title>probe-check (not available in this simulation)</title>
+<circle cx="1005" cy="760" r="22" fill="#7d7d7d"/>
+<circle class="osc-face" cx="1005" cy="757" r="22" fill="#f4f3ef" stroke="#6f6f6f" stroke-width="2"/>
+</g>
+<text x="1107" y="749.2" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#999" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 1107 755)">Probe</text>
+<text x="1107" y="760.8" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#999" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 1107 755)">Check</text>
+<rect x="61" y="868" width="936" height="114" rx="6" fill="#ebe9e3" stroke="#c9c6be" stroke-width="2" />
+<text x="780" y="911.5" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#aaa" text-anchor="middle" dominant-baseline="central" >USB</text>
+<text x="780" y="930.5" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#aaa" text-anchor="middle" dominant-baseline="central" >Flash Drive</text>
+<g id="tds-usb" class="osc-control" data-control="usb" data-kind="port" data-active="false" data-label="USB port" data-cx="909" data-cy="922">
+<title>USB port (not available in this simulation)</title>
+<rect x="865.0" y="904.0" width="88.0" height="36.0" rx="3" fill="#1d1d1d" stroke="#555" stroke-width="2" />
+<rect x="873.0" y="911.0" width="72.0" height="9.0" rx="1" fill="#f0f0f0" stroke="none" stroke-width="0" />
+</g>
+<g id="tds-probe-comp" class="osc-control" data-control="probe-comp" data-kind="terminal" data-active="false" data-label="Probe comp (5 V @ 1 kHz)" data-cx="1067" data-cy="890">
+<title>Probe comp (5 V @ 1 kHz) (not available in this simulation)</title>
+<rect x="1058" y="868" width="18" height="44" rx="3" fill="#e9e9e9" stroke="#555" stroke-width="2" />
+<rect x="1064" y="876" width="6" height="28" rx="2" fill="#9d9d9d" stroke="none" stroke-width="0" />
+</g>
+<g id="tds-probe-comp-gnd" class="osc-control" data-control="probe-comp-gnd" data-kind="terminal" data-active="false" data-label="Probe comp ground" data-cx="1067" data-cy="943">
+<title>Probe comp ground (not available in this simulation)</title>
+<rect x="1058" y="921" width="18" height="44" rx="3" fill="#e9e9e9" stroke="#555" stroke-width="2" />
+<rect x="1064" y="929" width="6" height="28" rx="2" fill="#9d9d9d" stroke="none" stroke-width="0" />
+</g>
+<text x="1107" y="900.0" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" fill="#999" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 1107 900)">Probe Comp ~5V@1kHz</text>
+<g id="tds-mp-led-left" class="osc-control" data-control="mp-led-left" data-kind="led" data-active="true" data-label="Multipurpose knob indicator (left)" data-cx="1142" data-cy="81">
+<title>Multipurpose knob indicator (left)</title>
+<circle class="osc-led" cx="1142" cy="81" r="8" fill="#7d7d7d" stroke="#555" stroke-width="1.5"/>
+</g>
+<g id="tds-mp-led-right" class="osc-control" data-control="mp-led-right" data-kind="led" data-active="true" data-label="Multipurpose knob indicator (right)" data-cx="1268" data-cy="81">
+<title>Multipurpose knob indicator (right)</title>
+<circle class="osc-led" cx="1268" cy="81" r="8" fill="#7d7d7d" stroke="#555" stroke-width="1.5"/>
+</g>
+<g data-detent="15" id="tds-mp-knob" class="osc-control" data-control="mp-knob" data-kind="knob" data-active="true" data-label="Multipurpose knob" data-cx="1203" data-cy="150">
+<title>Multipurpose knob</title>
+<circle cx="1203" cy="153" r="58" fill="#8a8a8a"/>
+<g class="osc-knob-rot" data-angle="0">
+<circle class="osc-face" cx="1203" cy="150" r="58" fill="#c8c8ca" stroke="#7a7a7a" stroke-width="2"/>
+<rect x="1199.81" y="94" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(0.0 1203 150)"/>
+<rect x="1199.81" y="94" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(36.0 1203 150)"/>
+<rect x="1199.81" y="94" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(72.0 1203 150)"/>
+<rect x="1199.81" y="94" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(108.0 1203 150)"/>
+<rect x="1199.81" y="94" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(144.0 1203 150)"/>
+<rect x="1199.81" y="94" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(180.0 1203 150)"/>
+<rect x="1199.81" y="94" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(216.0 1203 150)"/>
+<rect x="1199.81" y="94" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(252.0 1203 150)"/>
+<rect x="1199.81" y="94" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(288.0 1203 150)"/>
+<rect x="1199.81" y="94" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(324.0 1203 150)"/>
+<circle cx="1203" cy="150" r="40.599999999999994" fill="#dcdcde" stroke="#b5b5b7" stroke-width="1.5"/>
+<circle cx="1203" cy="119.84" r="3.48" fill="#8f8f91"/>
+</g>
+</g>
+<rect x="1775" y="43" width="122" height="188" rx="8" fill="#d6d4ce" stroke="none" stroke-width="0" />
+<text x="1352" y="62.0" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >AutoRange</text>
+<g id="tds-autorange" class="osc-control" data-control="autorange" data-kind="button" data-active="false" data-label="" data-cx="1352" data-cy="103">
+<title> (not available in this simulation)</title>
+<rect x="1314.0" y="82.0" width="76.0" height="50.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="1314.0" y="78.0" width="76.0" height="50.0" rx="9" fill="#e8e6e0" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+</g>
+<text x="1472" y="62.0" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Save/Recall</text>
+<g id="tds-save-recall" class="osc-control" data-control="save-recall" data-kind="button" data-active="false" data-label="" data-cx="1472" data-cy="103">
+<title> (not available in this simulation)</title>
+<rect x="1434.0" y="82.0" width="76.0" height="50.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="1434.0" y="78.0" width="76.0" height="50.0" rx="9" fill="#e8e6e0" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+</g>
+<text x="1592" y="62.0" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Measure</text>
+<g id="tds-measure" class="osc-control" data-control="measure" data-kind="button" data-active="true" data-label="" data-cx="1592" data-cy="103">
+<title></title>
+<rect x="1554.0" y="82.0" width="76.0" height="50.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="1554.0" y="78.0" width="76.0" height="50.0" rx="9" fill="#e8e6e0" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+</g>
+<text x="1712" y="62.0" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Acquire</text>
+<g id="tds-acquire" class="osc-control" data-control="acquire" data-kind="button" data-active="false" data-label="" data-cx="1712" data-cy="103">
+<title> (not available in this simulation)</title>
+<rect x="1674.0" y="82.0" width="76.0" height="50.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="1674.0" y="78.0" width="76.0" height="50.0" rx="9" fill="#e8e6e0" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+</g>
+<text x="1835" y="62.0" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Help</text>
+<g id="tds-help" class="osc-control" data-control="help" data-kind="button" data-active="false" data-label="" data-cx="1835" data-cy="103">
+<title> (not available in this simulation)</title>
+<rect x="1797.0" y="82.0" width="76.0" height="50.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="1797.0" y="78.0" width="76.0" height="50.0" rx="9" fill="#e8e6e0" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+</g>
+<g id="tds-ref" class="osc-control" data-control="ref" data-kind="button" data-active="false" data-label="Ref" data-cx="1352" data-cy="195">
+<title>Ref (not available in this simulation)</title>
+<rect x="1314.0" y="174.0" width="76.0" height="50.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="1314.0" y="170.0" width="76.0" height="50.0" rx="9" fill="#ffffff" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+<text x="1352" y="195.0" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Ref</text>
+</g>
+<text x="1472" y="152.0" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Utility</text>
+<g id="tds-utility" class="osc-control" data-control="utility" data-kind="button" data-active="false" data-label="" data-cx="1472" data-cy="195">
+<title> (not available in this simulation)</title>
+<rect x="1434.0" y="174.0" width="76.0" height="50.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="1434.0" y="170.0" width="76.0" height="50.0" rx="9" fill="#e8e6e0" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+</g>
+<text x="1592" y="152.0" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Cursor</text>
+<g id="tds-cursors" class="osc-control" data-control="cursors" data-kind="button" data-active="true" data-label="" data-cx="1592" data-cy="195">
+<title></title>
+<rect x="1554.0" y="174.0" width="76.0" height="50.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="1554.0" y="170.0" width="76.0" height="50.0" rx="9" fill="#e8e6e0" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+</g>
+<text x="1712" y="152.0" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Display</text>
+<g id="tds-display" class="osc-control" data-control="display" data-kind="button" data-active="true" data-label="" data-cx="1712" data-cy="195">
+<title></title>
+<rect x="1674.0" y="174.0" width="76.0" height="50.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="1674.0" y="170.0" width="76.0" height="50.0" rx="9" fill="#e8e6e0" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+</g>
+<text x="1835" y="152.0" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Default Setup</text>
+<g id="tds-default-setup" class="osc-control" data-control="default-setup" data-kind="button" data-active="false" data-label="" data-cx="1835" data-cy="195">
+<title> (not available in this simulation)</title>
+<rect x="1797.0" y="174.0" width="76.0" height="50.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="1797.0" y="170.0" width="76.0" height="50.0" rx="9" fill="#e8e6e0" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+</g>
+<text x="1955" y="152.0" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Single</text>
+<g id="tds-single" class="osc-control" data-control="single" data-kind="button" data-active="true" data-label="" data-cx="1955" data-cy="195">
+<title></title>
+<rect x="1917.0" y="174.0" width="76.0" height="50.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="1917.0" y="170.0" width="76.0" height="50.0" rx="9" fill="#e8e6e0" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+</g>
+<g id="tds-autoset" class="osc-control" data-control="autoset" data-kind="button" data-active="true" data-label="Auto Set" data-cx="1955" data-cy="95">
+<title>Auto Set</title>
+<rect x="1918.0" y="74.0" width="74.0" height="50.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="1918.0" y="70.0" width="74.0" height="50.0" rx="9" fill="#262626" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+<text x="1955" y="86.6" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#fff" text-anchor="middle" dominant-baseline="central" >Auto</text>
+<text x="1955" y="103.4" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#fff" text-anchor="middle" dominant-baseline="central" >Set</text>
+</g>
+<g id="tds-run-stop" class="osc-control" data-control="run-stop" data-kind="button" data-active="true" data-label="Run/ Stop" data-cx="2078" data-cy="142">
+<title>Run/ Stop</title>
+<rect x="2040.0" y="120.0" width="76.0" height="52.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="2040.0" y="116.0" width="76.0" height="52.0" rx="9" fill="#e8e6e0" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+<text x="2078" y="133.6" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Run/</text>
+<text x="2078" y="150.4" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Stop</text>
+</g>
+<path d="M2007,192 H2078 V175" fill="none" stroke="#999" stroke-width="2"/>
+<g id="tds-save-led" class="osc-control" data-control="save-led" data-kind="led" data-active="true" data-label="Save indicator" data-cx="1145" data-cy="273">
+<title>Save indicator</title>
+<circle class="osc-led" cx="1145" cy="273" r="8" fill="#7d7d7d" stroke="#555" stroke-width="1.5"/>
+</g>
+<text x="1203" y="270.0" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Save</text>
+<g id="tds-save" class="osc-control" data-control="save" data-kind="button" data-active="false" data-label="Save (print)" data-cx="1203" data-cy="321">
+<title>Save (print) (not available in this simulation)</title>
+<circle cx="1203" cy="324" r="33" fill="#7d7d7d"/>
+<circle class="osc-face" cx="1203" cy="321" r="33" fill="#e8e6e0" stroke="#6f6f6f" stroke-width="2"/>
+<rect x="1189" y="315" width="28" height="14" rx="2" fill="none" stroke="#333" stroke-width="2.5"/><rect x="1194" y="306" width="18" height="9" fill="none" stroke="#333" stroke-width="2"/><line x1="1194" y1="333" x2="1212" y2="333" stroke="#333" stroke-width="2"/>
+</g>
+<rect x="1263" y="253" width="422" height="690" rx="8" fill="#d6d4ce" stroke="none" stroke-width="0" />
+<rect x="1263" y="253" width="422" height="30" rx="6" fill="#c4c2bc" stroke="none" stroke-width="0" />
+<text x="1474.0" y="268.0" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#fff" text-anchor="middle" dominant-baseline="central" >Vertical</text>
+<text x="1474.0" y="375.0" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Position</text>
+<g data-detent="15" id="tds-ch1-position" class="osc-control" data-control="ch1-position" data-kind="knob" data-active="true" data-label="CH1 vertical position" data-cx="1362.0" data-cy="375">
+<title>CH1 vertical position</title>
+<circle cx="1362.0" cy="378" r="40" fill="#8a8a8a"/>
+<g class="osc-knob-rot" data-angle="0">
+<circle class="osc-face" cx="1362.0" cy="375" r="40" fill="#c8c8ca" stroke="#7a7a7a" stroke-width="2"/>
+<rect x="1359.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(0.0 1362.0 375)"/>
+<rect x="1359.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(25.714285714285715 1362.0 375)"/>
+<rect x="1359.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(51.42857142857143 1362.0 375)"/>
+<rect x="1359.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(77.14285714285714 1362.0 375)"/>
+<rect x="1359.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(102.85714285714286 1362.0 375)"/>
+<rect x="1359.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(128.57142857142858 1362.0 375)"/>
+<rect x="1359.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(154.28571428571428 1362.0 375)"/>
+<rect x="1359.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(180.0 1362.0 375)"/>
+<rect x="1359.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(205.71428571428572 1362.0 375)"/>
+<rect x="1359.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(231.42857142857142 1362.0 375)"/>
+<rect x="1359.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(257.14285714285717 1362.0 375)"/>
+<rect x="1359.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(282.85714285714283 1362.0 375)"/>
+<rect x="1359.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(308.57142857142856 1362.0 375)"/>
+<rect x="1359.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(334.2857142857143 1362.0 375)"/>
+<circle cx="1362.0" cy="375" r="28.0" fill="#dcdcde" stroke="#b5b5b7" stroke-width="1.5"/>
+<circle cx="1362.0" cy="354.2" r="2.5" fill="#8f8f91"/>
+</g>
+</g>
+<g data-detent="15" id="tds-ch2-position" class="osc-control" data-control="ch2-position" data-kind="knob" data-active="true" data-label="CH2 vertical position" data-cx="1586.0" data-cy="375">
+<title>CH2 vertical position</title>
+<circle cx="1586.0" cy="378" r="40" fill="#8a8a8a"/>
+<g class="osc-knob-rot" data-angle="0">
+<circle class="osc-face" cx="1586.0" cy="375" r="40" fill="#c8c8ca" stroke="#7a7a7a" stroke-width="2"/>
+<rect x="1583.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(0.0 1586.0 375)"/>
+<rect x="1583.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(25.714285714285715 1586.0 375)"/>
+<rect x="1583.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(51.42857142857143 1586.0 375)"/>
+<rect x="1583.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(77.14285714285714 1586.0 375)"/>
+<rect x="1583.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(102.85714285714286 1586.0 375)"/>
+<rect x="1583.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(128.57142857142858 1586.0 375)"/>
+<rect x="1583.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(154.28571428571428 1586.0 375)"/>
+<rect x="1583.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(180.0 1586.0 375)"/>
+<rect x="1583.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(205.71428571428572 1586.0 375)"/>
+<rect x="1583.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(231.42857142857142 1586.0 375)"/>
+<rect x="1583.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(257.14285714285717 1586.0 375)"/>
+<rect x="1583.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(282.85714285714283 1586.0 375)"/>
+<rect x="1583.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(308.57142857142856 1586.0 375)"/>
+<rect x="1583.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(334.2857142857143 1586.0 375)"/>
+<circle cx="1586.0" cy="375" r="28.0" fill="#dcdcde" stroke="#b5b5b7" stroke-width="1.5"/>
+<circle cx="1586.0" cy="354.2" r="2.5" fill="#8f8f91"/>
+</g>
+</g>
+<g id="tds-ch1-menu" class="osc-control" data-control="ch1-menu" data-kind="button" data-active="true" data-label="1" data-cx="1362.0" data-cy="485">
+<title>1</title>
+<rect x="1327.0" y="466.0" width="70.0" height="46.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="1327.0" y="462.0" width="70.0" height="46.0" rx="9" fill="#f5ee7a" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+<text x="1362.0" y="485.0" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >1</text>
+</g>
+<g id="tds-math" class="osc-control" data-control="math" data-kind="button" data-active="false" data-label="Math" data-cx="1474.0" data-cy="485">
+<title>Math (not available in this simulation)</title>
+<rect x="1439.0" y="466.0" width="70.0" height="46.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="1439.0" y="462.0" width="70.0" height="46.0" rx="9" fill="#f7b9b0" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+<text x="1474.0" y="485.0" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Math</text>
+</g>
+<g id="tds-ch2-menu" class="osc-control" data-control="ch2-menu" data-kind="button" data-active="true" data-label="2" data-cx="1586.0" data-cy="485">
+<title>2</title>
+<rect x="1551.0" y="466.0" width="70.0" height="46.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="1551.0" y="462.0" width="70.0" height="46.0" rx="9" fill="#8fc3ef" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+<text x="1586.0" y="485.0" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >2</text>
+</g>
+<line x1="1322.0" y1="525" x2="1626.0" y2="525" stroke="#999" stroke-width="2"/>
+<text x="1474.0" y="543.0" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#666" text-anchor="middle" dominant-baseline="central" >Menu</text>
+<text x="1474.0" y="650.0" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Scale</text>
+<g data-detent="36" id="tds-ch1-scale" class="osc-control" data-control="ch1-scale" data-kind="knob" data-active="true" data-label="CH1 volts/div" data-cx="1362.0" data-cy="650">
+<title>CH1 volts/div</title>
+<circle cx="1362.0" cy="653" r="60" fill="#8a8a8a"/>
+<g class="osc-knob-rot" data-angle="0">
+<circle class="osc-face" cx="1362.0" cy="650" r="60" fill="#c8c8ca" stroke="#7a7a7a" stroke-width="2"/>
+<rect x="1358.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(0.0 1362.0 650)"/>
+<rect x="1358.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(36.0 1362.0 650)"/>
+<rect x="1358.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(72.0 1362.0 650)"/>
+<rect x="1358.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(108.0 1362.0 650)"/>
+<rect x="1358.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(144.0 1362.0 650)"/>
+<rect x="1358.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(180.0 1362.0 650)"/>
+<rect x="1358.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(216.0 1362.0 650)"/>
+<rect x="1358.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(252.0 1362.0 650)"/>
+<rect x="1358.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(288.0 1362.0 650)"/>
+<rect x="1358.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(324.0 1362.0 650)"/>
+<circle cx="1362.0" cy="650" r="42.0" fill="#dcdcde" stroke="#b5b5b7" stroke-width="1.5"/>
+<circle cx="1362.0" cy="618.8" r="3.5999999999999996" fill="#8f8f91"/>
+</g>
+</g>
+<g data-detent="36" id="tds-ch2-scale" class="osc-control" data-control="ch2-scale" data-kind="knob" data-active="true" data-label="CH2 volts/div" data-cx="1586.0" data-cy="650">
+<title>CH2 volts/div</title>
+<circle cx="1586.0" cy="653" r="60" fill="#8a8a8a"/>
+<g class="osc-knob-rot" data-angle="0">
+<circle class="osc-face" cx="1586.0" cy="650" r="60" fill="#c8c8ca" stroke="#7a7a7a" stroke-width="2"/>
+<rect x="1582.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(0.0 1586.0 650)"/>
+<rect x="1582.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(36.0 1586.0 650)"/>
+<rect x="1582.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(72.0 1586.0 650)"/>
+<rect x="1582.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(108.0 1586.0 650)"/>
+<rect x="1582.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(144.0 1586.0 650)"/>
+<rect x="1582.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(180.0 1586.0 650)"/>
+<rect x="1582.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(216.0 1586.0 650)"/>
+<rect x="1582.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(252.0 1586.0 650)"/>
+<rect x="1582.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(288.0 1586.0 650)"/>
+<rect x="1582.7" y="592" width="6.6" height="13.2" rx="3.3" fill="#9c9c9e" transform="rotate(324.0 1586.0 650)"/>
+<circle cx="1586.0" cy="650" r="42.0" fill="#dcdcde" stroke="#b5b5b7" stroke-width="1.5"/>
+<circle cx="1586.0" cy="618.8" r="3.5999999999999996" fill="#8f8f91"/>
+</g>
+</g>
+<line x1="1283" y1="777" x2="1399.0" y2="777" stroke="#aaa" stroke-width="2"/>
+<line x1="1549.0" y1="777" x2="1665" y2="777" stroke="#aaa" stroke-width="2"/>
+<text x="1474.0" y="777.0" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#bbb" text-anchor="middle" dominant-baseline="central" >300 V CAT II</text>
+<text x="1322.0" y="825.0" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >1</text>
+<text x="1546.0" y="825.0" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >2</text>
+<g id="tds-ch1-input" class="osc-control" data-control="ch1-input" data-kind="bnc" data-active="true" data-label="CH1 input" data-cx="1362.0" data-cy="888">
+<title>CH1 input</title>
+<circle cx="1362.0" cy="888" r="46" fill="#b5b5b7" stroke="#6c6c6e" stroke-width="2"/>
+<circle cx="1362.0" cy="888" r="34" fill="#d8d8da" stroke="#8a8a8c" stroke-width="2"/>
+<circle cx="1362.0" cy="888" r="22" fill="#4a4a4c"/>
+<circle cx="1362.0" cy="888" r="14" fill="#eeeeee"/>
+<circle cx="1362.0" cy="888" r="5" fill="#c79a2a"/>
+</g>
+<g id="tds-ch2-input" class="osc-control" data-control="ch2-input" data-kind="bnc" data-active="true" data-label="CH2 input" data-cx="1586.0" data-cy="888">
+<title>CH2 input</title>
+<circle cx="1586.0" cy="888" r="46" fill="#b5b5b7" stroke="#6c6c6e" stroke-width="2"/>
+<circle cx="1586.0" cy="888" r="34" fill="#d8d8da" stroke="#8a8a8c" stroke-width="2"/>
+<circle cx="1586.0" cy="888" r="22" fill="#4a4a4c"/>
+<circle cx="1586.0" cy="888" r="14" fill="#eeeeee"/>
+<circle cx="1586.0" cy="888" r="5" fill="#c79a2a"/>
+</g>
+<rect x="1699" y="253" width="214" height="690" rx="8" fill="#d6d4ce" stroke="none" stroke-width="0" />
+<rect x="1699" y="253" width="214" height="30" rx="6" fill="#c4c2bc" stroke="none" stroke-width="0" />
+<text x="1806.0" y="268.0" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#fff" text-anchor="middle" dominant-baseline="central" >Horizontal</text>
+<text x="1806" y="317.0" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Position</text>
+<g data-detent="15" id="tds-hor-position" class="osc-control" data-control="hor-position" data-kind="knob" data-active="true" data-label="Horizontal position" data-cx="1806" data-cy="375">
+<title>Horizontal position</title>
+<circle cx="1806" cy="378" r="40" fill="#8a8a8a"/>
+<g class="osc-knob-rot" data-angle="0">
+<circle class="osc-face" cx="1806" cy="375" r="40" fill="#c8c8ca" stroke="#7a7a7a" stroke-width="2"/>
+<rect x="1803.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(0.0 1806 375)"/>
+<rect x="1803.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(25.714285714285715 1806 375)"/>
+<rect x="1803.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(51.42857142857143 1806 375)"/>
+<rect x="1803.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(77.14285714285714 1806 375)"/>
+<rect x="1803.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(102.85714285714286 1806 375)"/>
+<rect x="1803.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(128.57142857142858 1806 375)"/>
+<rect x="1803.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(154.28571428571428 1806 375)"/>
+<rect x="1803.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(180.0 1806 375)"/>
+<rect x="1803.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(205.71428571428572 1806 375)"/>
+<rect x="1803.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(231.42857142857142 1806 375)"/>
+<rect x="1803.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(257.14285714285717 1806 375)"/>
+<rect x="1803.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(282.85714285714283 1806 375)"/>
+<rect x="1803.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(308.57142857142856 1806 375)"/>
+<rect x="1803.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(334.2857142857143 1806 375)"/>
+<circle cx="1806" cy="375" r="28.0" fill="#dcdcde" stroke="#b5b5b7" stroke-width="1.5"/>
+<circle cx="1806" cy="354.2" r="2.5" fill="#8f8f91"/>
+</g>
+</g>
+<g id="tds-horiz-menu" class="osc-control" data-control="horiz-menu" data-kind="button" data-active="true" data-label="Horiz" data-cx="1806" data-cy="475">
+<title>Horiz</title>
+<rect x="1766.0" y="456.0" width="80.0" height="46.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="1766.0" y="452.0" width="80.0" height="46.0" rx="9" fill="#f4f3ef" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+<text x="1806" y="475.0" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Horiz</text>
+</g>
+<g id="tds-set-to-zero" class="osc-control" data-control="set-to-zero" data-kind="button" data-active="true" data-label="Set to Zero" data-cx="1806" data-cy="547">
+<title>Set to Zero</title>
+<rect x="1766.0" y="526.0" width="80.0" height="50.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="1766.0" y="522.0" width="80.0" height="50.0" rx="9" fill="#f4f3ef" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+<text x="1806" y="539.1" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Set to</text>
+<text x="1806" y="554.9" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Zero</text>
+</g>
+<text x="1806" y="605.0" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Scale</text>
+<g data-detent="36" id="tds-hor-scale" class="osc-control" data-control="hor-scale" data-kind="knob" data-active="true" data-label="Horizontal sec/div" data-cx="1806" data-cy="685">
+<title>Horizontal sec/div</title>
+<circle cx="1806" cy="688" r="58" fill="#8a8a8a"/>
+<g class="osc-knob-rot" data-angle="0">
+<circle class="osc-face" cx="1806" cy="685" r="58" fill="#c8c8ca" stroke="#7a7a7a" stroke-width="2"/>
+<rect x="1802.81" y="629" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(0.0 1806 685)"/>
+<rect x="1802.81" y="629" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(36.0 1806 685)"/>
+<rect x="1802.81" y="629" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(72.0 1806 685)"/>
+<rect x="1802.81" y="629" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(108.0 1806 685)"/>
+<rect x="1802.81" y="629" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(144.0 1806 685)"/>
+<rect x="1802.81" y="629" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(180.0 1806 685)"/>
+<rect x="1802.81" y="629" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(216.0 1806 685)"/>
+<rect x="1802.81" y="629" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(252.0 1806 685)"/>
+<rect x="1802.81" y="629" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(288.0 1806 685)"/>
+<rect x="1802.81" y="629" width="6.38" height="12.76" rx="3.19" fill="#9c9c9e" transform="rotate(324.0 1806 685)"/>
+<circle cx="1806" cy="685" r="40.599999999999994" fill="#dcdcde" stroke="#b5b5b7" stroke-width="1.5"/>
+<circle cx="1806" cy="654.84" r="3.48" fill="#8f8f91"/>
+</g>
+</g>
+<text x="1806" y="825.0" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Ext Trig</text>
+<g id="tds-ext-trig" class="osc-control" data-control="ext-trig" data-kind="bnc" data-active="false" data-label="External trigger input" data-cx="1806" data-cy="888">
+<title>External trigger input (not available in this simulation)</title>
+<circle cx="1806" cy="888" r="46" fill="#b5b5b7" stroke="#6c6c6e" stroke-width="2"/>
+<circle cx="1806" cy="888" r="34" fill="#d8d8da" stroke="#8a8a8c" stroke-width="2"/>
+<circle cx="1806" cy="888" r="22" fill="#4a4a4c"/>
+<circle cx="1806" cy="888" r="14" fill="#eeeeee"/>
+<circle cx="1806" cy="888" r="5" fill="#c79a2a"/>
+</g>
+<rect x="1927" y="253" width="240" height="690" rx="8" fill="#d6d4ce" stroke="none" stroke-width="0" />
+<rect x="1927" y="253" width="240" height="30" rx="6" fill="#c4c2bc" stroke="none" stroke-width="0" />
+<text x="2047.0" y="268.0" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#fff" text-anchor="middle" dominant-baseline="central" >Trigger</text>
+<text x="2047" y="317.0" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Level</text>
+<g data-detent="15" id="tds-trig-level" class="osc-control" data-control="trig-level" data-kind="knob" data-active="true" data-label="Trigger level" data-cx="2047" data-cy="375">
+<title>Trigger level</title>
+<circle cx="2047" cy="378" r="40" fill="#8a8a8a"/>
+<g class="osc-knob-rot" data-angle="0">
+<circle class="osc-face" cx="2047" cy="375" r="40" fill="#c8c8ca" stroke="#7a7a7a" stroke-width="2"/>
+<rect x="2044.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(0.0 2047 375)"/>
+<rect x="2044.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(25.714285714285715 2047 375)"/>
+<rect x="2044.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(51.42857142857143 2047 375)"/>
+<rect x="2044.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(77.14285714285714 2047 375)"/>
+<rect x="2044.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(102.85714285714286 2047 375)"/>
+<rect x="2044.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(128.57142857142858 2047 375)"/>
+<rect x="2044.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(154.28571428571428 2047 375)"/>
+<rect x="2044.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(180.0 2047 375)"/>
+<rect x="2044.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(205.71428571428572 2047 375)"/>
+<rect x="2044.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(231.42857142857142 2047 375)"/>
+<rect x="2044.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(257.14285714285717 2047 375)"/>
+<rect x="2044.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(282.85714285714283 2047 375)"/>
+<rect x="2044.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(308.57142857142856 2047 375)"/>
+<rect x="2044.8" y="337" width="4.4" height="8.8" rx="2.2" fill="#9c9c9e" transform="rotate(334.2857142857143 2047 375)"/>
+<circle cx="2047" cy="375" r="28.0" fill="#dcdcde" stroke="#b5b5b7" stroke-width="1.5"/>
+<circle cx="2047" cy="354.2" r="2.5" fill="#8f8f91"/>
+</g>
+</g>
+<g id="tds-trig-menu" class="osc-control" data-control="trig-menu" data-kind="button" data-active="true" data-label="Trig Menu" data-cx="2047" data-cy="485">
+<title>Trig Menu</title>
+<rect x="2005.0" y="463.0" width="84.0" height="52.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="2005.0" y="459.0" width="84.0" height="52.0" rx="9" fill="#f4f3ef" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+<text x="2047" y="477.1" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Trig</text>
+<text x="2047" y="492.9" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Menu</text>
+</g>
+<g id="tds-trig-50" class="osc-control" data-control="trig-50" data-kind="button" data-active="true" data-label="Set To 50%" data-cx="2047" data-cy="570">
+<title>Set To 50%</title>
+<rect x="2005.0" y="548.0" width="84.0" height="52.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="2005.0" y="544.0" width="84.0" height="52.0" rx="9" fill="#f4f3ef" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+<text x="2047" y="562.1" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Set To</text>
+<text x="2047" y="577.9" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >50%</text>
+</g>
+<g id="tds-force-trig" class="osc-control" data-control="force-trig" data-kind="button" data-active="true" data-label="Force Trig" data-cx="2047" data-cy="655">
+<title>Force Trig</title>
+<rect x="2005.0" y="633.0" width="84.0" height="52.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="2005.0" y="629.0" width="84.0" height="52.0" rx="9" fill="#f4f3ef" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+<text x="2047" y="647.1" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Force</text>
+<text x="2047" y="662.9" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Trig</text>
+</g>
+<g id="tds-trig-view" class="osc-control" data-control="trig-view" data-kind="button" data-active="true" data-label="Trig View" data-cx="2047" data-cy="740">
+<title>Trig View</title>
+<rect x="2005.0" y="718.0" width="84.0" height="52.0" rx="9" fill="#7d7d7d" stroke="none" stroke-width="0" />
+<rect x="2005.0" y="714.0" width="84.0" height="52.0" rx="9" fill="#f4f3ef" stroke="#7a7a7a" stroke-width="1.5" class="osc-face"/>
+<text x="2047" y="732.1" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >Trig</text>
+<text x="2047" y="747.9" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#222" text-anchor="middle" dominant-baseline="central" >View</text>
+</g>
+</svg>
