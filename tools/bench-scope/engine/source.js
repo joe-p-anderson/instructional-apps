@@ -54,10 +54,12 @@ export function generator({ wave, freq, vpp, offset }) {
   return (t) => offset + a * Math.sin(2 * Math.PI * freq * t);
 }
 
-/** The signal v(t) at a scope input ('ch1'), or null if nothing is wired to it. */
+/** The signal v(t) at a scope input ('ch1' | 'ch2'), or null if nothing is wired to it. */
 export function inputSignal(settings, channel) {
   const s = settings.source;
-  if (channel === 'ch1') return generator({ wave: s.gen1Wave, freq: s.gen1Freq, vpp: s.gen1Vpp, offset: s.gen1Offset });
+  const gen1 = () => generator({ wave: s.gen1Wave, freq: s.gen1Freq, vpp: s.gen1Vpp, offset: s.gen1Offset });
+  if (channel === 'ch1') return gen1();
+  if (channel === 'ch2') return gen1(); // a copy of CH1 until ticket 06 adds the CH2 sources
   return null;
 }
 

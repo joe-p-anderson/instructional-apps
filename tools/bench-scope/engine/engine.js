@@ -11,6 +11,13 @@
 //   engine.apply({ type, ... })       the same, as one event object:
 //     { type: 'turn', control, detents } | { type: 'push', control } | { type: 'press', control }
 //     | { type: 'softkey', n } | { type: 'setSource', patch }
+//     | { type: 'set', control, value }   a Control's set(value), e.g. ch1-scale to 0.5 V/div
+//
+// Control values (what the panel's Controls get/set and how knobs are drawn):
+//   engine.value(control)             the control's value, or undefined if no feature gives one
+//   engine.detent(control)            integer knob position: rotation = detent · the knob's detent
+//                                     angle. From the feature's value if it has one, otherwise the
+//                                     net detents turned so far (not saved).
 //
 // Output:
 //   engine.acquire(now) -> frame      now in ms (e.g. performance.now()); see FRAME below
@@ -36,6 +43,8 @@
 //   softkey(ctx, n)                     softkey handler
 //   state(ctx) -> {}, describe(ctx) -> {}   its part of the published State
 //   frame(ctx, frame)                   add readouts, menu, markers... to an acquired frame
+//   controls: { [control]: { get(ctx), set(ctx, value), detent?(ctx) } }   Control values; give
+//                                       detent() for a knob whose rotation follows its value
 // where ctx = { settings, profile }. Add a feature by writing a module and listing it here.
 
 import { acquireTraces } from './acquire.js';
@@ -54,6 +63,12 @@ const SERIAL_VERSION = 1;
 export function createEngine(profile, setup = {}) {
   const ctx = { profile, settings: {} };
   for (const f of FEATURES) f.init?.(ctx.settings, setup || {}, profile);
+  const spins = new Map(); // net detents per knob, for knobs whose rotation no feature gives
+
+  const controlHook = (control) => {
+    for (const f of FEATURES) if (f.controls?.[control]) return f.controls[control];
+    return null;
+  };
 
   function apply(event) {
     if (!event || typeof event !== 'object') return;
@@ -63,8 +78,11 @@ export function createEngine(profile, setup = {}) {
     } else if (type === 'softkey') {
       for (const f of FEATURES) f.softkey?.(ctx, event.n);
     } else if (type === 'turn' || type === 'push' || type === 'press') {
-      const arg = type === 'turn' ? Number(event.detents) || 0 : undefined;
+      const arg = type === 'turn' ? Math.trunc(Number(event.detents) || 0) : undefined;
+      if (type === 'turn') spins.set(event.control, (spins.get(event.control) ?? 0) + arg);
       for (const f of FEATURES) f[type]?.[event.control]?.(ctx, arg);
+    } else if (type === 'set') {
+      controlHook(event.control)?.set?.(ctx, event.value);
     }
   }
 
@@ -76,6 +94,12 @@ export function createEngine(profile, setup = {}) {
     press: (control) => apply({ type: 'press', control }),
     softkey: (n) => apply({ type: 'softkey', n }),
     setSource: (patch) => apply({ type: 'setSource', patch }),
+
+    value: (control) => controlHook(control)?.get?.(ctx),
+    detent(control) {
+      const hook = controlHook(control);
+      return hook?.detent ? hook.detent(ctx) : (spins.get(control) ?? 0);
+    },
 
     acquire(now = 0) {
       const { width, height, divX, divY } = profile.screen;

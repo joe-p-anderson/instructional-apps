@@ -3,7 +3,9 @@
 //
 // Setup: { skin: 'tbs2072b', gen1Wave, gen1Freq, gen1Vpp, gen1Offset } (any subset).
 // State: engine.state() (see engine/engine.js and each feature module for keys and units).
-// Controls: source panel 'gen1-wave', 'gen1-freq', 'gen1-vpp', 'gen1-offset'.
+// Controls: source panel 'gen1-wave', 'gen1-freq', 'gen1-vpp', 'gen1-offset', and every active
+//   knob, button and softkey on the front panel by its control-map name ('ch1-scale',
+//   'ch1-menu', 'softkey-3', ...; see panel.js for get/set and engine feature modules for values).
 // Displays: 'screen' (the scope screen at native resolution; the front panel is not included).
 //
 // Layout: source panel in the Controls column, the front panel (inlined SVG with the screen
@@ -34,7 +36,13 @@ const CSS = `
 .bs-panel .osc-control { cursor: pointer; }
 .bs-panel .osc-control[data-active="false"] { cursor: not-allowed; opacity: .45; }
 .bs-panel .osc-control[data-active="true"]:hover .osc-face { filter: brightness(1.08); }
-.bs-panel .osc-control.bs-pressed .osc-face { transform: translateY(3px); }
+.bs-panel .osc-control.bs-pressed .osc-face { transform: translateY(3px); filter: brightness(.85); }
+.bs-panel .osc-control:focus { outline: none; }
+.bs-panel .osc-control:focus-visible .osc-face { stroke: #2a7de1; stroke-width: 6px; }
+.bs-panel .osc-control.bs-locked { cursor: not-allowed; }
+.bs-panel .osc-control.bs-locked .osc-face { filter: grayscale(1) brightness(.7); }
+.bs-panel .osc-control.bs-locked:hover .osc-face { filter: grayscale(1) brightness(.7); }
+.bs-panel .osc-control[data-kind="knob"] { touch-action: none; }
 .bs-panel .osc-control[data-kind="led"], .bs-panel .osc-control[data-kind="screen"] { cursor: default; }
 `;
 
@@ -54,6 +62,7 @@ function mount(container, modeId = 'scope', setup = {}) {
   // One path for every State change: an engine event, then notify if the State moved.
   function dispatch(event) {
     engine.apply(event);
+    panel.sync();
     draw();
     notify();
   }
@@ -66,7 +75,7 @@ function mount(container, modeId = 'scope', setup = {}) {
   }
 
   const source = createSourcePanel({ values: engine.state(), onPatch: (patch) => dispatch({ type: 'setSource', patch }) });
-  const panel = createPanel({ svgText: svgTexts[skin], model: controlMap.models[profile.model], onEvent: dispatch });
+  const panel = createPanel({ svgText: svgTexts[skin], model: controlMap.models[profile.model], onEvent: dispatch, values: engine });
   const g = panel.canvas.getContext('2d');
 
   const root = h('div', { class: 'fw-tool bs-tool', 'data-tool': 'bench-scope' },
@@ -94,7 +103,7 @@ function mount(container, modeId = 'scope', setup = {}) {
       describe: () => engine.describe(),
       onChange: (fn) => changes.on(fn),
     },
-    controls: controlRegistry(source.controls),
+    controls: controlRegistry([...Object.values(source.controls), ...panel.controls]),
     displays: [{
       id: 'screen',
       label: 'Oscilloscope screen',
@@ -107,6 +116,7 @@ function mount(container, modeId = 'scope', setup = {}) {
     restore(saved) {
       engine.restore(saved);
       source.sync(engine.state());
+      panel.sync();
       draw();
       lastState = '';
       notify();

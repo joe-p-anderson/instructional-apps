@@ -6,14 +6,16 @@
 // this with the edge trigger, Auto/Normal, Run/Stop and noise.
 
 import { inputSignal } from './source.js';
+import { channelTrace, VERTICAL_CHANNELS } from './vertical.js';
 
-export const CHANNELS = ['ch1'];
+export const CHANNELS = VERTICAL_CHANNELS;
 
 /**
  * The acquisition part of a frame: { status, timebase, traces }.
  *   timebase  { sPerDiv, t0 }: the time (s) at x = 0, so t = t0 + x · sPerDiv
  *   traces    { [channel]: { x[], y[], vPerDiv, position } } in divisions: x from 0 (left
- *             edge) to divX, y from the centre line (up positive), so volts = (y − position) · vPerDiv
+ *             edge) to divX, y from the centre line (up positive), so volts = (y − position) · vPerDiv;
+ *             clipped at the screen edges (see vertical.js). Channels that are off are absent.
  */
 export function acquireTraces({ settings, profile }) {
   const { divX } = profile.screen;
@@ -22,12 +24,12 @@ export function acquireTraces({ settings, profile }) {
   const t0 = -(divX / 2) * sPerDiv - hpos;
   const x = Array.from({ length: n }, (_, i) => (i * divX) / (n - 1));
 
+  const times = x.map((xi) => t0 + xi * sPerDiv);
+
   const traces = {};
   for (const ch of CHANNELS) {
-    const v = inputSignal(settings, ch);
-    if (!v) continue;
-    const { vPerDiv, position } = settings[ch];
-    traces[ch] = { x, y: x.map((xi) => v(t0 + xi * sPerDiv) / vPerDiv + position), vPerDiv, position };
+    const trace = channelTrace(settings, profile, ch, inputSignal(settings, ch), x, times);
+    if (trace) traces[ch] = trace;
   }
   return { status: 'triggered', timebase: { sPerDiv, t0 }, traces };
 }
