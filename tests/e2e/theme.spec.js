@@ -151,9 +151,9 @@ test('locked Task cards stay readable and say they are locked; locked Controls a
   const locked = p1.getByRole('region', { name: 'Task 1.2' });
   await expect(locked).toHaveAttribute('data-status', 'locked');
   await expect(locked).toHaveCSS('opacity', '0.6');
-  await expect(locked.getByText('Locked', { exact: true })).toBeVisible();
+  await expect(locked.getByText('Locked until Task 1.1 is done')).toBeVisible();
   // The open Task doesn't say so.
-  await expect(p1.getByRole('region', { name: 'Task 1.1' }).getByText('Locked', { exact: true })).toBeHidden();
+  await expect(p1.getByRole('region', { name: 'Task 1.1' }).getByText(/^Locked until/)).toBeHidden();
 
   // Part 2, Task 2.1 locks Va.
   await page.getByRole('tab', { name: /Part 2/ }).click();

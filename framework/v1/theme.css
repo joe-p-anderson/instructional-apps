@@ -338,9 +338,10 @@ html.fw-root, html.fw-root body {
 }
 .fw-task-card:last-child { border-right: none; }
 .fw-task-card[data-status="locked"] { opacity: 0.6; }
-.fw-task-locked { font-size: 14px; font-style: italic; color: var(--fw-text-dim); white-space: nowrap; margin-top: 2px; }
+/* The one line saying why a Task is locked, under its title. */
+.fw-task-locked { flex-basis: 100%; margin: -6px 0 0 26px; font-size: 14px; font-style: italic; color: var(--fw-text-dim); }
 .fw-task-locked[hidden] { display: none; }
-.fw-task-heading { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 5px; }
+.fw-task-heading { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin-bottom: 5px; }
 .fw-task-check {
   width: 18px; height: 18px; flex-shrink: 0; margin-top: 2px;
   border: 1.5px solid var(--fw-border-dk);
@@ -348,7 +349,7 @@ html.fw-root, html.fw-root body {
   font-size: 13px; color: #fff;
 }
 .fw-task-card[data-status="passed"] .fw-task-check { background: var(--fw-green); border-color: var(--fw-green); }
-.fw-task-title { margin: 0; font-size: 16px; font-weight: bold; font-variant: small-caps; letter-spacing: 0.04em; }
+.fw-task-title { flex: 1 1 0; min-width: 0; margin: 0; font-size: 16px; font-weight: bold; font-variant: small-caps; letter-spacing: 0.04em; }
 .fw-task-prompt, .fw-question, .fw-task-submit, .fw-task-hint { margin-left: 26px; }
 .fw-task-prompt { font-size: 15px; color: var(--fw-text-dim); margin-bottom: 7px; line-height: 1.5; }
 .fw-question { margin-bottom: 8px; display: flex; flex-direction: column; gap: 4px; }
@@ -363,6 +364,46 @@ html.fw-root, html.fw-root body {
 .fw-task-feedback.fw-fail { color: var(--fw-red); }
 .fw-task-hint { font-size: 14px; color: var(--fw-yellow); line-height: 1.4; background: var(--fw-hint-bg); border-left: 3px solid var(--fw-yellow); padding: 4px 8px; }
 .fw-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Part progress badge on each Part tab ("1/3"), filled once the Part is complete. */
+.fw-tab-badge { margin-left: 8px; padding: 0 6px; border: 1px solid var(--fw-border-dk); font-size: 12px; font-weight: normal; font-variant: normal; letter-spacing: 0; color: var(--fw-text-dim); }
+.fw-tab-badge:empty { display: none; }
+.fw-tab-badge[data-done="true"] { background: var(--fw-green); border-color: var(--fw-green); color: #fff; }
+
+/* ── Panel layouts (tool.js `layout`): the frame puts fw-layout-<layout> on .fw-app.
+   The rules above are shared, and on their own they give `strip`: Controls | Display, with the
+   Tasks in a row across the bottom. `side` and `banner` rearrange them below. ── */
+
+/* side: Controls | Display | Tasks, the Tasks stacked in a 330 px column on the right. */
+.fw-layout-side .fw-tabpanel { flex-direction: row; }
+.fw-layout-side .fw-tabpanel > .fw-tool { flex: 1; min-width: 0; }
+.fw-layout-side .fw-part-tasks { width: 330px; max-height: none; border-top: none; border-left: 2px solid var(--fw-border-dk); }
+.fw-layout-side .fw-progress-bar { flex: 1; width: auto; }
+.fw-layout-side .fw-tasks { flex-direction: column; overflow-y: auto; padding: 10px; gap: 10px; }
+.fw-layout-side .fw-task-card { flex: none; min-width: 0; border: 1px solid var(--fw-border); background: var(--fw-bg); }
+.fw-layout-side .fw-task-card[data-status="open"] { border: 1.5px solid var(--fw-blue); background: var(--fw-surface); }
+.fw-layout-side .fw-task-card[data-status="locked"] { border-style: dashed; background: transparent; }
+/* Locked: the title and the line saying why. Finished: the title and the result. */
+.fw-layout-side .fw-task-card[data-status="locked"] :is(.fw-task-prompt, .fw-question, .fw-task-submit, .fw-task-hint),
+.fw-layout-side .fw-task-card[data-status="passed"] :is(.fw-task-prompt, .fw-question, .fw-task-hint) { display: none; }
+.fw-layout-side .fw-task-card[data-status="passed"] .fw-task-submit { margin-bottom: 0; }
+
+/* banner: the current Task is a banner above the Display, the other Tasks compact steps beside
+   it; the Display is full width with the Controls' sections side by side in a strip below it
+   (in Standalone mode too, where there are no Tasks). */
+.fw-layout-banner .fw-part-tasks { order: -1; max-height: none; border-top: none; border-bottom: 2px solid var(--fw-border-dk); }
+.fw-layout-banner .fw-progress { display: none; }  /* the Part tab's badge shows progress */
+.fw-layout-banner .fw-task-card { flex: 0 1 auto; min-width: 0; max-width: 200px; padding: 8px 14px; }
+.fw-layout-banner .fw-task-card[data-status="open"] { flex: 1 1 auto; max-width: none; background: var(--fw-bg); box-shadow: inset 0 3px 0 var(--fw-blue); }
+.fw-layout-banner .fw-task-card[data-status="open"] .fw-task-submit { margin-bottom: 0; }
+.fw-layout-banner .fw-task-card:not([data-status="open"]) :is(.fw-task-prompt, .fw-question, .fw-task-submit, .fw-task-hint, .fw-task-locked) { display: none; }
+.fw-layout-banner .fw-tool { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+.fw-layout-banner .fw-tool > .fw-controls { order: 2; display: flex; overflow: auto hidden; border-right: none; border-top: 2px solid var(--fw-border-dk); }
+.fw-layout-banner .fw-controls > .fw-section { flex: 0 0 260px; border-bottom: none; border-right: 1px solid var(--fw-border); }
+/* The first section (usually the parameters) lays its Controls out in two columns. */
+.fw-layout-banner .fw-controls > .fw-section:first-child { flex-basis: 540px; display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; align-content: start; }
+.fw-layout-banner .fw-controls > .fw-section:first-child > :is(.fw-section-label, .fw-hint) { grid-column: 1 / -1; }
+.fw-layout-banner .fw-metric { line-height: 1.6; }
 
 /* ── Report Viewer (report-viewer/): a scrolling document page, printable ── */
 .fw-viewer, .fw-viewer *, .fw-viewer *::before, .fw-viewer *::after { box-sizing: border-box; }

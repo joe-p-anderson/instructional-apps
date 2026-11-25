@@ -16,8 +16,11 @@ import { defineTool } from './tool.js';
 import { h } from './ui-kit.js';
 import { browserStorage, standaloneStore, shareHash, readShareHash } from './persistence.js';
 
-/** Header + tab strip + panel area. Returns elements to fill. */
-export function createFrame(root, { title, subtitle }) {
+/**
+ * Header + tab strip + panel area, laid out by the Tool's panel layout (tool.js): .fw-app gets
+ * the class fw-layout-<layout> and theme.css does the rest. Returns elements to fill.
+ */
+export function createFrame(root, { title, subtitle, layout = 'side' }) {
   document.documentElement.classList.add('fw-root');
   const tablist = h('div', { class: 'fw-tabs', role: 'tablist' });
   const panels = h('div', { class: 'fw-tabpanel-area', style: 'flex:1;min-height:0;display:flex;flex-direction:column' });
@@ -25,14 +28,14 @@ export function createFrame(root, { title, subtitle }) {
     h('div', { class: 'fw-header-titles' },
       h('h1', { class: 'fw-title' }, title),
       subtitle ? h('div', { class: 'fw-subtitle' }, subtitle) : null));
-  const app = h('div', { class: 'fw-app' }, header, tablist, panels);
+  const app = h('div', { class: `fw-app fw-layout-${layout}` }, header, tablist, panels);
   root.replaceChildren(app);
   return { app, header, tablist, panels };
 }
 
 /**
  * Build tabs. tabs: [{ id, title }]. onSelect(id, index) fires after the panel is shown.
- * Returns { panels: { [id]: HTMLElement }, select(id) }.
+ * Returns { panels: { [id]: HTMLElement }, buttons: { [id]: HTMLButtonElement }, select(id) }.
  */
 export function createTabs(frame, tabs, onSelect = () => {}) {
   const buttons = {};
@@ -56,13 +59,13 @@ export function createTabs(frame, tabs, onSelect = () => {}) {
     }
     onSelect(id, tabs.findIndex((t) => t.id === id));
   }
-  return { panels, select };
+  return { panels, buttons, select };
 }
 
 export function mountStandalone(tool, root, { setups = {}, subtitle = 'Standalone', storage = browserStorage() } = {}) {
   defineTool(tool);
   if (!document.title) document.title = tool.title;
-  const frame = createFrame(root, { title: tool.title, subtitle });
+  const frame = createFrame(root, { title: tool.title, subtitle, layout: tool.layout });
   const host = { tool, modes: tool.modes, instances: [], activeMode: null, select: null, shareLink };
 
   // A share link wins over autosave, once: the hash is then cleared so a reload shows

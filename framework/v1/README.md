@@ -38,7 +38,7 @@ Each Activity is a pure-data module plus a tiny HTML page beside it, so the URL 
 
 ```js
 // A Tool module default-exports:
-{ id, title, modes: [{ id, title }], mount(container, modeId, setup) }   // mount -> instance
+{ id, title, modes: [{ id, title }], layout?, mount(container, modeId, setup) }   // mount -> instance
 
 // instance
 {
@@ -57,3 +57,18 @@ Each Activity is a pure-data module plus a tiny HTML page beside it, so the URL 
 ```
 
 Tools keep no global state; mount the same Tool as many times as needed. Example: `tools/oscilloscope/`.
+
+### Panel layouts
+
+`layout` is optional: `'side'` (the default), `'strip'` or `'banner'`, checked by `defineTool()`. It is fixed per
+Tool; an Activity cannot change it. The frame (`createFrame` in `tool-host.js`) puts `fw-layout-<layout>` on
+`.fw-app`, in Standalone mode and in the Activity runner, and every layout rule lives in `theme.css` keyed on it.
+The Tool itself only builds `.fw-tool` with `.fw-controls` (made of `.fw-section`s) and `.fw-displays`.
+
+| Layout | Arrangement |
+| --- | --- |
+| `side` | Controls \| Display \| Tasks. Tasks stack in a 330 px column on the right; the current Task is outlined, finished Tasks show their title and result, locked Tasks one line saying why. |
+| `strip` | Controls \| Display, with the Tasks in a row across the bottom (the original v1 layout). |
+| `banner` | The current Task is a banner above a full-width Display, the other Tasks compact steps beside it; the Controls' sections sit side by side in a strip below the Display. In Standalone mode only the banner is absent. For wide Tools. |
+
+In every layout each Part tab carries a progress badge ("1/3"), filled once the Part is complete.

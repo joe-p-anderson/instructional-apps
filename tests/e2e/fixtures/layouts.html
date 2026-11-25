@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<!--
+  Test fixture: the oscilloscope and its phase-period-amplitude Activity under any panel layout.
+  ?layout=side|strip|banner  &page=activity|standalone (default activity).
+  The layout is fixed per Tool, so this page makes a copy of the Tool that declares the asked one.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Layout fixture</title>
+<link rel="stylesheet" href="../../../framework/v1/theme.css">
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+  import oscilloscope from '../../../tools/oscilloscope/oscilloscope.js';
+  import activity from '../../../tools/oscilloscope/activities/phase-period-amplitude.js';
+  import { mountActivity } from '../../../framework/v1/activity-ui.js';
+  import { mountStandalone } from '../../../framework/v1/tool-host.js';
+
+  const params = new URLSearchParams(location.search);
+  const tool = { ...oscilloscope, layout: params.get('layout') ?? 'side' };
+  const app = document.getElementById('app');
+  if (params.get('page') === 'standalone') window.toolHost = mountStandalone(tool, app, { storage: null });
+  else window.activityHost = mountActivity(tool, activity, app, { storage: null });
+</script>
+</body>
+</html>

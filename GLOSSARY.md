@@ -40,6 +40,10 @@ _Avoid_: knob, widget, input
 A view that renders the simulation for the student (plot, diagram, canvas).
 _Avoid_: graph, panel, view
 
+**Panel layout**:
+How the page arranges a Tool's Controls and Displays and an Activity's Tasks: `side`, `strip` or `banner`. Fixed per Tool; an Activity cannot change it.
+_Avoid_: theme, skin, template
+
 **State**:
 The named values a simulation exposes for tasks to read and record.
 _Avoid_: params, sim variables

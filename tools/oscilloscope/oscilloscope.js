@@ -252,5 +252,6 @@ export default defineTool({
   id: 'oscilloscope',
   title: 'Oscilloscope',
   modes: [{ id: 'dual-trace', title: 'Dual-trace scope' }],
+  layout: 'side',
   mount,
 });

@@ -110,5 +110,6 @@ test('a reload restores Question answers, unsubmitted drafts and the last miss f
   await page.waitForFunction(() => window.activityHost);
   const last = part(page, 1);
   await expect(last.getByRole('region', { name: 'Task 1.3' })).toHaveAttribute('data-status', 'passed');
-  await expect(last.getByRole('textbox', { name: /difficult to measure/ })).toHaveValue('The traces are hard to line up exactly.');
+  // A finished Task shows only its title and result in the side layout, but keeps its answer.
+  await expect(last.getByRole('textbox', { name: /difficult to measure/, includeHidden: true })).toHaveValue('The traces are hard to line up exactly.');
 });

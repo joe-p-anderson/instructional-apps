@@ -108,7 +108,8 @@ test('dragging through the target without Submitting does not pass; a Submit at 
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click();
   await expect(p1.getByRole('status', { name: 'Task 1.1 feedback' })).toContainText('need π/2');
   await expect(card11).toHaveAttribute('data-status', 'open');
-  await expect(p1.getByRole('button', { name: 'Submit Task 1.2' })).toBeDisabled();
+  // A locked Task's Submit is disabled (and, in the oscilloscope's side layout, not shown).
+  await expect(p1.getByRole('button', { name: 'Submit Task 1.2', includeHidden: true })).toBeDisabled();
 
   // A Submit at the target passes, marks the Task done and unlocks the next one.
   await setNumber(page, p1, 'Δt', 0.5);
@@ -125,7 +126,8 @@ test('the free-text Question follows Task 1.2', async ({ page }) => {
   await open(page);
   await enterName(page);
   const p1 = part(page, 1);
-  const answer = p1.getByRole('textbox', { name: /difficult to measure/ });
+  // Disabled while locked (and, in the oscilloscope's side layout, not shown until it opens).
+  const answer = p1.getByRole('textbox', { name: /difficult to measure/, includeHidden: true });
   await expect(answer).toBeDisabled();
   await setNumber(page, p1, 'Δt', 0.5);
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click();

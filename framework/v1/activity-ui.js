@@ -1,8 +1,9 @@
 // Activity runner UI (framework v1): the thin DOM layer over the runner core (runner/).
 //
 // mountActivity(tool, activity, root, { conditionTypes, storage })
-//   Mounts one Tool instance per Part (its Mode and Setup) under Part tabs, adds a Task card
-//   row and a progress indicator to each Part, and shows a name gate before Part 1.
+//   Mounts one Tool instance per Part (its Mode and Setup) under Part tabs, adds the Part's
+//   Task cards and a progress indicator to each Part and a progress badge ("1/3") to each Part
+//   tab, and shows a name gate before Part 1. The Tool's panel layout (tool.js) places them.
 //   The Run autosaves to `storage` (default localStorage; null disables it), keyed by Activity
 //   id, and a saved Run is restored on load in place of the name gate. "Start over" (confirmed)
 //   discards the saved Run and reloads the page for a new one.
@@ -27,7 +28,7 @@ export function mountActivity(tool, activity, root, { conditionTypes, storage = 
   if (activity.tool !== tool.id) throw new Error(`Activity "${activity.id}" is for Tool "${activity.tool}", not "${tool.id}".`);
   if (!document.title) document.title = activity.title;
 
-  const frame = createFrame(root, { title: activity.title, subtitle: activity.course });
+  const frame = createFrame(root, { title: activity.title, subtitle: activity.course, layout: tool.layout });
   const host = { runner: null, instances: {}, activePart: null, select: null, render };
 
   const tabs = createTabs(frame, activity.parts, (id) => {
@@ -41,6 +42,7 @@ export function mountActivity(tool, activity, root, { conditionTypes, storage = 
     host.instances[part.id] = tool.mount(panel, part.mode, part.setup);
     views[part.id] = partView(part, p);
     panel.append(views[part.id].el);
+    tabs.buttons[part.id].append(views[part.id].badge);
   });
 
   host.runner = createRunner(activity, { tools: host.instances, conditionTypes });
@@ -117,19 +119,21 @@ export function mountActivity(tool, activity, root, { conditionTypes, storage = 
     const progressBar = h('progress', { class: 'fw-progress-bar', max: part.tasks.length, value: 0,
       'aria-label': `${stripTags(part.title)} progress` });
     const progressText = h('span', { class: 'fw-progress-text' });
+    const badge = h('span', { class: 'fw-tab-badge' });
     const cards = {};
     const row = h('div', { class: 'fw-tasks' });
     part.tasks.forEach((task, t) => {
-      cards[task.id] = taskCard(part, task, `Task ${p + 1}.${t + 1}`);
+      cards[task.id] = taskCard(part, task, `Task ${p + 1}.${t + 1}`, `Task ${p + 1}.${t}`);
       row.append(cards[task.id].el);
     });
     const el = h('div', { class: 'fw-part-tasks' },
       h('div', { class: 'fw-progress' }, progressBar, progressText),
       row);
-    return { el, cards, progressBar, progressText };
+    return { el, cards, progressBar, progressText, badge };
   }
 
-  function taskCard(part, task, number) {
+  // previous: the number of the Task before this one, which unlocks it.
+  function taskCard(part, task, number, previous) {
     const answers = []; // [{ id, read(), write(value), field }]
     const questions = (task.questions ?? []).map((q, i) => {
       const promptId = `fw-q-${part.id}-${task.id}-${q.id}`;
@@ -141,7 +145,7 @@ export function mountActivity(tool, activity, root, { conditionTypes, storage = 
     const given = () => Object.fromEntries(answers.map((a) => [a.id, a.read()]).filter(([, v]) => v !== undefined));
 
     const check = h('span', { class: 'fw-task-check', 'aria-hidden': 'true' });
-    const lockedNote = h('span', { class: 'fw-task-locked', hidden: true }, 'Locked');
+    const lockedNote = h('span', { class: 'fw-task-locked', hidden: true }, `Locked until ${previous} is done`);
     const submit = h('button', { type: 'button', class: 'fw-button', 'aria-label': `Submit ${number}` }, 'Submit');
     const feedback = h('span', { class: 'fw-task-feedback', role: 'status', 'aria-label': `${number} feedback` });
     const hint = h('div', { class: 'fw-task-hint', hidden: true });
@@ -216,6 +220,8 @@ export function mountActivity(tool, activity, root, { conditionTypes, storage = 
       const passed = part.tasks.filter((t) => t.status === 'passed').length;
       view.progressBar.value = passed;
       view.progressText.textContent = `${passed} of ${part.tasks.length} Tasks done`;
+      view.badge.textContent = `${passed}/${part.tasks.length}`;
+      view.badge.dataset.done = String(passed === part.tasks.length);
       for (const t of part.tasks) view.cards[t.id].update();
     }
   }
