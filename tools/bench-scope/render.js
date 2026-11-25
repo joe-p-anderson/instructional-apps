@@ -101,6 +101,32 @@ export function renderScreen(g, frame, profile) {
   }
   g.restore();
 
+  // Trigger markers: the level as an arrow on the right edge in the source colour, the
+  // trigger point as a "T" flag along the top. Off-screen positions pin to the edge.
+  const m = frame.markers ?? {};
+  const s = Math.max(4, Math.round(py / 6));
+  if (m.triggerLevel) {
+    const Y = Math.min(plot.y + plot.h, Math.max(plot.y, toY(m.triggerLevel.y)));
+    const R = plot.x + plot.w;
+    g.fillStyle = colors[m.triggerLevel.channel] ?? colors.text;
+    g.beginPath();
+    g.moveTo(R - 2 * s, Y);
+    g.lineTo(R, Y - s);
+    g.lineTo(R, Y + s);
+    g.closePath();
+    g.fill();
+  }
+  if (m.triggerPoint) {
+    const X = Math.min(plot.x + plot.w, Math.max(plot.x, toX(m.triggerPoint.x)));
+    g.fillStyle = colors.text;
+    g.beginPath();
+    g.moveTo(X, plot.y + 2 * s);
+    g.lineTo(X - s, plot.y);
+    g.lineTo(X + s, plot.y);
+    g.closePath();
+    g.fill();
+  }
+
   // Readouts.
   g.font = font;
   g.textBaseline = 'middle';
