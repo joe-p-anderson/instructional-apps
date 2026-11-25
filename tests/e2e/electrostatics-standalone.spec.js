@@ -27,7 +27,7 @@ test('the Electric field tab loads with every Control shown and unlocked', async
     await expect(page.getByRole('button', { name })).toBeEnabled();
   }
   await expect(page.getByLabel('θ arc picker')).toBeVisible();
-  await expect(page.getByLabel('E₀ joystick')).toBeVisible();
+  await expect(page.getByRole('tabpanel', { name: 'Electric field' }).getByLabel('E₀ joystick')).toBeVisible();
   await expect(page.getByRole('checkbox', { name: 'Induced charges' })).not.toBeChecked();
   await expect(page.getByRole('checkbox', { name: 'Charge overlay' })).toBeChecked();
 
@@ -79,7 +79,7 @@ test('typing E₀x and E₀y sets E₀; its magnitude is kept to 2000 V/m', asyn
 
 test('the joystick sets E₀ by dragging, but not while locked', async ({ page }) => {
   await open(page);
-  const stick = page.getByLabel('E₀ joystick');
+  const stick = page.getByRole('tabpanel', { name: 'Electric field' }).getByLabel('E₀ joystick');
   const box = await stick.boundingBox();
   const cx = box.x + box.width / 2;
   const cy = box.y + box.height / 2;

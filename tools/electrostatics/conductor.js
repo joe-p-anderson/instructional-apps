@@ -120,6 +120,28 @@ export function polarE0(E0x, E0y) {
   return { mag: Math.hypot(E0x, E0y), angle: Math.atan2(E0y, E0x) * 180 / Math.PI };
 }
 
+// ── Gauss's law: flux through a circular Gaussian surface ──
+const GAUSS_SAMPLES = 101;
+
+/**
+ * E·n̂ (V/m) round a circular Gaussian surface centred at (xc, yc) cm with radius r cm, for a
+ * conductor carrying λ nC/m with induced charges on in an applied field (E0x, E0y), and the
+ * enclosed charge Qenc = ε₀ ∮ E·n̂ dl in nC/m. As in the old app, the field is the 1/r line-charge
+ * one (cyl), the GAUSS_SAMPLES angles run 0 to 2π inclusive and the mean divides by all of them.
+ * So the t = 0 sample counts twice, biasing Qenc by ε₀·flux[0]·2πr/n: kept, as the old app showed it.
+ * Returns { t (rad), flux, Qenc }.
+ */
+export function gaussFlux({ lambda = 0, E0x = 0, E0y = 0, xc = 0, yc = 0, r = 2 } = {}, n = GAUSS_SAMPLES) {
+  const t = linspace(0, 2 * Math.PI, n);
+  const params = { Q: lambda, E0x, E0y, induce: true, cyl: true };
+  const flux = t.map((a) => {
+    const [ex, ey] = fieldAt(r * Math.cos(a) + xc, r * Math.sin(a) + yc, params);
+    return ex * Math.cos(a) + ey * Math.sin(a);
+  });
+  const Qenc = flux.reduce((s, v) => s + v, 0) / n * EPS0 * 2 * Math.PI * r * 1e-2 * 1e9;
+  return { t, flux, Qenc };
+}
+
 // ── Charge overlay: fixed protons and mobile electrons in the bulk, electrons on the surface ──
 const CELL = 2;             // lattice spacing (cm)
 const DRIFT = 0.030;        // electron drift per frame (cm)

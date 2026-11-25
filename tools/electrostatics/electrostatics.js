@@ -9,8 +9,9 @@
 
 import { defineTool } from '../../framework/v1/tool.js';
 import * as electricField from './modes/electric-field.js';
+import * as gauss from './modes/gauss.js';
 
-const MODES = [electricField];
+const MODES = [electricField, gauss];
 
 function mount(container, modeId = MODES[0].id, setup = {}) {
   const mode = MODES.find((m) => m.id === modeId);
