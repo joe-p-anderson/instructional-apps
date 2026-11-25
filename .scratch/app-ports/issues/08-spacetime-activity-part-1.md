@@ -13,29 +13,33 @@ Work is judged only on Submit, is autosaved, and can be downloaded as a Report.
 
 **Blocked by:** 07
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] The Activity has id `spacetime-lab10`, course "PHY 1200" and title "Spacetime Diagrams". Its page passes the spacetime Condition types to the runner.
-- [ ] The Part 1 Setup:
-  - [ ] v = 0.6, with v, γ and flip locked;
-  - [ ] the K′ grid drawn over the Earth diagram;
-  - [ ] the K′ panel, `primed` and the measurements panel hidden;
-  - [ ] an empty diagram;
-  - [ ] the event and worldline tools shown, and the rod and join tools hidden.
-- [ ] Tasks 1.1–1.7 are as in the spec's table. Their Conditions, numeric and choice keys, and answer-revealing Hints are encoded. Tolerances are ±0.1 for positions, ±0.01 for velocities and ±0.1 for numeric answers.
-- [ ] Points:
-  - [ ] each Task with a Condition earns 1 point, and Tasks without a Condition earn none of their own;
-  - [ ] each Question earns 1 point;
-  - [ ] Part 1 totals 13.
-- [ ] A Node test drives Part 1 through the runner core with a stub Tool whose `diagram` is built from real objects. It checks that:
-  - [ ] each Condition fails on an empty diagram and passes on the handout's answer diagram;
-  - [ ] Control exposure is right (v locked, `primed` hidden, rod and join hidden);
-  - [ ] Hints appear after 3 misses;
-  - [ ] Part 1 totals 13;
-  - [ ] every encoded key decodes.
-- [ ] A Playwright end-to-end test checks that:
-  - [ ] the name gate works;
-  - [ ] drawing the Part 1 worldlines with the real drawing tools passes on Submit;
-  - [ ] rocket coordinates aren't visible anywhere;
-  - [ ] a reload restores progress;
-  - [ ] the Report opens in the Report Viewer.
+- [x] The Activity has id `spacetime-lab10`, course "PHY 1200" and title "Spacetime Diagrams". Its page passes the spacetime Condition types to the runner.
+- [x] The Part 1 Setup:
+  - [x] v = 0.6, with v, γ and flip locked;
+  - [x] the K′ grid drawn over the Earth diagram;
+  - [x] the K′ panel, `primed` and the measurements panel hidden;
+  - [x] an empty diagram;
+  - [x] the event and worldline tools shown, and the rod and join tools hidden.
+- [x] Tasks 1.1–1.7 are as in the spec's table. Their Conditions, numeric and choice keys, and answer-revealing Hints are encoded. Tolerances are ±0.1 for positions, ±0.01 for velocities and ±0.1 for numeric answers.
+- [x] Points:
+  - [x] each Task with a Condition earns 1 point, and Tasks without a Condition earn none of their own;
+  - [x] each Question earns 1 point;
+  - [x] Part 1 totals 13.
+- [x] A Node test drives Part 1 through the runner core with a stub Tool whose `diagram` is built from real objects. It checks that:
+  - [x] each Condition fails on an empty diagram and passes on the handout's answer diagram;
+  - [x] Control exposure is right (v locked, `primed` hidden, rod and join hidden);
+  - [x] Hints appear after 3 misses;
+  - [x] Part 1 totals 13;
+  - [x] every encoded key decodes.
+- [x] A Playwright end-to-end test checks that:
+  - [x] the name gate works;
+  - [x] drawing the Part 1 worldlines with the real drawing tools passes on Submit;
+  - [x] rocket coordinates aren't visible anywhere;
+  - [x] a reload restores progress;
+  - [x] the Report opens in the Report Viewer.
+
+## Comments
+
+- 2026-11-25: Implemented on the `app-ports` integration branch (merge 08c3908); code-review fixes in 7c50e19. The Event tool now adds an event when pressed on a worldline (needed to mark E and F). Review fix: K′ tick numbers are no longer drawn on the K panel while primed is off or hidden.

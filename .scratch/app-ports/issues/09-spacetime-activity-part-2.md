@@ -13,16 +13,20 @@ The old spacetime-diagrams HTML file is deleted, and the Lab 10 handout source m
 
 **Blocked by:** 08
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] The Part 2 Setup matches Part 1's: v = 0.6 and locked, the K′ grid overlaid, the K′ panel, `primed` and measurements hidden, and an empty diagram. The rod tool is hidden until Task 2.5 and shown from then on.
-- [ ] Tasks 2.1–2.5 are as in the spec's table, with encoded Conditions, keys and Hints, and the same tolerances as Part 1.
-- [ ] Part 2 totals 11 points, and the whole Activity totals 24.
-- [ ] The Node Activity test is extended to check that:
-  - [ ] Part 2's Conditions fail on an empty diagram and pass on the handout's answer diagram;
-  - [ ] the rod tool is hidden until Task 2.5;
-  - [ ] the B–F rod Condition passes only for a rod with its ends at B and F;
-  - [ ] the totals are 11 and 24.
-- [ ] The Playwright end-to-end test covers Task 2.5: laying a rod in the rocket's frame from B to F passes on Submit.
-- [ ] The old spacetime-diagrams HTML file is deleted, and the Lab 10 handout source moves into the spacetime Tool's folder.
-- [ ] The repo README lists the links to the spacetime Tool and Activity.
+- [x] The Part 2 Setup matches Part 1's: v = 0.6 and locked, the K′ grid overlaid, the K′ panel, `primed` and measurements hidden, and an empty diagram. The rod tool is hidden until Task 2.5 and shown from then on.
+- [x] Tasks 2.1–2.5 are as in the spec's table, with encoded Conditions, keys and Hints, and the same tolerances as Part 1.
+- [x] Part 2 totals 11 points, and the whole Activity totals 24.
+- [x] The Node Activity test is extended to check that:
+  - [x] Part 2's Conditions fail on an empty diagram and pass on the handout's answer diagram;
+  - [x] the rod tool is hidden until Task 2.5;
+  - [x] the B–F rod Condition passes only for a rod with its ends at B and F;
+  - [x] the totals are 11 and 24.
+- [x] The Playwright end-to-end test covers Task 2.5: laying a rod in the rocket's frame from B to F passes on Submit.
+- [x] The old spacetime-diagrams HTML file is deleted, and the Lab 10 handout source moves into the spacetime Tool's folder.
+- [x] The repo README lists the links to the spacetime Tool and Activity.
+
+## Comments
+
+- 2026-11-25: Implemented on the `app-ports` integration branch (merge 77af145); code-review fixes in 7c50e19.

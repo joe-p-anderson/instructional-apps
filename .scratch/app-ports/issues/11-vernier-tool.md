@@ -13,33 +13,37 @@ A reload or a share link shows the same reading. The old vernier-trainer page is
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] The Tool is defined with id `vernier` and one Mode, `caliper`.
-- [ ] A DOM-free module holds:
-  - [ ] the seeded reading generator, driven by a seed and a draw counter, with the same ranges per measurement type as today;
-  - [ ] the reading breakdown (the main-scale mark, the matching vernier line and the matching main-scale line);
-  - [ ] answer judging: a comma is accepted as the decimal separator; non-numbers and values that aren't multiples of 0.05 mm are rejected with the existing messages; an answer is correct when it rounds to the generated number of twentieths.
-- [ ] Controls:
-  - [ ] selects for measurement type and zoom;
-  - [ ] the reading input, with Check, Show answer and Next;
-  - [ ] the counter readouts.
-- [ ] The Setup accepts the measurement type, seed and zoom.
-- [ ] The State holds:
-  - [ ] the measurement type, seed and zoom;
-  - [ ] the reading in mm and its parts;
-  - [ ] whether it has been answered;
-  - [ ] the Correct, Attempts and Streak counters.
-- [ ] Serialization covers the seed, the draw counter, the counters and the zoom, so a reload shows the same reading.
-- [ ] The caliper Display:
-  - [ ] the Inkscape caliper SVG moves to its own asset, which the Tool loads and clones per instance with its ids made unique;
-  - [ ] the hatch, object and highlight groups are injected per instance;
-  - [ ] the PNG snapshot renders the SVG;
-  - [ ] dark mode is dropped.
-- [ ] Node tests cover:
-  - [ ] the same seed and counter giving the same reading;
-  - [ ] readings staying in range for each measurement type;
-  - [ ] the breakdown;
-  - [ ] each answer-judging case.
-- [ ] A Playwright Standalone smoke test checks that two instances on one page don't clash, that Check accepts the correct reading and rejects a wrong one, and that a reload and a share link restore the same reading.
-- [ ] The old vernier-trainer page is deleted, along with its folder if that leaves it empty. The repo README links the Tool.
+- [x] The Tool is defined with id `vernier` and one Mode, `caliper`.
+- [x] A DOM-free module holds:
+  - [x] the seeded reading generator, driven by a seed and a draw counter, with the same ranges per measurement type as today;
+  - [x] the reading breakdown (the main-scale mark, the matching vernier line and the matching main-scale line);
+  - [x] answer judging: a comma is accepted as the decimal separator; non-numbers and values that aren't multiples of 0.05 mm are rejected with the existing messages; an answer is correct when it rounds to the generated number of twentieths.
+- [x] Controls:
+  - [x] selects for measurement type and zoom;
+  - [x] the reading input, with Check, Show answer and Next;
+  - [x] the counter readouts.
+- [x] The Setup accepts the measurement type, seed and zoom.
+- [x] The State holds:
+  - [x] the measurement type, seed and zoom;
+  - [x] the reading in mm and its parts;
+  - [x] whether it has been answered;
+  - [x] the Correct, Attempts and Streak counters.
+- [x] Serialization covers the seed, the draw counter, the counters and the zoom, so a reload shows the same reading.
+- [x] The caliper Display:
+  - [x] the Inkscape caliper SVG moves to its own asset, which the Tool loads and clones per instance with its ids made unique;
+  - [x] the hatch, object and highlight groups are injected per instance;
+  - [x] the PNG snapshot renders the SVG;
+  - [x] dark mode is dropped.
+- [x] Node tests cover:
+  - [x] the same seed and counter giving the same reading;
+  - [x] readings staying in range for each measurement type;
+  - [x] the breakdown;
+  - [x] each answer-judging case.
+- [x] A Playwright Standalone smoke test checks that two instances on one page don't clash, that Check accepts the correct reading and rejects a wrong one, and that a reload and a share link restore the same reading.
+- [x] The old vernier-trainer page is deleted, along with its folder if that leaves it empty. The repo README links the Tool.
+
+## Comments
+
+- 2026-11-25: Implemented on the `app-ports` integration branch (merge 538b654); code-review fixes in 7c50e19.
