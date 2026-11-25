@@ -1,7 +1,11 @@
 // The source panel: UI-kit Controls that set what is wired to the scope inputs.
 // Every Control action becomes one engine setSource(patch) event.
 //
-// createSourcePanel({ values, onPatch }) -> { el, controls: { [id]: Control }, sync(values) }
+// createSourcePanel({ values, onPatch }) -> { quick, more, controls: { [id]: Control }, sync(values) }
+//   quick     the 'CH1 generator' section: CH1 waveform and frequency, the Controls a student
+//             reaches for most (bench-scope keeps it in the Controls strip)
+//   more      the other sections, 'CH1 output' (amplitude, DC offset) and 'CH2 source'
+//             (bench-scope puts them in a drawer that opens over the Display)
 //   values    the engine's State (source keys gen1Wave, gen1Freq, ..., ch2Source, ...)
 //   onPatch   (patch) => void, e.g. { gen1Freq: 2000 }
 //   sync      show new values (after a restore) without re-sending them
@@ -81,12 +85,15 @@ export function createSourcePanel({ values, onPatch }) {
   }
   showRelevant();
 
-  const el = h('div', { class: 'bs-source-panel' },
-    section('CH1 generator', ...ch1Specs.map(([id]) => controls[id].el)),
-    section('CH2 source', ...ch2Specs.map(([id]) => wrappers[id])));
+  const quick = section('CH1 generator', controls['gen1-wave'].el, controls['gen1-freq'].el);
+  const more = [
+    section('CH1 output', controls['gen1-vpp'].el, controls['gen1-offset'].el),
+    section('CH2 source', ...ch2Specs.map(([id]) => wrappers[id])),
+  ];
 
   return {
-    el,
+    quick,
+    more,
     controls,
     sync(next) {
       syncing = true;

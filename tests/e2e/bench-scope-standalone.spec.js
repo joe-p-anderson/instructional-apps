@@ -1,5 +1,6 @@
 // Seam 2 (Spec 0002): the real bench-scope Standalone page.
 import { test, expect } from '@playwright/test';
+import { openSourceDrawer } from './helpers/bench-drawer.js';
 import { installScreenReader } from './helpers/bench-screen.js';
 
 test.beforeEach(({ page }) => installScreenReader(page));
@@ -53,6 +54,7 @@ test('the screen canvas sits on the panel screen and draws the CH1 trace', async
 
 test('the source Controls are shown, registered and unlocked', async ({ page }) => {
   await open(page);
+  await openSourceDrawer(page);
   await expect(page.getByRole('combobox', { name: 'CH1 waveform', exact: true })).toBeEnabled();
   for (const name of ['CH1 frequency', 'CH1 amplitude', 'CH1 offset']) {
     await expect(page.getByRole('slider', { name, exact: true })).toBeEnabled();
@@ -85,12 +87,14 @@ test('changing the generator updates State and the trace', async ({ page }) => {
 
 test('a reload keeps the setup, and a share link reproduces it elsewhere', async ({ page, browser }) => {
   await open(page);
+  await openSourceDrawer(page);
   await setNumber(page, 'CH1 amplitude', 6.5);
   await setNumber(page, 'CH1 offset', -1);
 
   await page.reload();
   await page.waitForFunction(() => window.toolHost);
   expect(await snapshot(page)).toMatchObject({ gen1Vpp: 6.5, gen1Offset: -1 });
+  await openSourceDrawer(page);
   await expect(page.getByRole('spinbutton', { name: 'CH1 amplitude', exact: true })).toHaveValue(/^6\.5/);
 
   await page.getByRole('button', { name: 'Copy share link' }).click();

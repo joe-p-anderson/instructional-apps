@@ -1,5 +1,6 @@
 // Seam 2 (Spec 0002), ticket 06: the CH2 source Controls on the real bench-scope Standalone page.
 import { test, expect } from '@playwright/test';
+import { openSourceDrawer } from './helpers/bench-drawer.js';
 import { installScreenReader } from './helpers/bench-screen.js';
 
 test.beforeEach(({ page }) => installScreenReader(page));
@@ -29,6 +30,7 @@ test('choosing band-pass reveals the Q Control, switching away hides it, and CH2
   await open(page);
   const svg = page.locator('svg[data-model]');
   await svg.locator('.osc-control[data-control="ch2-menu"]').click(); // show CH2
+  await openSourceDrawer(page);
   const sourceSel = page.getByRole('combobox', { name: 'CH2 source', exact: true });
   const q = page.getByRole('spinbutton', { name: 'CH2 Q', exact: true });
   const f0 = page.getByRole('spinbutton', { name: 'CH2 centre frequency', exact: true });
@@ -82,6 +84,7 @@ test('the CH2 source Controls are registered, and the right ones show after a re
     const saved = inst.serialize();
     inst.restore({ ...saved, source: { ...saved.source, ch2Source: 'bandpass', ch2Q: 7 } });
   });
+  await openSourceDrawer(page);
   await expect(page.getByRole('combobox', { name: 'CH2 source', exact: true })).toHaveValue('bandpass');
   await expect(page.getByRole('spinbutton', { name: 'CH2 Q', exact: true })).toHaveValue('7.0');
 });

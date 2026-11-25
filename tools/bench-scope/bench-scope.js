@@ -13,8 +13,10 @@
 //   not included).
 //
 // Layout: 'banner'. The front panel (inlined SVG with the screen canvas over it) is scaled to
-// fit the full-width Display area, keeping its aspect ratio, and sits at its bottom edge; the
-// skin switcher and the source panel's sections sit side by side in the Controls strip below.
+// fit the full-width Display area, keeping its aspect ratio, and sits at its bottom edge. The
+// Controls strip below is one row: the skin switcher, CH1 waveform and frequency, and a button
+// ("More source controls") that opens the rest of the source panel in a drawer over the bottom
+// of the Display (Escape or Close shuts it).
 // The screen canvas is drawn at its displayed size times devicePixelRatio (the renderer draws in
 // native screen pixels under a scale transform), so its readouts stay sharp; the Display
 // snapshot is drawn on a separate canvas at native resolution.
@@ -45,41 +47,46 @@ const svgTexts = Object.fromEntries(await Promise.all(SKIN_IDS.map(async (id) =>
   return [id, await (await fetch(here(`./panels/${profile.panel}`))).text()];
 })));
 
+let drawerCount = 0;
+
 const CSS = `
 .bs-tool .fw-displays { container-type: size; overflow: hidden; padding: 0; align-items: center; justify-content: flex-end; }
 .bs-panel { position: relative; flex: none; width: min(100cqw, 100cqh * var(--bs-aspect, 2.28)); line-height: 0; }
 .bs-panel-svg { width: 100%; height: auto; display: block; user-select: none; }
-/* Bench-scope's refinement of the banner layout's Controls strip, under its own root class
-   (README, "Panel layouts"): each section is its label, set vertically, then its Controls in
-   columns of two rows, compacted so the strip stays about 90 px tall and the front panel can
-   fill the Display. */
-.fw-layout-banner .bs-tool .bs-source-panel { display: contents; }
-.fw-layout-banner .bs-tool .fw-controls { line-height: 1.2; }
-.fw-layout-banner .bs-tool .fw-controls .fw-section,
-.fw-layout-banner .bs-tool .fw-controls > .fw-section:first-child {
-  flex: 0 0 auto; display: grid; grid-auto-flow: column; grid-template-rows: auto auto;
-  grid-template-columns: min-content; grid-auto-columns: auto; gap: 1px 10px;
-  align-content: center; align-items: center; padding: 2px 10px 2px 4px;
+/* Bench-scope's refinement of the banner layout (README, "Panel layouts"), under its own root
+   class: the Controls strip is one row (Model, CH1 waveform and frequency, and the button that
+   opens the source drawer), so the front panel keeps nearly all the height. The drawer holds the
+   other source Controls at full size and opens over the bottom of the Display. */
+.fw-layout-banner .bs-tool .fw-controls { align-items: center; gap: 0; padding: 4px 8px; }
+.fw-layout-banner .bs-tool .fw-controls > .fw-section {
+  flex: 0 0 auto; align-self: stretch; display: flex; align-items: center; gap: 14px; padding: 0 16px 0 0; margin-right: 16px;
   border-bottom: none; border-right: 1px solid var(--fw-border);
 }
-.fw-layout-banner .bs-tool .fw-controls .fw-section:last-child { border-right: none; }
-.fw-layout-banner .bs-tool .fw-controls .fw-section > .fw-section-label {
-  grid-row: 1 / span 2; margin: 0; writing-mode: vertical-rl; transform: rotate(180deg);
-  inline-size: 84px; text-align: center; font-size: 11px; letter-spacing: 0.02em; line-height: 1.1;
-}
-.fw-layout-banner .bs-tool .fw-controls .fw-section > :not(.fw-section-label) { width: 170px; }
-.fw-layout-banner .bs-tool .fw-controls .fw-section > :is(.bs-freq-dial, .bs-source-slot:has(.bs-freq-dial)),
-.fw-layout-banner .bs-tool .fw-controls .fw-section > .fw-section-label + .bs-source-slot { width: 200px; }
-/* The skin switcher's "Model" select says what it is: its section label is for screen readers only. */
+.fw-layout-banner .bs-tool .fw-controls > .fw-section > .fw-section-label { margin: 0; white-space: nowrap; }
 .fw-layout-banner .bs-tool .fw-controls .bs-skin-switcher > .fw-section-label {
   position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
 }
-.fw-layout-banner .bs-tool .fw-controls .bs-skin-switcher > .fw-select { width: 200px; }
 .fw-layout-banner .bs-tool .fw-controls :is(.fw-slider, .fw-select) { margin-bottom: 0; }
+.fw-layout-banner .bs-tool .fw-controls .fw-select { width: 210px; }
+.fw-layout-banner .bs-tool .fw-controls .bs-freq-dial { width: 300px; }
 .fw-layout-banner .bs-tool .fw-controls .fw-select select { flex: 1; min-width: 0; }
 .fw-layout-banner .bs-tool .fw-slider-header { margin-bottom: 0; }
-.fw-layout-banner .bs-tool .fw-controls :is(.fw-number, .fw-reset, select, .bs-freq-range) { font-size: 14px; padding-top: 0; padding-bottom: 0; }
-.fw-layout-banner .bs-tool .fw-controls .fw-number { width: 62px; }
+.bs-drawer-toggle { margin-left: auto; white-space: nowrap; }
+.bs-drawer-toggle::after { content: ' ▴'; }
+.bs-drawer-toggle[aria-expanded="true"]::after { content: ' ▾'; }
+.bs-tool .fw-displays { position: relative; }
+.bs-source-drawer {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: flex-start;
+  max-height: 100%; overflow: auto; background: var(--fw-surface); border-top: 2px solid var(--fw-border-dk);
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.18); line-height: normal;
+}
+.bs-source-drawer[hidden] { display: none; }
+.bs-source-drawer > .fw-section { flex: 1 1 280px; border-bottom: none; border-right: 1px solid var(--fw-border); }
+.bs-source-drawer > .fw-section:first-child { flex: 0 1 300px; }
+.bs-source-drawer .bs-source-slot[hidden] { display: none; }
+.bs-source-drawer > .fw-section:last-of-type { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); column-gap: 18px; align-content: start; border-right: none; }
+.bs-source-drawer > .fw-section:last-of-type > .fw-section-label { grid-column: 1 / -1; }
+.bs-drawer-close { position: absolute; top: 6px; right: 8px; }
 .bs-screen { position: absolute; image-rendering: pixelated; pointer-events: none; }
 .bs-panel .osc-control { cursor: pointer; }
 .bs-panel .osc-control[data-active="false"] { cursor: not-allowed; opacity: .45; }
@@ -164,9 +171,22 @@ function mount(container, modeId = 'scope', setup = {}) {
   }
   sizer.observe(panel.canvas);
 
-  const displaysEl = h('div', { class: 'fw-displays' }, panel.el);
+  // The source drawer: the source Controls not in the strip, over the bottom of the Display.
+  const drawerId = `bs-source-drawer-${++drawerCount}`;
+  const toggle = h('button', { type: 'button', class: 'fw-button bs-drawer-toggle', 'aria-expanded': 'false',
+    'aria-controls': drawerId, onclick: () => setDrawer(drawer.hidden) }, 'More source controls');
+  const drawer = h('div', { class: 'bs-source-drawer', id: drawerId, role: 'region', 'aria-label': 'Source controls', hidden: true,
+    onkeydown: (e) => { if (e.key === 'Escape') { setDrawer(false); toggle.focus(); } } },
+    ...source.more,
+    h('button', { type: 'button', class: 'fw-button bs-drawer-close', onclick: () => { setDrawer(false); toggle.focus(); } }, 'Close'));
+  function setDrawer(open) {
+    drawer.hidden = !open;
+    toggle.setAttribute('aria-expanded', String(open));
+  }
+
+  const displaysEl = h('div', { class: 'fw-displays' }, panel.el, drawer);
   const root = h('div', { class: 'fw-tool bs-tool', 'data-tool': 'bench-scope' },
-    h('aside', { class: 'fw-controls' }, switcher.el, source.el),
+    h('aside', { class: 'fw-controls' }, switcher.el, source.quick, toggle),
     displaysEl);
   container.append(root);
 
@@ -186,7 +206,7 @@ function mount(container, modeId = 'scope', setup = {}) {
       if (old.get(c.id)?.isLocked()) c.lock();
       if (old.get(c.id)?.isHidden()) c.hide();
     }
-    displaysEl.append(panel.el);
+    displaysEl.prepend(panel.el);
     g = panel.canvas.getContext('2d');
     sizer.disconnect();
     sizer.observe(panel.canvas);

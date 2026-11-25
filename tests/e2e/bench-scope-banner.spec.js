@@ -1,6 +1,7 @@
 // Theme refresh ticket 03: bench-scope uses the banner layout and its front panel fills the
 // full-width Display, so the panel labels are readable at 1366×768.
 import { test, expect } from '@playwright/test';
+import { openSourceDrawer } from './helpers/bench-drawer.js';
 
 const PAGE = '/tools/bench-scope/';
 
@@ -36,7 +37,7 @@ const noPageScroll = (page) => page.evaluate(() => {
   return s.scrollHeight <= innerHeight && s.scrollWidth <= innerWidth;
 });
 
-test('bench-scope declares the banner layout: source panel sections side by side below the Display', async ({ page }) => {
+test('bench-scope declares the banner layout: the strip sections side by side below the Display', async ({ page }) => {
   await open(page);
   await expect(page.locator('.fw-app')).toHaveClass(/\bfw-layout-banner\b/);
   const panel = page.getByRole('tabpanel');
@@ -76,23 +77,62 @@ for (const skin of ['tbs2072b', 'tds2001c']) {
   });
 }
 
-test('with CH2 on its independent generator every Control fits the strip, and the labels stay at least 11 px', async ({ page }) => {
+test('the Controls strip is one row of comfortable height, so the front panel keeps the height', async ({ page }) => {
   await open(page);
-  await page.getByRole('combobox', { name: 'CH2 source', exact: true }).selectOption('independent');
-  await expect(page.getByRole('spinbutton', { name: 'CH2 phase', exact: true })).toBeVisible();
-  const strip = await page.locator('.fw-controls').evaluate((e) => [e.scrollWidth, e.clientWidth]);
-  expect(strip[0]).toBeLessThanOrEqual(strip[1]);
-  expect(await medianLabelHeight(page)).toBeGreaterThanOrEqual(11);
-  expect(await noPageScroll(page)).toBe(true);
+  const strip = page.locator('.fw-controls');
+  const [scrollW, clientW] = await strip.evaluate((e) => [e.scrollWidth, e.clientWidth]);
+  expect(scrollW).toBeLessThanOrEqual(clientW);
+  for (const name of ['Oscilloscope model', 'CH1 waveform']) {
+    const sel = page.getByRole('combobox', { name, exact: true });
+    await expect(sel).toBeVisible();
+    expect((await box(sel)).height, name).toBeGreaterThanOrEqual(22);
+  }
+  await expect(page.getByRole('slider', { name: 'CH1 frequency', exact: true })).toBeVisible();
+  expect((await box(strip)).height).toBeLessThanOrEqual(70);
+  // The other source Controls wait in the closed drawer.
+  await expect(page.getByRole('spinbutton', { name: 'CH1 amplitude', exact: true })).toBeHidden();
+  await expect(page.getByRole('combobox', { name: 'CH2 source', exact: true })).toBeHidden();
 });
 
-test('the Controls strip section labels are at least 11 px', async ({ page }) => {
+test('the Controls strip section label is at least 11 px', async ({ page }) => {
   await open(page);
-  for (const name of ['CH1 generator', 'CH2 source']) {
-    const label = page.locator('.fw-controls').getByText(name, { exact: true });
+  const label = page.locator('.fw-controls').getByText('CH1 generator', { exact: true });
+  await expect(label).toBeVisible();
+  expect(parseFloat(await label.evaluate((e) => getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(11);
+});
+
+test('the source drawer opens over the Display, holds the other source Controls, and Escape closes it', async ({ page }) => {
+  await open(page);
+  const toggle = page.getByRole('button', { name: 'More source controls' });
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await openSourceDrawer(page);
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  const drawer = page.getByRole('region', { name: 'Source controls' });
+  const d = await box(drawer);
+  const displays = await box(page.locator('.fw-displays'));
+  expect(d.top).toBeGreaterThanOrEqual(displays.top - 1);
+  expect(d.bottom).toBeLessThanOrEqual(displays.bottom + 1);
+
+  await page.getByRole('combobox', { name: 'CH2 source', exact: true }).selectOption('independent');
+  for (const name of ['CH1 amplitude', 'CH1 offset', 'CH2 amplitude', 'CH2 phase']) {
+    await expect(page.getByRole('spinbutton', { name, exact: true }), name).toBeVisible();
+  }
+  for (const name of ['CH1 output', 'CH2 source']) {
+    const label = drawer.getByText(name, { exact: true });
     await expect(label).toBeVisible();
     expect(parseFloat(await label.evaluate((e) => getComputedStyle(e).fontSize)), name).toBeGreaterThanOrEqual(11);
   }
+  expect(await noPageScroll(page)).toBe(true);
+
+  await page.getByRole('spinbutton', { name: 'CH1 amplitude', exact: true }).focus();
+  await page.keyboard.press('Escape');
+  await expect(drawer).toBeHidden();
+  await expect(toggle).toBeFocused();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+  await toggle.click();
+  await drawer.getByRole('button', { name: 'Close' }).click();
+  await expect(drawer).toBeHidden();
 });
 
 test('the screen canvas backing store matches its displayed size times devicePixelRatio', async ({ browser }) => {

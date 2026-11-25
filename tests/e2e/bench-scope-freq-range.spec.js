@@ -1,6 +1,7 @@
 // Seam 2 (Spec 0002): the source panel's frequency Controls work like an analog function
 // generator's: a decade Range selector plus a linear dial within that range.
 import { test, expect } from '@playwright/test';
+import { openSourceDrawer } from './helpers/bench-drawer.js';
 
 const PAGE = '/tools/bench-scope/';
 
@@ -57,6 +58,7 @@ test('the range selectors are registered Controls, and locking the frequency loc
 
 test('the band-pass centre frequency has its own range selector', async ({ page }) => {
   await open(page);
+  await openSourceDrawer(page);
   await page.getByRole('combobox', { name: 'CH2 source', exact: true }).selectOption('bandpass');
   const range = page.getByRole('combobox', { name: 'CH2 centre frequency range', exact: true });
   await expect(range).toBeVisible();
