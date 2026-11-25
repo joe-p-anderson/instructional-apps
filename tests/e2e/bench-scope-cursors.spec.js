@@ -1,6 +1,9 @@
 // Seam 2 (Spec 0002), ticket 09: cursors on the real bench-scope Standalone page.
 // Turn on time cursors from the Cursor menu, turn the multipurpose knob, and the Δt readout changes.
 import { test, expect } from '@playwright/test';
+import { installScreenReader } from './helpers/bench-screen.js';
+
+test.beforeEach(({ page }) => installScreenReader(page));
 
 const PAGE = '/tools/bench-scope/';
 const SKINS = [
@@ -21,8 +24,8 @@ const snapshot = (page) => page.evaluate(() => window.toolHost.instances[0].stat
 const control = (page, skin, id) => page.locator(`svg[data-model="${skin.model}"] .osc-control[data-control="${id}"]`);
 
 /** The canvas's top strip (status row, where the cursor readouts go) as a string of pixel bytes. */
-const topStrip = (page, skin) => page.evaluate(({ plot }) => {
-  const cv = document.querySelector('canvas.bs-screen');
+const topStrip = (page, skin) => page.evaluate(async ({ plot }) => {
+  const cv = await window.nativeScreen();
   return Array.from(cv.getContext('2d').getImageData(0, 0, plot.x + plot.w, plot.y).data).join(',');
 }, { plot: skin.plot });
 

@@ -1,5 +1,8 @@
 // Seam 2 (Spec 0002): the real bench-scope Standalone page.
 import { test, expect } from '@playwright/test';
+import { installScreenReader } from './helpers/bench-screen.js';
+
+test.beforeEach(({ page }) => installScreenReader(page));
 
 const PAGE = '/tools/bench-scope/';
 const SOURCE_CONTROLS = ['gen1-wave', 'gen1-freq', 'gen1-vpp', 'gen1-offset'];
@@ -18,8 +21,8 @@ async function setNumber(page, name, value) {
 const snapshot = (page) => page.evaluate(() => window.toolHost.instances[0].state.snapshot());
 
 /** Pixels on the scope screen canvas that are (roughly) the CH1 trace colour. */
-const ch1Pixels = (page) => page.evaluate(() => {
-  const cv = document.querySelector('canvas.bs-screen');
+const ch1Pixels = (page) => page.evaluate(async () => {
+  const cv = await window.nativeScreen();
   const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
   let n = 0;
   for (let i = 0; i < d.length; i += 4) if (d[i] > 180 && d[i + 1] > 180 && d[i + 2] < 120) n += 1;
@@ -34,11 +37,10 @@ test('the page shows one Mode tab and the TBS2072B panel with its screen', async
   await expect(page.locator('svg[data-model="TBS2072B"]')).toBeVisible();
 });
 
-test('the screen canvas sits on the panel screen at 800×480 and draws the CH1 trace', async ({ page }) => {
+test('the screen canvas sits on the panel screen and draws the CH1 trace', async ({ page }) => {
   await open(page);
   const canvas = page.locator('canvas.bs-screen');
   await expect(canvas).toBeVisible();
-  expect(await canvas.evaluate((c) => [c.width, c.height])).toEqual([800, 480]);
   expect(await canvas.evaluate((c) => getComputedStyle(c).imageRendering)).toBe('pixelated');
 
   // Overlaid on the control map's screen rectangle.

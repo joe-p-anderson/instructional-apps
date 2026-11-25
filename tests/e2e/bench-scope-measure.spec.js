@@ -1,6 +1,9 @@
 // Seam 2 (Spec 0002), ticket 08: Measure on the real bench-scope Standalone page, on every skin.
 // Adding a frequency readout through the skin's Measure menu shows it on screen and in State.
 import { test, expect } from '@playwright/test';
+import { installScreenReader } from './helpers/bench-screen.js';
+
+test.beforeEach(({ page }) => installScreenReader(page));
 
 const PAGE = '/tools/bench-scope/';
 
@@ -32,8 +35,8 @@ const snapshot = (page) => page.evaluate(() => window.toolHost.instances[0].stat
 const control = (page, skin, id) => page.locator(`svg[data-model="${skin.model}"] .osc-control[data-control="${id}"]`);
 
 /** Which pixels of a screen region are lit (bright), one 0/1 per pixel. */
-const pixels = (page, r) => page.evaluate(({ x, y, w, h }) => {
-  const d = document.querySelector('canvas.bs-screen').getContext('2d').getImageData(x, y, w, h).data;
+const pixels = (page, r) => page.evaluate(async ({ x, y, w, h }) => {
+  const d = (await window.nativeScreen()).getContext('2d').getImageData(x, y, w, h).data;
   const lit = [];
   for (let i = 0; i < d.length; i += 4) lit.push(d[i] + d[i + 1] + d[i + 2] > 450 ? 1 : 0);
   return lit;

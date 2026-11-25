@@ -1,5 +1,8 @@
 // Seam 2 (Spec 0002), ticket 06: the CH2 source Controls on the real bench-scope Standalone page.
 import { test, expect } from '@playwright/test';
+import { installScreenReader } from './helpers/bench-screen.js';
+
+test.beforeEach(({ page }) => installScreenReader(page));
 
 const PAGE = '/tools/bench-scope/';
 
@@ -11,8 +14,8 @@ async function open(page) {
 const snapshot = (page) => page.evaluate(() => window.toolHost.instances[0].state.snapshot());
 
 /** The CH2-coloured (#22c4e8) part of the screen canvas, as a string to compare. */
-const ch2Image = (page) => page.evaluate(() => {
-  const cv = document.querySelector('canvas.bs-screen');
+const ch2Image = (page) => page.evaluate(async () => {
+  const cv = await window.nativeScreen();
   const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
   let n = 0;
   let sig = 0;

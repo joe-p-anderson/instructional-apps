@@ -1,5 +1,8 @@
 // Seam 2 (Spec 0002), ticket 05: the softkey menus on the real bench-scope Standalone page.
 import { test, expect } from '@playwright/test';
+import { installScreenReader } from './helpers/bench-screen.js';
+
+test.beforeEach(({ page }) => installScreenReader(page));
 
 const PAGE = '/tools/bench-scope/';
 const SKINS = [
@@ -20,8 +23,8 @@ const snapshot = (page) => page.evaluate(() => window.toolHost.instances[0].stat
 const control = (page, skin, id) => page.locator(`svg[data-model="${skin.model}"] .osc-control[data-control="${id}"]`);
 
 /** Mean row (screen px) of the CH1-yellow pixels in the plot, left of the menu and trigger arrow. */
-const ch1MeanRow = (page, skin) => page.evaluate(({ plot, menu }) => {
-  const cv = document.querySelector('canvas.bs-screen');
+const ch1MeanRow = (page, skin) => page.evaluate(async ({ plot, menu }) => {
+  const cv = await window.nativeScreen();
   const w = Math.min(menu.x, plot.right - 15); // not the menu, not the trigger-level arrow
   const d = cv.getContext('2d').getImageData(0, 0, w, cv.height).data;
   let n = 0;
@@ -36,8 +39,8 @@ const ch1MeanRow = (page, skin) => page.evaluate(({ plot, menu }) => {
 }, { plot: skin.plot, menu: skin.menu });
 
 /** Non-black pixels in the menu column (the menu boxes and text). */
-const menuPixels = (page, skin) => page.evaluate(({ menu }) => {
-  const cv = document.querySelector('canvas.bs-screen');
+const menuPixels = (page, skin) => page.evaluate(async ({ menu }) => {
+  const cv = await window.nativeScreen();
   const d = cv.getContext('2d').getImageData(menu.x + 2, menu.y + 2, menu.w - 4, menu.h - 4).data;
   let n = 0;
   for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 60 && !(d[i] > 180 && d[i + 2] < 120)) n += 1;

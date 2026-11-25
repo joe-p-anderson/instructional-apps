@@ -1,6 +1,9 @@
 // Seam 2 (Spec 0002), ticket 02: knob input, vertical controls and front-panel Controls on the
 // real bench-scope Standalone page.
 import { test, expect } from '@playwright/test';
+import { installScreenReader } from './helpers/bench-screen.js';
+
+test.beforeEach(({ page }) => installScreenReader(page));
 
 const PAGE = '/tools/bench-scope/';
 
@@ -13,14 +16,14 @@ const snapshot = (page) => page.evaluate(() => window.toolHost.instances[0].stat
 const control = (page, id) => page.locator(`svg[data-model] .osc-control[data-control="${id}"]`);
 
 /** The pixels of the CH1 V/div readout's corner of the screen, as a string to compare. */
-const ch1Readout = (page) => page.evaluate(() => {
-  const cv = document.querySelector('canvas.bs-screen');
+const ch1Readout = (page) => page.evaluate(async () => {
+  const cv = await window.nativeScreen();
   return Array.from(cv.getContext('2d').getImageData(25, 440, 120, 30).data).join(',');
 });
 
 /** Pixels on the screen canvas in the CH2 trace colour (#22c4e8). */
-const ch2Pixels = (page) => page.evaluate(() => {
-  const cv = document.querySelector('canvas.bs-screen');
+const ch2Pixels = (page) => page.evaluate(async () => {
+  const cv = await window.nativeScreen();
   const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
   let n = 0;
   for (let i = 0; i < d.length; i += 4) if (d[i] < 90 && d[i + 1] > 150 && d[i + 2] > 190) n += 1;

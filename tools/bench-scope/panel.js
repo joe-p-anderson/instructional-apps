@@ -55,6 +55,7 @@ export function createPanel({ svgText, model, onEvent, values }) {
   svg.setAttribute('aria-label', `${model.model ?? svg.dataset.model} front panel`);
 
   const [, , vbW, vbH] = model.viewBox;
+  el.style.setProperty('--bs-aspect', String(vbW / vbH)); // the CSS fits the panel to the Display by it
   const screen = model.controls.find((c) => c.kind === 'screen');
   const canvas = document.createElement('canvas');
   canvas.className = 'bs-screen';

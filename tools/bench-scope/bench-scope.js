@@ -9,11 +9,17 @@
 //   and the cursors 'cursor-1', 'cursor-2' (value: position in s from the trigger point or V,
 //   null while cursors are off; see engine/cursors.js). A locked cursor ignores the multipurpose
 //   knob; a hidden one is not drawn.
-// Displays: 'screen' (the scope screen at native resolution; the front panel is not included).
+// Displays: 'screen' (the scope screen; its snapshot is at native resolution, the front panel
+//   not included).
 //
-// Layout: source panel in the Controls column, the front panel (inlined SVG with the screen
-// canvas over it) in the Display area. Behaviour lives in the DOM-free engine; this module
-// wires the panel binding, the source panel and the renderer to it.
+// Layout: 'banner'. The front panel (inlined SVG with the screen canvas over it) is scaled to
+// fit the full-width Display area, keeping its aspect ratio, and sits at its bottom edge; the
+// skin switcher and the source panel's sections sit side by side in the Controls strip below.
+// The screen canvas is drawn at its displayed size times devicePixelRatio (the renderer draws in
+// native screen pixels under a scale transform), so its readouts stay sharp; the Display
+// snapshot is drawn on a separate canvas at native resolution.
+// Behaviour lives in the DOM-free engine; this module wires the panel binding, the source panel
+// and the renderer to it.
 // Captures: only the animation-frame loop acquires (one capture per frame while running or with
 // Single armed; the loop stops while the scope is stopped). Input events and snapshots redraw the
 // last capture (engine.frame()), so they never take an armed Single or a pending Force Trig.
@@ -40,9 +46,39 @@ const svgTexts = Object.fromEntries(await Promise.all(SKIN_IDS.map(async (id) =>
 })));
 
 const CSS = `
-.bs-tool .fw-displays { overflow: auto; }
-.bs-panel { position: relative; width: 100%; line-height: 0; }
+.bs-tool .fw-displays { container-type: size; overflow: hidden; padding: 0; align-items: center; justify-content: flex-end; }
+.bs-panel { position: relative; flex: none; width: min(100cqw, 100cqh * var(--bs-aspect, 2.28)); line-height: 0; }
 .bs-panel-svg { width: 100%; height: auto; display: block; user-select: none; }
+/* Controls strip (banner layout): each section is its label, set vertically, then its Controls
+   in columns of two rows, compacted so the strip stays about 90 px tall and the panel can fill
+   the Display. */
+.fw-layout-banner .bs-tool .bs-source-panel { display: contents; }
+.fw-layout-banner .bs-tool .fw-controls { line-height: 1.2; }
+.fw-layout-banner .bs-tool .fw-controls .fw-section,
+.fw-layout-banner .bs-tool .fw-controls > .fw-section:first-child {
+  flex: 0 0 auto; display: grid; grid-auto-flow: column; grid-template-rows: auto auto;
+  grid-template-columns: min-content; grid-auto-columns: auto; gap: 1px 10px;
+  align-content: center; align-items: center; padding: 2px 10px 2px 4px;
+  border-bottom: none; border-right: 1px solid var(--fw-border);
+}
+.fw-layout-banner .bs-tool .fw-controls .fw-section:last-child { border-right: none; }
+.fw-layout-banner .bs-tool .fw-controls .fw-section > .fw-section-label {
+  grid-row: 1 / span 2; margin: 0; writing-mode: vertical-rl; transform: rotate(180deg);
+  inline-size: 84px; text-align: center; font-size: 10px; letter-spacing: 0.04em; line-height: 1.1;
+}
+.fw-layout-banner .bs-tool .fw-controls .fw-section > :not(.fw-section-label) { width: 170px; }
+.fw-layout-banner .bs-tool .fw-controls .fw-section > :is(.bs-freq-dial, .bs-source-slot:has(.bs-freq-dial)),
+.fw-layout-banner .bs-tool .fw-controls .fw-section > .fw-section-label + .bs-source-slot { width: 200px; }
+/* The skin switcher's "Model" select says what it is: its section label is for screen readers only. */
+.fw-layout-banner .bs-tool .fw-controls .bs-skin-switcher > .fw-section-label {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+.fw-layout-banner .bs-tool .fw-controls .bs-skin-switcher > .fw-select { width: 200px; }
+.fw-layout-banner .bs-tool .fw-controls :is(.fw-slider, .fw-select) { margin-bottom: 0; }
+.fw-layout-banner .bs-tool .fw-controls .fw-select select { flex: 1; min-width: 0; }
+.fw-layout-banner .bs-tool .fw-slider-header { margin-bottom: 0; }
+.fw-layout-banner .bs-tool .fw-controls :is(.fw-number, .fw-reset, select, .bs-freq-range) { font-size: 14px; padding-top: 0; padding-bottom: 0; }
+.fw-layout-banner .bs-tool .fw-controls .fw-number { width: 62px; }
 .bs-screen { position: absolute; image-rendering: pixelated; pointer-events: none; }
 .bs-panel .osc-control { cursor: pointer; }
 .bs-panel .osc-control[data-active="false"] { cursor: not-allowed; opacity: .45; }
@@ -111,6 +147,22 @@ function mount(container, modeId = 'scope', setup = {}) {
   let panel = makePanel();
   let g = panel.canvas.getContext('2d');
 
+  // Keep the screen canvas's backing store at its displayed size times devicePixelRatio.
+  const sizer = new ResizeObserver(() => fitCanvas());
+  function fitCanvas() {
+    const { canvas } = panel;
+    const r = canvas.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const dpr = window.devicePixelRatio || 1;
+    const w = Math.round(r.width * dpr);
+    const hgt = Math.round(r.height * dpr);
+    if (canvas.width === w && canvas.height === hgt) return;
+    canvas.width = w;
+    canvas.height = hgt;
+    redraw();
+  }
+  sizer.observe(panel.canvas);
+
   const displaysEl = h('div', { class: 'fw-displays' }, panel.el);
   const root = h('div', { class: 'fw-tool bs-tool', 'data-tool': 'bench-scope' },
     h('aside', { class: 'fw-controls' }, switcher.el, source.el),
@@ -135,6 +187,8 @@ function mount(container, modeId = 'scope', setup = {}) {
     }
     displaysEl.append(panel.el);
     g = panel.canvas.getContext('2d');
+    sizer.disconnect();
+    sizer.observe(panel.canvas);
     switcher.sync(id);
   }
 
@@ -147,12 +201,16 @@ function mount(container, modeId = 'scope', setup = {}) {
     notify();
   }
 
-  function render(frame) {
+  /** Draw a frame on `ctx` (default: the screen canvas), scaled from native screen pixels. */
+  function render(frame, ctx = g) {
     if (frame.cursors) {
       const hidden = new Set(cursorControls.filter((c) => c.isHidden()).map((c) => c.id));
       frame.cursors.lines = frame.cursors.lines.filter((l) => !hidden.has(l.id));
     }
-    renderScreen(g, frame, profile);
+    const { width, height } = frame.screen;
+    ctx.setTransform(ctx.canvas.width / width, 0, 0, ctx.canvas.height / height, 0, 0);
+    renderScreen(ctx, frame, profile);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
   /** Redraw the last capture with the current settings (input events, snapshots): no capture. */
   const redraw = () => render(engine.frame());
@@ -196,8 +254,11 @@ function mount(container, modeId = 'scope', setup = {}) {
       id: 'screen',
       label: 'Oscilloscope screen',
       async snapshot() {
-        redraw();
-        return panel.canvas.toDataURL('image/png');
+        const frame = engine.frame();
+        const native = document.createElement('canvas');
+        [native.width, native.height] = [frame.screen.width, frame.screen.height];
+        render(frame, native.getContext('2d'));
+        return native.toDataURL('image/png');
       },
     }],
     serialize: () => engine.serialize(),
@@ -213,6 +274,7 @@ function mount(container, modeId = 'scope', setup = {}) {
     },
     destroy() {
       cancelAnimationFrame(raf);
+      sizer.disconnect();
       raf = -1; // startLoop() never schedules again
       changes.clear();
       panel.destroy();
@@ -225,5 +287,6 @@ export default defineTool({
   id: 'bench-scope',
   title: 'Bench Oscilloscope',
   modes: [{ id: 'scope', title: 'Oscilloscope' }],
+  layout: 'banner',
   mount,
 });

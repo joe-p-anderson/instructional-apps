@@ -1,6 +1,9 @@
 // Seam 2 (Spec 0002), ticket 03: the TDS2001C skin and the skin switcher on the real
 // bench-scope Standalone page.
 import { test, expect } from '@playwright/test';
+import { installScreenReader } from './helpers/bench-screen.js';
+
+test.beforeEach(({ page }) => installScreenReader(page));
 
 const PAGE = '/tools/bench-scope/';
 
@@ -19,8 +22,8 @@ async function toTds(page) {
 }
 
 /** Pixels on the screen canvas that are (roughly) the CH1 trace yellow. */
-const ch1Pixels = (page) => page.evaluate(() => {
-  const cv = document.querySelector('canvas.bs-screen');
+const ch1Pixels = (page) => page.evaluate(async () => {
+  const cv = await window.nativeScreen();
   const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
   let n = 0;
   for (let i = 0; i < d.length; i += 4) if (d[i] > 180 && d[i + 1] > 180 && d[i + 2] < 120) n += 1;
@@ -47,11 +50,13 @@ test('the skin switcher swaps the TBS2072B panel for the TDS2001C one, and back'
   expect((await snapshot(page)).skin).toBe('tbs2072b');
 });
 
-test('on the TDS the canvas is 320×240 over the panel screen and draws the CH1 trace', async ({ page }) => {
+const nativeSize = (page) => page.evaluate(async () => { const c = await window.nativeScreen(); return [c.width, c.height]; });
+
+test('on the TDS the screen is 320×240 (snapshot), the canvas sits over the panel screen and draws the CH1 trace', async ({ page }) => {
   await open(page);
   await toTds(page);
   const canvas = page.locator('canvas.bs-screen');
-  expect(await canvas.evaluate((c) => [c.width, c.height])).toEqual([320, 240]);
+  expect(await nativeSize(page)).toEqual([320, 240]);
   const screenRect = await page.locator('svg[data-model="TDS2001C"] [data-control="screen"]').boundingBox();
   const canvasRect = await canvas.boundingBox();
   for (const k of ['x', 'y', 'width', 'height']) expect(Math.abs(canvasRect[k] - screenRect[k])).toBeLessThan(2);
@@ -72,7 +77,7 @@ test('the skin is a Control, it survives a reload, and settings carry over', asy
   const s = await snapshot(page);
   expect(s.skin).toBe('tds2001c');
   expect(s.ch1VPerDiv).toBe(0.2);
-  expect(await page.locator('canvas.bs-screen').evaluate((c) => [c.width, c.height])).toEqual([320, 240]);
+  expect(await nativeSize(page)).toEqual([320, 240]);
 });
 
 test('the TDS panel registers its own controls: Horiz and Set to Zero, not fine', async ({ page }) => {

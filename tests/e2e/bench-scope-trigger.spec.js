@@ -1,6 +1,9 @@
 // Seam 2 (Spec 0002), ticket 04: horizontal controls and the edge trigger on the real
 // bench-scope Standalone page, on both skins.
 import { test, expect } from '@playwright/test';
+import { installScreenReader } from './helpers/bench-screen.js';
+
+test.beforeEach(({ page }) => installScreenReader(page));
 
 const PAGE = '/tools/bench-scope/';
 
@@ -25,8 +28,8 @@ async function open(page, skin) {
 const control = (page, skin, id) => page.locator(`svg[data-model="${skin.model}"] .osc-control[data-control="${id}"]`);
 
 /** The screen pixels as a string, to compare before and after. */
-const screenPixels = (page) => page.evaluate(() => {
-  const cv = document.querySelector('canvas.bs-screen');
+const screenPixels = (page) => page.evaluate(async () => {
+  const cv = await window.nativeScreen();
   return Array.from(cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data).join(',');
 });
 
