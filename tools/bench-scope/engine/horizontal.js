@@ -15,6 +15,7 @@
 // When s/div changes, the position keeps its time and is clamped to the new screen.
 // State: hScale (s/div), hPosition (s).
 
+import { isXY } from './display.js';
 import { infoItem } from './menus.js';
 import { clamp, clampNumber, si } from './util.js';
 
@@ -100,6 +101,7 @@ export const horizontal = {
     hPosition: { label: 'Horizontal position (trigger point from screen centre)', unit: 's' },
   }),
   frame({ settings }, frame) {
+    if (isXY(settings)) return; // no time base in XY
     frame.readouts.push({ id: 'timebase', text: `M ${si(settings.horizontal.sPerDiv)}s` });
   },
 };

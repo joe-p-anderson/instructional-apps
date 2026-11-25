@@ -21,9 +21,16 @@
 //
 // settings.acquisition: { seed (integer) }. Setup key: seed.
 // State: runState 'running' | 'stopped' | 'single', traceStable (bool).
+//
+// XY format (display.js): no trigger and no time base. Each capture free-runs from now/1000 s
+// for XY_CYCLES periods of the slower channel's fundamental (XY_SAMPLES points), so a figure is
+// always complete and slightly different frequencies make it turn slowly, as on the bench.
+// Run/Stop and Single work as in YT (a stopped XY display holds its figure).
 
+import { isXY } from './display.js';
 import { source } from './source.js';
-import { channelSignal, channelTrace, scaledTrace, VERTICAL_CHANNELS } from './vertical.js';
+import { clamp } from './util.js';
+import { channelSignal, channelTrace, scaledTrace, shownVPerDiv, VERTICAL_CHANNELS } from './vertical.js';
 
 export const CHANNELS = VERTICAL_CHANNELS;
 
@@ -35,10 +42,13 @@ export const TRIGGER_NOISE_RMS = 0.002;
 export const BW_LIMIT_NOISE = 0.35;
 const DEFAULT_SEED = 1;
 const GRID = 2048; // points per period when searching for crossings
+/** XY capture: periods of the slower channel, and points per capture. */
+export const XY_CYCLES = 4;
+export const XY_SAMPLES = 1000;
 
 // Live acquisition state per engine, keyed by its settings object: not part of serialize().
 const lives = new WeakMap();
-const freshLive = () => ({ run: 'running', force: false, last: null, lastNow: 0 });
+const freshLive = () => ({ run: 'running', force: false, last: null, lastXY: null, lastNow: 0 });
 function liveOf(settings) {
   if (!lives.has(settings)) lives.set(settings, freshLive());
   return lives.get(settings);
@@ -177,6 +187,7 @@ function show(settings, profile, cap, status) {
 export function acquireTraces({ settings, profile }, now = 0) {
   const live = liveOf(settings);
   live.lastNow = now;
+  if (isXY(settings)) return acquireXY(settings, profile, live, now);
   if (live.run === 'stopped') return show(settings, profile, live.last, 'stopped');
 
   const { sPerDiv, position } = settings.horizontal;
@@ -197,6 +208,50 @@ export function acquireTraces({ settings, profile }, now = 0) {
   let status = crossing !== null || forced ? 'triggered' : 'auto';
   if (live.run === 'single') { live.run = 'stopped'; status = 'stopped'; }
   return show(settings, profile, live.last, status);
+}
+
+// --- XY ---------------------------------------------------------------------------------------
+
+/** Noisy CH1 and CH2 volts over XY_CYCLES periods of the slower channel from now/1000 s, or null. */
+function captureXY(settings, now) {
+  const v1 = channelSignal(settings, 'ch1');
+  const v2 = channelSignal(settings, 'ch2');
+  if (!v1 || !v2) return null;
+  const s = source.state({ settings });
+  const f = Math.min(...[s.ch1TrueFreq, s.ch2TrueFreq].filter((fi) => fi > 0));
+  const span = Number.isFinite(f) ? XY_CYCLES / f : 1e-3;
+  const t0 = now / 1000;
+  const out = {};
+  for (const [idx, ch, v] of [[1, 'ch1', v1], [2, 'ch2', v2]]) {
+    const g = gaussians(settings.acquisition.seed, now, idx);
+    const rms = NOISE_RMS * noiseFactor(settings[ch]);
+    out[ch] = Array.from({ length: XY_SAMPLES }, (_, i) => v(t0 + (i * span) / (XY_SAMPLES - 1)) + rms * g());
+  }
+  return out;
+}
+
+/** CH1 against CH2 in divisions, clipped to the screen. */
+function xyTrace(settings, profile, cap) {
+  const { divX, divY } = profile.screen;
+  let clipped = false;
+  const fit = (v, lo, hi) => { if (v < lo || v > hi) clipped = true; return clamp(v, lo, hi); };
+  const [c1, c2] = [settings.ch1, settings.ch2];
+  const x = cap.ch1.map((v) => fit(divX / 2 + v / shownVPerDiv(c1) + c1.position, 0, divX));
+  const y = cap.ch2.map((v) => fit(v / shownVPerDiv(c2) + c2.position, -divY / 2, divY / 2));
+  return { x, y, clipped };
+}
+
+function acquireXY(settings, profile, live, now) {
+  let status = 'stopped';
+  if (live.run !== 'stopped') {
+    live.lastXY = captureXY(settings, now);
+    status = 'auto';
+    if (live.run === 'single') live.run = 'stopped';
+  }
+  const { sPerDiv, position } = settings.horizontal;
+  const out = { status, timebase: { sPerDiv, t0: -(profile.screen.divX / 2) * sPerDiv - position }, traces: {} };
+  if (live.lastXY) out.xy = xyTrace(settings, profile, live.lastXY);
+  return out;
 }
 
 /** A channel's volts in the last capture (or a fresh one at the last `now`), or null if unwired. */

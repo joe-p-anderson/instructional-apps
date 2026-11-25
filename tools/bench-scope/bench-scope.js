@@ -48,6 +48,7 @@ const CSS = `
 .bs-panel .osc-control:focus { outline: none; }
 .bs-panel .osc-control:focus-visible .osc-face { stroke: #2a7de1; stroke-width: 6px; }
 .bs-panel .osc-control.bs-locked { cursor: not-allowed; }
+.bs-panel .osc-control.bs-disabled .osc-face { filter: grayscale(1) brightness(.8); opacity: .6; }
 .bs-panel .osc-control.bs-locked .osc-face { filter: grayscale(1) brightness(.7); }
 .bs-panel .osc-control.bs-locked:hover .osc-face { filter: grayscale(1) brightness(.7); }
 .bs-panel .osc-control[data-kind="knob"] { touch-action: none; }
