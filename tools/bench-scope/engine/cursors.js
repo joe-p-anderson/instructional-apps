@@ -17,13 +17,16 @@
 //             (amplitude); null when cursors are off.
 // Which cursor is selected is live (not saved): restore and a skin switch select Cursor 1.
 // In XY (settings.display.format 'xy', display.js) the cursors are disabled, as on the real
-// models: the knob and menu ignore input, nothing is drawn and the Δ values are null.
+// models: the knob and menu ignore input, nothing is drawn and the Δ values are null. The
+// `disabled` hook (engine.js) disables the cursors button, and the multipurpose knob while the
+// cursors would own it, so the panel dims them.
 // mpFunction: 'Cursor 1' / 'Cursor 2' while cursors are on (the TDS lights its knob LEDs).
 // Frame: frame.cursors = null | { mode, selected, channel?, lines: [{ id: 'cursor-1', axis: 'x' | 'y', pos }] }
 // (divisions in trace coordinates: x from the left edge, y up from the centre), readouts 'cursor-dt' and 'cursor-inv' (time) or 'cursor-dv' (amplitude).
 // State: cursorMode, cursorSource, cursorSelected (1 | 2), cursorFine, cursor1, cursor2 (s or V),
 // cursorDt (s), cursorInvDt (Hz), cursorDv (V); null where they don't apply.
 
+import { isXY } from './display.js';
 import { choiceItem } from './menus.js';
 import { clamp, clampNumber, oneOf, si } from './util.js';
 import { shownVPerDiv } from './vertical.js';
@@ -41,7 +44,6 @@ const liveOf = (settings) => {
   if (!lives.has(settings)) lives.set(settings, { selected: 0 });
   return lives.get(settings);
 };
-const isXY = (settings) => settings.display?.format === 'xy';
 /** The cursor mode in effect: off whenever the display is XY. */
 const activeMode = (settings) => (isXY(settings) ? 'off' : settings.cursors.mode);
 
@@ -153,6 +155,8 @@ const menus = {
 
 export const cursors = {
   menus,
+  disabled: ({ settings }, control) => isXY(settings)
+    && (control === 'cursors' || (control === 'mp-knob' && settings.cursors.mode !== 'off')),
   turn: {
     'mp-knob'({ settings, profile }, detents) {
       if (activeMode(settings) === 'off') return;

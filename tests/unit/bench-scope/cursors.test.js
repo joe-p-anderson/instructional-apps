@@ -146,11 +146,14 @@ test('the multipurpose knob function is the selected cursor while cursors are on
 
 test('in XY the cursors are disabled: no input, nothing drawn, no Δ values', () => {
   const engine = timeCursors();
-  engine.restore({ ...engine.serialize(), display: { format: 'xy' } }); // XY, as ticket 10 sets it
+  engine.press('acquire');
+  engine.softkey(6); // TBS Acquire → XY Display On
   assert.equal(engine.state().displayFormat, 'xy');
   assert.equal(engine.state().cursorMode, 'time', 'the cursor type is kept');
   assert.equal(engine.state().cursorDt, null);
   assert.equal(engine.mpFunction(), null, 'the knob has no cursor function');
+  assert.equal(engine.disabled('cursors'), true, 'the Cursor button is disabled');
+  assert.equal(engine.disabled('mp-knob'), true, 'and so is the multipurpose knob');
   const before = engine.serialize().cursors;
   engine.turn('mp-knob', 5);
   engine.push('mp-knob');
@@ -159,10 +162,11 @@ test('in XY the cursors are disabled: no input, nothing drawn, no Δ values', ()
   assert.deepEqual(engine.serialize().cursors, before, 'input ignored');
   const frame = engine.acquire(0);
   assert.equal(frame.cursors, null);
-  assert.equal(frame.menu, null, 'the Cursor menu does not open');
+  assert.notEqual(frame.menu?.id, 'cursor', 'the Cursor menu does not open');
   assert.ok(!frame.readouts.some((r) => r.id.startsWith('cursor')));
   engine.restore({ ...engine.serialize(), display: { format: 'yt' } });
   assert.ok(engine.state().cursorDt > 0, 'back in YT the cursors return');
+  assert.equal(engine.disabled('cursors'), false);
 });
 
 test('cursor type, source and positions are saved; restore and a skin switch keep them within the screen', () => {
