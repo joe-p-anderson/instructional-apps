@@ -54,6 +54,8 @@
 // where ctx = { settings, profile }. Add a feature by writing a module and listing it here.
 
 import { acquireTraces, acquisition } from './acquire.js';
+import { autosetFeature } from './autoset.js';
+import { display } from './display.js';
 import { horizontal } from './horizontal.js';
 import { source } from './source.js';
 import { trigger } from './trigger.js';
@@ -65,6 +67,8 @@ const FEATURES = [
   horizontal,
   trigger,
   acquisition,
+  display,
+  autosetFeature, // last: it sets the features above through their Control hooks
 ];
 
 const SERIAL_VERSION = 1;
