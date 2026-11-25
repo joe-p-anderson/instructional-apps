@@ -255,13 +255,26 @@ test('Part 2: only a rocket-frame rod lies from B to F, and it passes Task 2.5 o
   let rod = (await diagram(page, 2)).find((o) => o.kind === 'rod');
   expect(rod.frame).toBe('Kp');
   expect(rod.ends.map((e) => e.wl)).toEqual([1, 2]);
-  // A point on the rod, at x′ = −1 on its t′ = T line, in K (clear of the light rays).
-  const g = 1.25, v = 0.6;
-  const onRod = [g * (-1 + v * rod.T), g * (rod.T + v * -1)];
   await p2.getByRole('button', { name: 'Move', exact: true }).click();
+  // Grab the rod where it is drawn on top. Where the earlier drag laid it varies by a few pixels,
+  // and the diagram redraws on the next frame, so look along the drawn rod between its ends.
+  const kSvg = p2.getByRole('img', { name: 'Spacetime diagram in frame K', exact: true });
+  let q;
+  await expect.poll(async () => {
+    q = await kSvg.evaluate((svg, id) => {
+      const ends = [...svg.querySelectorAll(`[data-role="rodend"][data-id="${id}"]`)].map((c) => c.getBoundingClientRect());
+      if (ends.length !== 2) return null;
+      const [a, b] = ends.map((r) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }));
+      for (const f of [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8]) {
+        const p = { x: a.x + f * (b.x - a.x), y: a.y + f * (b.y - a.y) };
+        if (document.elementFromPoint(p.x, p.y)?.dataset.role === 'rod') return p;
+      }
+      return null;
+    }, rod.id);
+    return q;
+  }).not.toBeNull();
   // Starting the drag re-renders the sidebar, which can shift the diagram on the page by a few
   // pixels, so find B again once the drag has started.
-  const q = await at(page, ...onRod, 2);
   await page.mouse.move(q.x, q.y);
   await page.mouse.down();
   await page.mouse.move(q.x, q.y - 10, { steps: 2 });
