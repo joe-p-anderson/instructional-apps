@@ -29,13 +29,13 @@
 
 import { controlRegistry, createControl } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
-import { button, h, section, slider, toggle } from '../../framework/v1/ui-kit.js';
+import { button, escapeHtml as esc, h, section, slider, toggle } from '../../framework/v1/ui-kit.js';
 import {
   DEFAULT_VIEW, PALETTE, VMAX, blankDiagram, byId, convert, eventK, eventsOf, exportDiagram, gamma,
   interval, isSpacelike, normalize, properTime, rodEnd, rodInfo, segmentProperTime, toFrame,
   velocityIn, worldlineCut, worldlinesOf, worldlineSegments,
 } from './physics.js';
-import { FRAMES, SYM, eqLine, esc, fmt, fmtIn, parseNum } from './format.js';
+import { FRAMES, SYM, eqLine, fmt, fmtIn, parseNum } from './format.js';
 import { COLORS, drawPanel, panelGeometry } from './draw.js';
 import { conditionTypes, diagramState } from './conditions.js';
 

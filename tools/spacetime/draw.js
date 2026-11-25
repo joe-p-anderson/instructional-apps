@@ -1,7 +1,8 @@
 // One spacetime diagram panel as SVG markup. No DOM: drawPanel returns a string.
 
 import { byId, convert, eventK, eventsOf, isSpacelike, rodInfo, toFrame, worldlinesOf, worldlineSegments } from './physics.js';
-import { SYM, eqLine, eqRod, esc, fmt, other } from './format.js';
+import { escapeHtml as esc } from '../../framework/v1/ui-kit.js';
+import { SYM, eqLine, eqRod, fmt, other } from './format.js';
 
 // v1 theme colours (theme.css): ink for K, blue for K′, orange for selection.
 export const COLORS = { K: '#5C4F38', Kp: '#1B4F8A', paper: '#FAF8F2', sel: '#E8720C', bad: '#B81C1C' };

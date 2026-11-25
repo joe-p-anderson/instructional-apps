@@ -27,7 +27,8 @@ function nameLabel(name, label, unit) {
     unit ? h('span', { class: 'fw-unit' }, ' ', unit) : null);
 }
 
-function escapeHtml(s) {
+/** Escape text for HTML or XML markup (& < > " ' as numeric character references). */
+export function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 

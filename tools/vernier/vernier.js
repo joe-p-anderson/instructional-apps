@@ -14,7 +14,7 @@
 
 import { controlRegistry, createControl } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
-import { button, h, metric, section, select } from '../../framework/v1/ui-kit.js';
+import { button, escapeHtml, h, metric, section, select } from '../../framework/v1/ui-kit.js';
 import { RANGES, drawReading, judge } from './reading.js';
 
 // The Inkscape drawing, loaded once and cloned per instance.
@@ -64,7 +64,6 @@ const C = { main: '#1B4F8A', match: '#E8720C', good: '#2A6E2A', bad: '#B81C1C', 
 const fmt = (v) => v.toFixed(2);
 const isOneOf = (list, v) => list.some((o) => o.value === v);
 const randomSeed = () => Math.floor(Math.random() * 2 ** 31);
-const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /** Clone the drawing with every id prefixed, so several instances can share a page. */
 function cloneDrawing(prefix) {
