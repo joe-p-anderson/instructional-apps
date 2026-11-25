@@ -5,8 +5,8 @@ Static ES modules and CSS, served as-is (no build, no install). Breaking changes
 | Module | What it is |
 | --- | --- |
 | `tool.js` | **The Tool contract** (documented in its header comment), `defineTool()` validator, `createEmitter()`. No DOM, so it can be imported from Node. |
-| `control.js` | `createControl()`: base implementation of the Control interface (lock/unlock, show/hide). Use it for custom Controls such as draggable markers. |
-| `ui-kit.js` | Standard Controls: `slider` (with number box and reset; `log: true` for a logarithmic scale), `toggle`, `select`, `button`; plus `metric` readout, `section`, `h()` element helper. |
+| `control.js` | `createControl()`: base implementation of the Control interface (lock/unlock, show/hide). Lock disables every input, button, select and textarea in the Control's `el`, and `el` itself when it is one (so a bare `<button>` can be the `el`). Use it for custom Controls such as draggable markers. |
+| `ui-kit.js` | Standard Controls: `slider` (with number box and reset; `log: true` for a logarithmic scale), `toggle`, `select`, `button` (optional `title`; a locked button is disabled and neither a click nor `set()` presses it); `toggle` and `button` also take `onLock`/`onHide` for extra work. Plus `metric` readout, `section`, `h()` element helper, `escapeHtml(s)`. |
 | `theme.css` | The v1 cream-and-serif theme and layout classes (`.fw-*`). |
 | `tool-host.js` | `mountStandalone(tool, root)`: Standalone mode, one tab per Mode, every Control unlocked, State autosaved per Tool and Mode, `#s=` share link. Also exports `createFrame`/`createTabs` for the Activity runner UI. |
 | `persistence.js` | Autosave (`standaloneStore(toolId, modeId)`, `runStore(activityId)`, `createStore(key, storage)`, `browserStorage()`) and `#s=` share links (`shareHash`/`readShareHash`). No DOM. |

@@ -2,7 +2,8 @@
 //
 // Every Control factory returns a Control (see tool.js) whose `el` the Tool places in its layout.
 // `name` is the plain-text accessible name (e.g. 'Va'); `label` is optional trusted HTML shown
-// to the student (e.g. 'V<sub>a</sub>'), defaulting to the name.
+// to the student (e.g. 'V<sub>a</sub>'), defaulting to the name. `toggle` and `button` also take
+// optional `onLock(locked)` / `onHide(hidden)` for extra work on lock or hide (see control.js).
 
 import { createControl } from './control.js';
 
@@ -82,14 +83,14 @@ export function slider({ id, name = id, label, unit = '', min, max, step = 'any'
   return createControl({ id, label: name, el, get: () => current, set });
 }
 
-/** Checkbox toggle. toggle({ id, name, label, value = false, onChange }) */
-export function toggle({ id, name = id, label, value = false, onChange = () => {} }) {
+/** Checkbox toggle. toggle({ id, name, label, value = false, onChange, onLock, onHide }) */
+export function toggle({ id, name = id, label, value = false, onChange = () => {}, onLock, onHide }) {
   const input = h('input', { type: 'checkbox', 'aria-label': name });
   input.checked = Boolean(value);
   const el = h('label', { class: 'fw-toggle' }, input, nameLabel(name, label));
   const set = (v) => { input.checked = Boolean(v); onChange(input.checked); };
   input.addEventListener('change', () => onChange(input.checked));
-  return createControl({ id, label: name, el, get: () => input.checked, set });
+  return createControl({ id, label: name, el, get: () => input.checked, set, onLock, onHide });
 }
 
 /** Drop-down select. select({ id, name, label, options: [{ value, label }], value, onChange }) */
@@ -109,15 +110,17 @@ export function select({ id, name = id, label, options, value = options[0]?.valu
 }
 
 /**
- * Push button. button({ id, name, label, onClick })
- * get() returns how many times it has been pressed; set() presses it.
+ * Push button. button({ id, name, label, title, onClick, onLock, onHide })
+ * get() returns how many times it has been pressed; set() presses it. A locked button is
+ * disabled, and neither a click nor set() presses it.
  */
-export function button({ id, name = id, label, onClick = () => {} }) {
+export function button({ id, name = id, label, title, onClick = () => {}, onLock, onHide }) {
   let presses = 0;
-  const btn = h('button', { type: 'button', class: 'fw-button', 'aria-label': name, html: label ?? escapeHtml(name) });
-  const press = () => { presses += 1; onClick(presses); };
+  const btn = h('button', { type: 'button', class: 'fw-button', 'aria-label': name, title, html: label ?? escapeHtml(name) });
+  const press = () => { if (ctl.isLocked()) return; presses += 1; onClick(presses); };
   btn.addEventListener('click', press);
-  return createControl({ id, label: name, el: btn, get: () => presses, set: press });
+  const ctl = createControl({ id, label: name, el: btn, get: () => presses, set: press, onLock, onHide });
+  return ctl;
 }
 
 /**

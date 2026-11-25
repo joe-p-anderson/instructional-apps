@@ -130,7 +130,7 @@ function mount(container, modeId = 'fit', setup = {}) {
   const checkBtn = h('button', { type: 'button', class: 'fw-button', 'aria-expanded': 'false' });
   const checkPanel = h('div', { class: 'ls-check', hidden: true, 'aria-live': 'polite' });
   checkBtn.addEventListener('click', () => { st.checked = !st.checked; commit(); });
-  ctl.check = createControl({ id: 'check', label: 'Check', el: h('div', {}, checkBtn),
+  ctl.check = createControl({ id: 'check', label: 'Check', el: checkBtn,
     get: () => st.checked, set: (v) => { st.checked = Boolean(v); commit(); } });
 
   ctl.line = createControl({ id: 'line', label: '(m, b) handle',

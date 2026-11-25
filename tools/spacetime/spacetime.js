@@ -29,7 +29,7 @@
 
 import { controlRegistry, createControl } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
-import { h, section, slider } from '../../framework/v1/ui-kit.js';
+import { button, h, section, slider, toggle } from '../../framework/v1/ui-kit.js';
 import {
   DEFAULT_VIEW, PALETTE, VMAX, blankDiagram, byId, convert, eventK, eventsOf, exportDiagram, gamma,
   interval, isSpacelike, normalize, properTime, rodEnd, rodInfo, segmentProperTime, toFrame,
@@ -206,19 +206,14 @@ function mount(container, modeId = 'diagram', setup = {}) {
   const add = (c) => { controls[c.id] = c; return c; };
   const rerender = () => render();
 
-  function buttonControl({ id, name, html, title, onClick }) {
-    let presses = 0;
-    const btn = h('button', { type: 'button', class: 'fw-button', 'aria-label': name, title, html: html ?? esc(name) });
-    const press = () => { if (c.isLocked()) return; presses += 1; onClick(); };
-    btn.addEventListener('click', press);
-    const c = createControl({ id, label: name, el: btn, get: () => presses, set: press, onLock: rerender, onHide: rerender });
-    return add(c);
-  }
+  const buttonControl = ({ id, name, html, title, onClick }) =>
+    add(button({ id, name, label: html, title, onClick: () => onClick(), onLock: rerender, onHide: rerender }));
+  // A ui-kit toggle whose value lives in the diagram (undo, restore), not in the checkbox:
+  // get() reads the diagram and sync() (each render) mirrors it into the checkbox.
   function toggleControl({ id, name, html, get, set }) {
-    const input = h('input', { type: 'checkbox', 'aria-label': name });
-    const el = h('label', { class: 'fw-toggle' }, input, h('span', { class: 'fw-control-name', html: html ?? esc(name) }));
-    input.addEventListener('change', () => set(input.checked));
-    const c = createControl({ id, label: name, el, get, set: (val) => set(Boolean(val)), onLock: rerender, onHide: rerender });
+    const c = toggle({ id, name, label: html, value: get(), onChange: set, onLock: rerender, onHide: rerender });
+    const input = c.el.querySelector('input');
+    c.get = get;
     c.sync = () => { input.checked = get(); };
     return add(c);
   }
@@ -1040,13 +1035,8 @@ function mount(container, modeId = 'diagram', setup = {}) {
     setIf(gInput, fmtIn(gamma(S.v)));
     for (const id of ['grid-K', 'grid-Kp', 'kp-panel', 'primed']) controls[id].sync();
     for (const F of FRAMES) { caps[F].textContent = S.names[F]; gridName[F].textContent = S.names[F]; }
-    for (const t of TOOLS) {
-      toolButtons[t.key].setAttribute('aria-pressed', String(tool === t.key));
-      toolButtons[t.key].disabled = controls[t.id].isLocked();
-    }
-    // A Control whose element is the button itself: lock disables it (undo/redo also when empty).
-    for (const id of ['flip', 'new', 'reset-view', 'export-json', 'save-png']) controls[id].el.disabled = controls[id].isLocked();
-    importBtn.disabled = controls['import-json'].isLocked();
+    for (const t of TOOLS) toolButtons[t.key].setAttribute('aria-pressed', String(tool === t.key));
+    // Lock disables the buttons (control.js); undo and redo are also disabled when there is nothing to do.
     controls.undo.el.disabled = controls.undo.isLocked() || !undoStack.length;
     controls.redo.el.disabled = controls.redo.isLocked() || !redoStack.length;
     const empty = !S.objs.length;

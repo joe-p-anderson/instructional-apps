@@ -14,7 +14,7 @@
 
 import { controlRegistry, createControl } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
-import { h, metric, section, select } from '../../framework/v1/ui-kit.js';
+import { button, h, metric, section, select } from '../../framework/v1/ui-kit.js';
 import { RANGES, drawReading, judge } from './reading.js';
 
 // The Inkscape drawing, loaded once and cloned per instance.
@@ -142,19 +142,14 @@ function mount(container, modeId = 'caliper', setup = {}) {
   const readingCtl = createControl({ id: 'reading', label: 'Reading (mm)', el: readingBox,
     get: () => input.value, set: (v) => { input.value = String(v ?? ''); }, onLock: refreshEnabled });
 
-  function actionButton(id, name, onClick, primary = false) {
-    const btn = h('button', { type: primary ? 'submit' : 'button', class: 'fw-button' }, name);
-    if (!primary) btn.addEventListener('click', onClick);
-    const ctl = createControl({ id, label: name, el: btn, get: () => null, set: onClick, onLock: refreshEnabled });
-    return { btn, ctl };
-  }
-  const checkBtn = actionButton('check', 'Check', check, true);
-  const revealBtn = actionButton('reveal', 'Show answer', reveal);
-  const nextBtn = actionButton('next', 'Next', nextReading);
+  // Lock disables a button (ui-kit); refreshEnabled also disables Check and Show answer once answered.
+  const checkBtn = button({ id: 'check', name: 'Check', onClick: () => check(), onLock: refreshEnabled });
+  const revealBtn = button({ id: 'reveal', name: 'Show answer', onClick: () => reveal(), onLock: refreshEnabled });
+  const nextBtn = button({ id: 'next', name: 'Next', onClick: () => nextReading(), onLock: refreshEnabled });
 
   const form = h('form', { style: 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px',
     onsubmit: (e) => { e.preventDefault(); check(); } },
-  readingBox, checkBtn.btn, revealBtn.btn, nextBtn.btn);
+  readingBox, checkBtn.el, revealBtn.el, nextBtn.el);
 
   const counters = {
     correct: metric({ name: 'Correct' }),
@@ -181,7 +176,7 @@ function mount(container, modeId = 'caliper', setup = {}) {
   container.append(root);
 
   const controls = { type: typeSelect, zoom: zoomSelect, reading: readingCtl,
-    check: checkBtn.ctl, reveal: revealBtn.ctl, next: nextBtn.ctl };
+    check: checkBtn, reveal: revealBtn, next: nextBtn };
 
   // ── Drawing ──
   function themeColor(name, fallback) {
@@ -274,9 +269,8 @@ function mount(container, modeId = 'caliper', setup = {}) {
 
   function refreshEnabled() {
     input.disabled = readingCtl.isLocked() || s.answered;
-    checkBtn.btn.disabled = checkBtn.ctl.isLocked() || s.answered;
-    revealBtn.btn.disabled = revealBtn.ctl.isLocked() || s.answered;
-    nextBtn.btn.disabled = nextBtn.ctl.isLocked();
+    checkBtn.el.disabled = checkBtn.isLocked() || s.answered;
+    revealBtn.el.disabled = revealBtn.isLocked() || s.answered;
   }
 
   function render() {
@@ -309,12 +303,12 @@ function mount(container, modeId = 'caliper', setup = {}) {
     if (outcome === 'correct') { s.correct += 1; s.streak += 1; } else s.streak = 0;
     message = '';
     render();
-    if (!nextBtn.btn.disabled && root.contains(document.activeElement)) nextBtn.btn.focus({ preventScroll: true });
+    if (!nextBtn.el.disabled && root.contains(document.activeElement)) nextBtn.el.focus({ preventScroll: true });
     emit();
   }
 
   function check() {
-    if (s.answered || checkBtn.ctl.isLocked()) return;
+    if (s.answered || checkBtn.isLocked()) return;
     const result = judge(input.value, reading.twentieths);
     if (result.status === 'invalid') {
       message = result.message;
@@ -325,7 +319,7 @@ function mount(container, modeId = 'caliper', setup = {}) {
   }
 
   function reveal() {
-    if (s.answered || revealBtn.ctl.isLocked()) return;
+    if (s.answered || revealBtn.isLocked()) return;
     finish('revealed');
   }
 

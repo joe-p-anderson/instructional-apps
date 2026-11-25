@@ -38,6 +38,15 @@ test('Check accepts the correct reading and counts it', async ({ page }) => {
   expect((await snapshot(page)).answered).toBe(true);
 });
 
+test('Enter in the reading box checks it once', async ({ page }) => {
+  await open(page);
+  const s = await snapshot(page);
+  await answer(page, s.reading.toFixed(2));
+  await page.getByRole('textbox', { name: 'Reading (mm)' }).press('Enter');
+  await expect(feedback(page)).toContainText(`Correct: ${s.reading.toFixed(2)} mm.`);
+  await expect(page.getByRole('status', { name: 'Attempts' })).toHaveText('1');
+});
+
 test('Check rejects a wrong reading and shows the breakdown with the marks highlighted', async ({ page }) => {
   await open(page);
   const s = await snapshot(page);
