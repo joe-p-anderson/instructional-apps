@@ -92,6 +92,24 @@ test('keyboard shortcuts pick tools, and undo and redo step through the drawing'
   expect((await snapshot(page)).events).toBe(2);
 });
 
+test('the Event tool marks an event on a worldline without moving the worldline', async ({ page }) => {
+  await open(page);
+  await page.getByRole('button', { name: 'Worldline', exact: true }).click();
+  const a = await at(page, 0, 0), b = await at(page, 3, 5);
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move(b.x, b.y, { steps: 6 });
+  await page.mouse.up();
+  const wl = (await saved(page)).objs[0];
+
+  await drawEvent(page, 3, 5); // on the worldline
+  const objs = (await saved(page)).objs;
+  expect(objs.map((o) => o.kind)).toEqual(['wl', 'event']);
+  expect(objs[0]).toEqual(wl);
+  expect(objs[1].x).toBeCloseTo(3, 1);
+  expect(objs[1].t).toBeCloseTo(5, 1);
+});
+
 test('a JSON export imports back as one undoable step', async ({ page }) => {
   await open(page);
   await drawEvent(page, 1, 1);

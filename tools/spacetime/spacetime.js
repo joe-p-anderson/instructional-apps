@@ -795,7 +795,9 @@ function mount(container, modeId = 'diagram', setup = {}) {
       const pt = ptOf(P, ev);
       drag = { P, type: 'pan', sx: ev.clientX, sy: ev.clientY, lx: ev.clientX, ly: ev.clientY, moved: false, id, pt0: pt };
       if (tool === 'select' || tool === 'event') {
-        if (id != null) {
+        // The Event tool marks events on worldlines too (Lab 10's E, F and B lie on them), so a
+        // press on a worldline adds an event there instead of picking up the worldline.
+        if (id != null && !(tool === 'event' && role === 'wl')) {
           sel = id; scrollToSel = true;
           const o = find(id);
           if (role === 'event') drag.type = 'event';
