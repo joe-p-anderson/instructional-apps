@@ -1,8 +1,9 @@
 // Base implementation of the Control interface (see tool.js).
 //
 // createControl({ id, label, el, get, set, onLock, onHide })
-//   el      optional root element. If given, lock disables every input/button/select inside it
-//           and hide sets el.hidden. Omit it for Controls that live inside a Display.
+//   el      optional root element. If given, lock disables el itself when it is an
+//           input/button/select/textarea and every one inside it, and hide sets el.hidden.
+//           Omit it for Controls that live inside a Display.
 //   get     () => value
 //   set     (value) => void, applies the value like a student action would
 //   onLock  optional (locked: boolean) => void, extra work on lock/unlock (e.g. redraw a marker)
@@ -14,7 +15,7 @@ export function controlRegistry(controls) {
   return { get: (id) => map.get(id), ids: () => [...map.keys()] };
 }
 
-const OPERABLE ='input, button, select, textarea';
+const OPERABLE = 'input, button, select, textarea';
 
 export function createControl({ id, label = id, el = null, get, set, onLock, onHide }) {
   let locked = false;
@@ -28,6 +29,7 @@ export function createControl({ id, label = id, el = null, get, set, onLock, onH
   function applyLock() {
     if (el) {
       el.classList.toggle('fw-locked', locked);
+      if (el.matches(OPERABLE)) el.disabled = locked;
       for (const node of el.querySelectorAll(OPERABLE)) node.disabled = locked;
     }
     onLock?.(locked);

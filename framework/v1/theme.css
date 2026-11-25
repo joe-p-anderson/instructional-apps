@@ -41,6 +41,7 @@
   --fw-page:      #D8D0BC;
   --fw-bg:        #F2EFE4;
   --fw-surface:   #FAF8F2;
+  --fw-paper:     #FFFFFF;  /* white drawing ground for realistic drawings (vernier caliper) */
   --fw-border:    #C8BFA0;
   --fw-border-dk: #8B7D5E;
   --fw-blue:      #1B4F8A;
