@@ -215,8 +215,9 @@ Further details:
 
 ### Scoring
 
-- A Task's points are awarded if it ever passed. Misses cost nothing.
-- Graded Question points follow the Task's pass. If the points are split between Questions, each Question earns its share once it has been answered correctly in any Attempt.
+- Points are additive. A Task and each of its Questions carry their own points, and a Task's possible points are its own points plus those of its Questions.
+- A Task's own points are awarded if it ever passed. Misses cost nothing.
+- A graded Question earns its points once it has been answered correctly in any Attempt. A Task can't pass until all of its graded Questions pass, so these points always arrive by the time the Task passes.
 - A free-text Question earns its points if the answer isn't empty.
 - The Report Viewer recomputes scores from the Attempts rather than trusting the totals stored in the Report.
 
