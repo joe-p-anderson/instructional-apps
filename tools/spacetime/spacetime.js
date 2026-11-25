@@ -29,14 +29,14 @@
 
 import { controlRegistry, createControl } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
-import { button, escapeHtml as esc, h, section, slider, toggle } from '../../framework/v1/ui-kit.js';
+import { button, escapeHtml as esc, h, section, slider, themeVars, toggle } from '../../framework/v1/ui-kit.js';
 import {
   DEFAULT_VIEW, PALETTE, VMAX, blankDiagram, byId, convert, eventK, eventsOf, exportDiagram, gamma,
   interval, isSpacelike, normalize, properTime, rodEnd, rodInfo, segmentProperTime, toFrame,
   velocityIn, worldlineCut, worldlinesOf, worldlineSegments,
 } from './physics.js';
 import { FRAMES, SYM, eqLine, fmt, fmtIn, parseNum } from './format.js';
-import { COLORS, drawPanel, panelGeometry } from './draw.js';
+import { COLOR_VARS, drawPanel, panelGeometry } from './draw.js';
 import { conditionTypes, diagramState } from './conditions.js';
 
 const CSS = `
@@ -188,7 +188,7 @@ function mount(container, modeId = 'diagram', setup = {}) {
     caps[P] = h('span');
     figs[P] = h('figure', { class: 'st-panel', 'data-frame': P },
       h('figcaption', {},
-        h('b', { style: `color:${COLORS[P]}` }, SYM[P].tag), caps[P],
+        h('b', { style: `color:var(${COLOR_VARS[P]})` }, SYM[P].tag), caps[P],
         h('span', { class: 'st-ax' }, `(${SYM[P].x}, ${SYM[P].t})`)),
       h('div', { class: 'st-svgwrap' }, svgs[P], hints[P]));
   }
@@ -443,27 +443,29 @@ function mount(container, modeId = 'diagram', setup = {}) {
     const scale = 2, gap = 16, head = 32;
     const W = stacked ? Math.max(...g.map((a) => a.w)) + 2 * gap : g.reduce((s, a) => s + a.w, 0) + (g.length + 1) * gap;
     const H = stacked ? g.reduce((s, a) => s + a.h + head, 0) + 2 * gap : Math.max(...g.map((a) => a.h)) + head + gap;
+    const colors = themeVars(root, COLOR_VARS);
+    const ink = themeVars(root, { paper: '--fw-paper', text: '--fw-text', frame: '--fw-border-dk' });
     const c = doc.createElement('canvas');
     c.width = W * scale; c.height = H * scale;
     const ctx = c.getContext('2d');
     ctx.scale(scale, scale);
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = ink.paper;
     ctx.fillRect(0, 0, W, H);
     let x = gap, y = 0;
     for (let i = 0; i < frames.length; i++) {
       const P = frames[i], { w, h: hh } = g[i];
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${hh}" viewBox="0 0 ${w} ${hh}">${drawPanel(P, S, w, hh, { primed: showPrimed() })}</svg>`;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${hh}" viewBox="0 0 ${w} ${hh}">${drawPanel(P, S, w, hh, { primed: showPrimed(), colors })}</svg>`;
       const img = await new Promise((res, rej) => {
         const im = new Image();
         im.onload = () => res(im);
         im.onerror = rej;
         im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
       });
-      ctx.fillStyle = '#1A1008';
+      ctx.fillStyle = ink.text;
       ctx.font = '600 15px Georgia, serif';
       ctx.fillText(`${SYM[P].tag} · ${S.names[P]}${i === frames.length - 1 ? `   (v = ${fmt(S.v, 3)}c, γ = ${fmt(gamma(S.v), 3)})` : ''}`, x, y + 21);
       ctx.drawImage(img, x, y + head, w, hh);
-      ctx.strokeStyle = '#8B7D5E';
+      ctx.strokeStyle = ink.frame;
       ctx.strokeRect(x + 0.5, y + head + 0.5, w - 1, hh - 1);
       if (stacked) y += hh + head + gap; else x += w + gap;
     }
@@ -1019,7 +1021,7 @@ function mount(container, modeId = 'diagram', setup = {}) {
     const w = svg.clientWidth, hh = svg.clientHeight;
     if (!w || !hh) { delete geom[P]; return; }
     svg.setAttribute('viewBox', `0 0 ${w} ${hh}`);
-    svg.innerHTML = drawPanel(P, S, w, hh, { sel, connectIds, tool, preview, primed: showPrimed() });
+    svg.innerHTML = drawPanel(P, S, w, hh, { sel, connectIds, tool, preview, primed: showPrimed(), colors: themeVars(root, COLOR_VARS) });
     geom[P] = panelGeometry(S.view, w, hh);
   }
   function doRender() {

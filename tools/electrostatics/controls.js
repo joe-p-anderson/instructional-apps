@@ -10,7 +10,7 @@
 import { createControl } from '../../framework/v1/control.js';
 import { h } from '../../framework/v1/ui-kit.js';
 import { E0_MAX, clamp, limitE0 } from './conductor.js';
-import { themeColors } from './plot.js';
+import { plotColors } from './plot.js';
 
 /**
  * A square canvas of `size` CSS pixels drawn at the device pixel ratio.
@@ -103,7 +103,7 @@ export function e0Joystick({ id, name = 'E₀', value = { x: 0, y: 0 }, reset = 
     resetBtn);
 
   function draw() {
-    const C = themeColors(el);
+    const C = plotColors(el);
     const ctx = stick.context();
     ctx.beginPath(); ctx.arc(JOY_C, JOY_C, JOY_R, 0, 2 * Math.PI);
     ctx.strokeStyle = C.borderDk; ctx.lineWidth = 1.5; ctx.stroke();
@@ -183,7 +183,7 @@ export function arcPicker({ id, name = 'θ', value = 0, reset = 0, onChange = ()
     resetBtn);
 
   function draw() {
-    const C = themeColors(el);
+    const C = plotColors(el);
     const ctx = arc.context();
     ctx.beginPath(); ctx.arc(ARC_CX, ARC_CY, ARC_R, -Math.PI / 2, 0);
     ctx.strokeStyle = C.border; ctx.lineWidth = 3; ctx.stroke();

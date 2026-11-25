@@ -13,7 +13,7 @@ import { createEmitter } from '../../../framework/v1/tool.js';
 import { h, metric, section, slider, toggle } from '../../../framework/v1/ui-kit.js';
 import { createChargeOverlay, fieldGrid, polarE0, sigmaRing } from '../conductor.js';
 import { arcPicker, e0Joystick } from '../controls.js';
-import { PLOT_CONFIG, Plotly, conductorLayout, heatmapTrace, plotDisplay, quiverTrace, sigmaTrace, themeColors, toolStyles } from '../plot.js';
+import { PLOT_CONFIG, Plotly, conductorLayout, heatmapTrace, plotDisplay, quiverTrace, sigmaTrace, plotColors, toolStyles } from '../plot.js';
 
 export const id = 'electric-field';
 export const title = 'Electric field';
@@ -104,7 +104,7 @@ export function mount(container, setup = {}) {
   }
 
   function traces() {
-    const C = themeColors(root);
+    const C = plotColors(root);
     const grid = fieldGrid(p);
     Emax = grid.maxE;
     const out = [heatmapTrace(grid), quiverTrace(grid, C), sigmaTrace(sigmaRing(p), C)];
@@ -121,7 +121,7 @@ export function mount(container, setup = {}) {
 
   function redraw() {
     const t = traces();
-    if (ready) Plotly.react(plotDiv, t, conductorLayout(themeColors(root)), PLOT_CONFIG);
+    if (ready) Plotly.react(plotDiv, t, conductorLayout(plotColors(root)), PLOT_CONFIG);
   }
 
   function update() {
@@ -131,7 +131,7 @@ export function mount(container, setup = {}) {
     changes.emit(s);
   }
 
-  Plotly.newPlot(plotDiv, traces(), conductorLayout(themeColors(root)), PLOT_CONFIG);
+  Plotly.newPlot(plotDiv, traces(), conductorLayout(plotColors(root)), PLOT_CONFIG);
   ready = true;
   const plot = plotDisplay(plotDiv, { id: 'field', label: 'Electric field' });
 

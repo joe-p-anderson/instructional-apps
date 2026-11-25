@@ -229,6 +229,37 @@ test('the Display snapshot is a PNG of both diagrams, and Save PNG downloads it'
   expect(download.suggestedFilename()).toBe('spacetime-diagram.png');
 });
 
+test('the diagrams and their PNG take their colours from the theme variables', async ({ page }) => {
+  await open(page);
+  await page.evaluate(() => {
+    const i = window.toolHost.instances[0];
+    for (const id of ['grid-K', 'grid-Kp']) i.controls.get(id).set(false);
+    const root = document.documentElement.style;
+    root.setProperty('--fw-blue', '#00c000');
+    root.setProperty('--fw-surface', '#102030');
+    root.setProperty('--fw-paper', '#abcdef');
+    i.controls.get('reset-view').set();
+  });
+  const kpSvg = page.getByRole('img', { name: 'Spacetime diagram in frame K′' });
+  await expect(kpSvg.locator('text', { hasText: /^t′$/ })).toHaveAttribute('fill', '#00c000');
+  await expect(kpSvg.locator('rect').first()).toHaveAttribute('fill', '#102030');
+
+  const px = await page.evaluate(async () => {
+    const img = new Image();
+    img.src = await window.toolHost.instances[0].displays[0].snapshot();
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const at = (x, y) => [...ctx.getImageData(x, y, 1, 1).data.slice(0, 3)];
+    // 2× scale; the first panel starts 16 px in, below a 32 px header.
+    return { page: at(4, 4), panel: at((16 + 8) * 2, (32 + 8) * 2) };
+  });
+  expect(px.page).toEqual([0xab, 0xcd, 0xef]);
+  expect(px.panel).toEqual([0x10, 0x20, 0x30]);
+});
+
 test('hiding primed removes every x′/t′ readout but keeps the rod frame select', async ({ page }) => {
   await open(page);
   await page.evaluate(() => window.toolHost.instances[0].restore({

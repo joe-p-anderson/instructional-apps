@@ -16,7 +16,7 @@ import { createControl, controlRegistry } from '../../../framework/v1/control.js
 import { createEmitter } from '../../../framework/v1/tool.js';
 import { h, metric, section, slider, toggle } from '../../../framework/v1/ui-kit.js';
 import { RADIUS, WINDOW, clamp, fieldGrid, linspace, potentialProbe } from '../conductor.js';
-import { PLOT_CONFIG, Plotly, boundaryTrace, conductorLayout, heatmapTrace, plotDisplay, quiverTrace, themeColors, toolStyles } from '../plot.js';
+import { PLOT_CONFIG, Plotly, boundaryTrace, conductorLayout, heatmapTrace, plotDisplay, quiverTrace, plotColors, toolStyles } from '../plot.js';
 
 export const id = 'potential';
 export const title = 'Potential';
@@ -147,7 +147,7 @@ export function mount(container, setup = {}) {
 
   // ── Plot ──
   function traces() {
-    const C = themeColors(root);
+    const C = plotColors(root);
     const grid = fieldGrid({ Q: p.Q, induce: true });
     const s = probes();
     let path;
@@ -174,7 +174,7 @@ export function mount(container, setup = {}) {
   }
 
   function redraw() {
-    if (ready) Plotly.react(plotDiv, traces(), conductorLayout(themeColors(root)), PLOT_CONFIG);
+    if (ready) Plotly.react(plotDiv, traces(), conductorLayout(plotColors(root)), PLOT_CONFIG);
   }
 
   function update() {
@@ -191,7 +191,7 @@ export function mount(container, setup = {}) {
     changes.emit(s);
   }
 
-  Plotly.newPlot(plotDiv, traces(), conductorLayout(themeColors(root)), PLOT_CONFIG);
+  Plotly.newPlot(plotDiv, traces(), conductorLayout(plotColors(root)), PLOT_CONFIG);
   ready = true;
   const plot = plotDisplay(plotDiv, { id: 'potential', label: 'Potential' });
 

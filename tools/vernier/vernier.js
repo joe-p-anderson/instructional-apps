@@ -14,7 +14,7 @@
 
 import { controlRegistry, createControl } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
-import { button, escapeHtml, h, metric, section, select } from '../../framework/v1/ui-kit.js';
+import { button, escapeHtml, h, metric, section, select, themeVars } from '../../framework/v1/ui-kit.js';
 import { RANGES, drawReading, judge } from './reading.js';
 
 // The Inkscape drawing, loaded once and cloned per instance.
@@ -58,8 +58,8 @@ const STATE_INFO = {
   streak: { label: 'Streak', unit: '' },
 };
 
-const C = { main: '#1B4F8A', match: '#E8720C', good: '#2A6E2A', bad: '#B81C1C', dim: '#5C4F38',
-  wood: '#d8b77a', hatch: '#e3c99a', hatchLine: '#9a7a45', edge: '#5a4626' };
+// Colours of the measured objects; the marks and feedback use theme colours (themeVars).
+const C = { wood: '#d8b77a', hatch: '#e3c99a', hatchLine: '#9a7a45', edge: '#5a4626' };
 
 const fmt = (v) => v.toFixed(2);
 const isOneOf = (list, v) => list.some((o) => o.value === v);
@@ -169,7 +169,7 @@ function mount(container, modeId = 'caliper', setup = {}) {
           + 'up exactly with a main-scale mark; multiply its division number by 0.05 mm and add.'))),
     h('div', { class: 'fw-displays' },
       task,
-      h('div', { class: 'fw-display', style: 'background:#fff;padding:6px' }, svg),
+      h('div', { class: 'fw-display', style: 'background:var(--fw-paper);padding:6px' }, svg),
       form,
       feedback));
   container.append(root);
@@ -178,9 +178,8 @@ function mount(container, modeId = 'caliper', setup = {}) {
     check: checkBtn, reveal: revealBtn, next: nextBtn };
 
   // ── Drawing ──
-  function themeColor(name, fallback) {
-    return getComputedStyle(root).getPropertyValue(name).trim() || fallback;
-  }
+  const theme = () => themeVars(root, { main: '--fw-blue', match: '--fw-orange', good: '--fw-green',
+    bad: '--fw-red', surface: '--fw-surface', paper: '--fw-paper' });
 
   function drawCaliper() {
     const t = `translate(${SLIDER_X0 + reading.mm})`;
@@ -204,8 +203,7 @@ function mount(container, modeId = 'caliper', setup = {}) {
 
     marks.replaceChildren();
     if (!s.answered) return;
-    const mainCol = themeColor('--fw-blue', C.main);
-    const matchCol = themeColor('--fw-orange', C.match);
+    const { main: mainCol, match: matchCol } = theme();
     const line = (x, y1, y2, color) => el('line', { x1: x, x2: x, y1, y2, stroke: color, 'stroke-width': 0.42,
       'stroke-linecap': 'round' }, marks);
     line(MAIN_ZERO + reading.main, -58.2, -53.8, mainCol);
@@ -245,19 +243,21 @@ function mount(container, modeId = 'caliper', setup = {}) {
 
   function breakdownHtml() {
     const { main, line, match, mm } = reading;
+    const T = theme();
     const swatch = (color) => `<span style="display:inline-block;width:0.9em;height:0.25em;vertical-align:middle;`
       + `margin-right:4px;background:${color}"></span>`;
     return `<div class="vernier-breakdown" style="margin-top:6px;padding:8px 10px;border-left:3px solid `
-      + `${themeColor('--fw-blue', C.main)};background:var(--fw-surface,#FAF8F2)">`
-      + `${swatch(themeColor('--fw-blue', C.main))}Main scale: last mark at or before vernier 0 is <b>${main} mm</b><br>`
-      + `${swatch(themeColor('--fw-orange', C.match))}Vernier line <b>${line}</b> lines up (with the ${match} mm mark): `
+      + `${T.main};background:${T.surface}">`
+      + `${swatch(T.main)}Main scale: last mark at or before vernier 0 is <b>${main} mm</b><br>`
+      + `${swatch(T.match)}Vernier line <b>${line}</b> lines up (with the ${match} mm mark): `
       + `${line} &times; 0.05 = <b>${fmt(line * 0.05)} mm</b><br>`
       + `Reading: ${main} + ${fmt(line * 0.05)} = <b>${fmt(mm)} mm</b></div>`;
   }
 
   function feedbackHtml() {
-    const good = `color:${themeColor('--fw-green', C.good)};font-weight:bold`;
-    const bad = `color:${themeColor('--fw-red', C.bad)};font-weight:bold`;
+    const T = theme();
+    const good = `color:${T.good};font-weight:bold`;
+    const bad = `color:${T.bad};font-weight:bold`;
     if (s.outcome === 'correct') return `<span style="${good}">Correct: ${fmt(reading.mm)} mm.</span>`;
     if (s.outcome === 'wrong') {
       return `<span style="${bad}">Not quite. You entered ${fmt(s.entered)} mm.</span>${breakdownHtml()}`;
@@ -356,7 +356,7 @@ function mount(container, modeId = 'caliper', setup = {}) {
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = theme().paper;
     ctx.fillRect(0, 0, width, height);
     ctx.drawImage(img, 0, 0, width, height);
     return canvas.toDataURL('image/png');

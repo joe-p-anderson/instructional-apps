@@ -19,7 +19,7 @@
 
 import { controlRegistry, createControl } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
-import { button, h, metric, section, select, toggle } from '../../framework/v1/ui-kit.js';
+import { button, h, metric, section, select, themeVars, toggle } from '../../framework/v1/ui-kit.js';
 import { typeset } from '../../framework/v1/vendor.js';
 import {
   DATASETS, DATASET_IDS, PI, TF, TF_ORDER, axisLabel, bestLine, coarseRange, ellPoint, feasible,
@@ -404,12 +404,9 @@ function mount(container, modeId = 'fit', setup = {}) {
   }
 
   // ── drawing ──
-  function colors() {
-    const cs = getComputedStyle(root), v = (name) => cs.getPropertyValue(name).trim();
-    return { accent: v('--fw-blue'), ink: v('--fw-text'), muted: v('--fw-text-dim'), faint: v('--fw-text-muted'),
-      grid: v('--fw-grid'), axis: v('--fw-border-dk'), ok: v('--fw-green'), bad: v('--fw-red'),
-      res: v('--fw-orange'), panel: v('--fw-surface'), font: v('--fw-font') || 'serif' };
-  }
+  const colors = () => themeVars(root, { accent: '--fw-blue', ink: '--fw-text', muted: '--fw-text-dim',
+    faint: '--fw-text-muted', grid: '--fw-grid', axis: '--fw-border-dk', ok: '--fw-green', bad: '--fw-red',
+    res: '--fw-orange', panel: '--fw-surface', font: '--fw-font' });
 
   // Canvases are drawn at their box size, or at a fallback size while hidden (for snapshots).
   function prep(cv, fallbackH) {

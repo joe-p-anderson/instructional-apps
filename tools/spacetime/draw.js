@@ -1,11 +1,12 @@
 // One spacetime diagram panel as SVG markup. No DOM: drawPanel returns a string.
 
 import { byId, convert, eventK, eventsOf, isSpacelike, rodInfo, toFrame, worldlinesOf, worldlineSegments } from './physics.js';
-import { escapeHtml as esc } from '../../framework/v1/ui-kit.js';
+import { escapeHtml as esc, themeVars } from '../../framework/v1/ui-kit.js';
 import { SYM, eqLine, eqRod, fmt, other } from './format.js';
 
-// v1 theme colours (theme.css): ink for K, blue for K′, orange for selection.
-export const COLORS = { K: '#5C4F38', Kp: '#1B4F8A', paper: '#FAF8F2', sel: '#E8720C', bad: '#B81C1C' };
+// The v1 theme variables the diagram is drawn with (theme.css): ink for K, blue for K′, orange
+// for the selection. Read them with themeVars(el, COLOR_VARS) and pass them as ui.colors.
+export const COLOR_VARS = { K: '--fw-text-dim', Kp: '--fw-blue', paper: '--fw-surface', sel: '--fw-orange', bad: '--fw-red' };
 const FONT = "Georgia, 'Times New Roman', serif";
 
 /** Clip the line q + s e, s in [s0, s1], to rectangle R. Returns [sa, sb] or null. */
@@ -36,11 +37,13 @@ export function panelGeometry(V, w, h) {
 
 /**
  * SVG content (no outer <svg>) for frame P's panel of diagram D at w × h pixels.
- * ui: { sel, connectIds, tool, preview, primed } (selection, Join picks, active tool, drawing preview;
- * primed false leaves the K′ tick numbers off the K panel, keeping its K′ axes and their names).
+ * ui: { sel, connectIds, tool, preview, primed, colors } (selection, Join picks, active tool, drawing
+ * preview; primed false leaves the K′ tick numbers off the K panel, keeping its K′ axes and their
+ * names; colors: the COLOR_VARS values, defaulting to the v1 palette).
  */
 export function drawPanel(P, D, w, h, ui = {}) {
   const { sel = null, connectIds = [], tool = 'select', preview = null, primed = true } = ui;
+  const COLORS = ui.colors ?? themeVars(null, COLOR_VARS);
   const v = D.v;
   const V = D.view;
   const { s, R } = panelGeometry(V, w, h);

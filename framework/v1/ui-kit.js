@@ -134,6 +134,28 @@ export function metric({ name, label, format = String }) {
   return { el, update(v) { value.textContent = format(v); } };
 }
 
+// The :root values of theme.css, used while an element is not in a page (keep the two in step).
+const PALETTE = {
+  '--fw-page': '#D8D0BC', '--fw-bg': '#F2EFE4', '--fw-surface': '#FAF8F2', '--fw-paper': '#FFFFFF',
+  '--fw-border': '#C8BFA0', '--fw-border-dk': '#8B7D5E', '--fw-blue': '#1B4F8A', '--fw-blue-dk': '#13376A',
+  '--fw-red': '#B81C1C', '--fw-orange': '#E8720C', '--fw-yellow': '#C8900A', '--fw-green': '#2A6E2A',
+  '--fw-text': '#1A1008', '--fw-text-dim': '#5C4F38', '--fw-text-muted': '#9C8C70', '--fw-grid': '#DDD5C0',
+  '--fw-font': "'Baskerville Old Face', 'Baskervville', 'Libre Baskerville', Baskerville, Georgia, serif",
+};
+
+/**
+ * Theme variables as computed at `el`, for drawing colours that CSS can't reach (canvas, SVG
+ * rendered to PNG, Plotly). themeVars(el, { accent: '--fw-blue', ink: '--fw-text' })
+ * -> { accent: '#1B4F8A', ink: '#1A1008' }. A variable the page doesn't set, or every one while
+ * el is not in a page, falls back to the v1 palette.
+ */
+export function themeVars(el, names) {
+  const css = el?.isConnected ? el.ownerDocument.defaultView.getComputedStyle(el) : null;
+  const out = {};
+  for (const [key, name] of Object.entries(names)) out[key] = css?.getPropertyValue(name).trim() || PALETTE[name] || '';
+  return out;
+}
+
 /** Titled section of the Controls column. */
 export function section(title, ...children) {
   return h('div', { class: 'fw-section' }, h('div', { class: 'fw-section-label' }, title), ...children);
