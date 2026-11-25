@@ -7,7 +7,9 @@ Static instructional apps, served as-is (no build). Tools are built on [framewor
 - [Vernier caliper](tools/vernier/): practise reading a 0.05 mm vernier caliper (outside, inside and depth measurements).
 - [Least squares fitting](tools/least-squares/): linearize a physical model, fit a straight line by dragging its (m, b) handle, and judge it by SSE, R², residuals and error bars.
 - [Electrostatics](tools/electrostatics/): a charged circular conductor in an applied field, with electric field, potential (probes P1/P2) and Gauss's law Modes.
+- [Spacetime diagrams](tools/spacetime/): draw events, worldlines and rods in an Earth frame K and a rocket frame K′, with Lorentz-transformed coordinates, intervals and proper times.
 
 ## Activities
 
 - [Conductor Properties](tools/electrostatics/activities/conductor-properties.html) (PHY 4300, electrostatics): the field, potential and charge of a conductor in electrostatic equilibrium, explained as modus tollens proofs.
+- [Spacetime Diagrams](tools/spacetime/activities/lab10.html) (PHY 1200, spacetime): Lab 10's building the diagram and relativity of simultaneity, read by counting the rocket's tilted grid lines.

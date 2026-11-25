@@ -1,5 +1,6 @@
-// Activity: "Spacetime Diagrams" (PHY 1200), on the spacetime Tool. Follows Lab 10
-// (spacetime/Lab10_spacetime.tex, its content and answer key) at v = 0.6c. Students count the
+// Activity: "Spacetime Diagrams" (PHY 1200), on the spacetime Tool. Follows Lab 10's first two
+// sections (Part 1: Building the diagram; Part 2: Relativity of simultaneity), from the handout
+// source beside the Tool (../Lab10_spacetime.tex, its content and answer key) at v = 0.6c. Students count the
 // tilted grid lines drawn over the Earth diagram instead of reading rocket coordinates: the
 // K′ panel, the x′/t′ readouts and the measurements panel stay hidden.
 //
@@ -146,11 +147,111 @@ const building = {
   ],
 };
 
+const simultaneity = {
+  id: 'simultaneity',
+  title: 'Part 2: Relativity of simultaneity',
+  mode: 'diagram',
+  setup: SETUP,
+  tasks: [
+    staged({
+      id: 'ends-flash',
+      title: 'The rocket\'s ends and the flash',
+      prompt: 'A rocket 4 ly long (in its own frame) moves at \\(0.6c\\). A lamp at its exact middle flashes '
+        + 'at \\(t = t\' = 0\\), at the origin. Detectors at the back (\\(x\' = -2\\)) and the front '
+        + '(\\(x\' = +2\\)) record when the light reaches them.<br>'
+        + 'With the <b>Worldline</b> tool, trace the worldlines of the back and the front of the rocket along '
+        + 'the tilted grid. Then draw the flash going each way.',
+      condition: 'enc1:PQwPAkhQBkNJVxIYABMKBgkWHgwAEQJHRwwZGkNLUwxjMQZPXBIKAUhHHFoTWEFbXkRPWgFGEVZfQl5HGhtMSV9JFREOSR4CNT0iRRIKEkISWloZQ0wHDRobBE4BRhBWX0JcU0JWVT8KFRkaQ0tVEW1mKgIKAR4HSlVZVAsQT0MHGg1OF1RLRRheCUcaDVAOR0MZUwdIEk8zKDZMWV5VE0pVWFQLEU9DBiEOAA9eVVpVQ15HFlYaW0lbTwJJVUkCNSs-AgoAHgAbW1ZURVkTBFFPQx9ZSRIbFx4WCQcaRUlJW04CSUhUDGMxBk9cEgoBSEccWhNYQVtDWUMYD15VWEcGHQlMThBFVARm',
+      points: 1,
+      hint: { after: 3, text: 'enc1:RDJMFVkABg8XVRIYTB0WVAQGUgROF08FFg1aTgdFOXxpPHV8bBkQGTorBVsDfD9IUxQPCA04OVxOQC45R10MSxYWG0kHRRdVLzdyUFFCUV0KEkFWRU9DFRsQQTBxTBFTOS5bRQ8MSRhLWXpUUzk5CDVkbwAAbGwYRgNFGUJFQw0aGwQfDQcXGxYBUjkyXFhLWFlnfB4VRRFvcg58GR4QZQ4SQ1ZQRAdBERoVBA0IDBMNBlIXDw1TRUc' },
+    }, { show: ['tool-select', 'tool-event', 'tool-worldline'], hide: ['tool-rod', 'tool-join'] }),
+    {
+      id: 'marks-bf',
+      title: 'Mark \\(B\\) and \\(F\\)',
+      prompt: 'Use the <b>Event</b> tool to mark \\(B\\), where the light reaches the back, and \\(F\\), where it '
+        + 'reaches the front. Then count tilted lines to find the rocket time \\(t\'\\) of each.',
+      condition: 'enc1:PQwPAkhQBkNJVxIYAAETEQsGUElMDAJRSEgXAgdHXxFtZiZPXBIKAUhGUFpKAhcYAxBDVg8XEVkABBcLGlYMSR1bARRfRxECe3B-AkRfXBNcRwNHTH0',
+      questions: [
+        { id: 'tp-B', kind: 'numeric', prompt: '\\(t\'_B =\\) (yr)', answer: 'enc1:VA', tol: NUMERIC_TOL, points: 1 },
+        { id: 'tp-F', kind: 'numeric', prompt: '\\(t\'_F =\\) (yr)', answer: 'enc1:VA', tol: NUMERIC_TOL, points: 1 },
+      ],
+      points: 1,
+      hint: { after: 3, text: '\\(B\\) is where the leftward ray meets the back\'s worldline; \\(F\\) is where the rightward ray meets the front\'s.' },
+    },
+    {
+      id: 'earth-times',
+      title: 'Earth times',
+      prompt: 'Now read the Earth time \\(t\\) of each event off the square grid.',
+      questions: [
+        { id: 't-B', kind: 'numeric', prompt: '\\(t_B =\\) (yr)', answer: 'enc1:Vw', tol: NUMERIC_TOL, points: 1 },
+        { id: 't-F', kind: 'numeric', prompt: '\\(t_F =\\) (yr)', answer: 'enc1:Ug', tol: NUMERIC_TOL, points: 1 },
+        {
+          id: 'first',
+          kind: 'choice',
+          prompt: 'Which arrival happens first in the Earth frame?',
+          choices: [
+            { id: 'B', text: 'The light reaches the back (\\(B\\)) first' },
+            { id: 'F', text: 'The light reaches the front (\\(F\\)) first' },
+            { id: 'both', text: 'Both at once' },
+          ],
+          correct: 'enc1:RDUP',
+          points: 1,
+        },
+      ],
+      points: 0,
+    },
+    {
+      id: 'back-first',
+      title: 'Why the back is reached first',
+      prompt: 'Answer in a sentence or two.',
+      questions: [{
+        id: 'why',
+        kind: 'text',
+        prompt: 'Explain, from the point of view of someone on Earth, why the back is reached first.',
+        points: 1,
+      }],
+      points: 0,
+    },
+    {
+      id: 'rod-bf',
+      title: 'Connect \\(B\\) and \\(F\\)',
+      prompt: 'Use the <b>Rod</b> tool to lay a rod with one end at \\(B\\) and the other at \\(F\\). '
+        + 'A rod lies along a line of simultaneity in its frame: choose the frame it is simultaneous in.',
+      condition: 'enc1:HVVZD0FFQVtRBhVBXwsBVklQFwsKBwJRPiIWEV9UOAwacH4UbW0cExIYQVQLEE1QDg',
+      questions: [
+        {
+          id: 'parallel',
+          kind: 'choice',
+          prompt: 'Which grid lines is the line from \\(B\\) to \\(F\\) parallel to?',
+          choices: [
+            { id: 't-axis', text: 'The \\(t\\) axis' },
+            { id: 'x-axis', text: 'The \\(x\\) axis' },
+            { id: 'tp-axis', text: 'The \\(t\'\\) axis' },
+            { id: 'xp-axis', text: 'The \\(x\'\\) axis' },
+            { id: 'light', text: 'A light ray' },
+          ],
+          correct: 'enc1:RA9dW1BYChJR',
+          points: 1,
+        },
+        {
+          id: 'says',
+          kind: 'text',
+          prompt: 'In one sentence, what does that say about the word "simultaneous"?',
+          points: 1,
+        },
+      ],
+      points: 1,
+      show: ['tool-rod'],
+      hint: { after: 3, text: 'Use the <b>Rod</b> tool, set the rod\'s frame to the rocket\'s, and drag its ends onto \\(B\\) and \\(F\\).' },
+    },
+  ],
+};
+
 export default {
   id: 'spacetime-lab10',
   version: 1,
   title: 'Spacetime Diagrams',
   course: 'PHY 1200',
   tool: 'spacetime',
-  parts: [building],
+  parts: [building, simultaneity],
 };
