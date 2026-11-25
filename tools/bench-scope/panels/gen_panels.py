@@ -421,15 +421,19 @@ def build_tds():
 
 if __name__ == "__main__":
     import os
-    os.makedirs("out", exist_ok=True)
+    # Writes the SVGs and the control map beside this script, in place:
+    #   python tools/bench-scope/panels/gen_panels.py
+    here = os.path.dirname(os.path.abspath(__file__))
     cmap = {"version": 1, "notes": "data-control names are shared across models. "
             "Element id = <prefix>-<data-control>. Knobs rotate via the child g.osc-knob-rot "
             "about (data-cx, data-cy). data-push names the knob's push action, if any.",
             "models": {}}
     for build, fname in [(build_tbs, "tbs2072b.svg"), (build_tds, "tds2001c.svg")]:
         p = build()
-        open(f"out/{fname}", "w").write(p.svg())
+        with open(os.path.join(here, fname), "w", encoding="utf-8") as f:
+            f.write(p.svg())
         cmap["models"][p.model] = {"file": fname, "idPrefix": p.prefix,
                                    "viewBox": [0, 0, p.w, p.h], "controls": p.controls}
-    json.dump(cmap, open("out/controls.json", "w"), indent=1)
+    with open(os.path.join(here, "controls.json"), "w", encoding="utf-8") as f:
+        json.dump(cmap, f, indent=1)
     print("ok")
