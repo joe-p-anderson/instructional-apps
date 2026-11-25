@@ -5,7 +5,10 @@
 // State: engine.state() (see engine/engine.js and each feature module for keys and units).
 // Controls: 'skin' (the skin switcher, a select), source panel 'gen1-*', 'ch2-source', 'ch2-fc', 'ch2-f0', 'ch2-q', 'gen2-*' (see source-panel.js), and every active
 //   knob, button and softkey on the front panel by its control-map name ('ch1-scale',
-//   'ch1-menu', 'softkey-3', ...; see panel.js for get/set and engine feature modules for values).
+//   'ch1-menu', 'softkey-3', ...; see panel.js for get/set and engine feature modules for values),
+//   and the cursors 'cursor-1', 'cursor-2' (value: position in s from the trigger point or V,
+//   null while cursors are off; see engine/cursors.js). A locked cursor ignores the multipurpose
+//   knob; a hidden one is not drawn.
 // Displays: 'screen' (the scope screen at native resolution; the front panel is not included).
 //
 // Layout: source panel in the Controls column, the front panel (inlined SVG with the screen
@@ -16,7 +19,7 @@
 // engine for one on the new profile (engine.js switchSkin) and the panel for the new SVG; the
 // panel Controls are rebuilt, keeping the lock and hide state of controls both models have.
 
-import { controlRegistry } from '../../framework/v1/control.js';
+import { controlRegistry, createControl } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
 import { h } from '../../framework/v1/ui-kit.js';
 import { DEFAULT_SKIN, SKIN_IDS, skinProfile } from './engine/skins.js';
@@ -67,6 +70,9 @@ function mount(container, modeId = 'scope', setup = {}) {
 
   // One path for every State change: an engine event, then notify if the State moved.
   function dispatch(event) {
+    if (event?.type === 'turn' && event.control === 'mp-knob' && engine.mpFunction()) {
+      if (cursorControls[engine.state().cursorSelected - 1]?.isLocked()) return;
+    }
     engine.apply(event);
     panel.sync();
     draw();
@@ -79,6 +85,15 @@ function mount(container, modeId = 'scope', setup = {}) {
     lastState = key;
     changes.emit(s);
   }
+
+  // The cursors, as Controls (they are on the screen, not the panel).
+  const cursorControls = ['cursor-1', 'cursor-2'].map((id, i) => createControl({
+    id,
+    label: `Cursor ${i + 1}`,
+    get: () => engine.value(id),
+    set: (value) => dispatch({ type: 'set', control: id, value }),
+    onHide: () => draw(),
+  }));
 
   const source = createSourcePanel({ values: engine.state(), onPatch: (patch) => dispatch({ type: 'setSource', patch }) });
   const switcher = createSkinSwitcher({ value: skin, onSwitch: (id) => setSkin(id) });
@@ -125,7 +140,12 @@ function mount(container, modeId = 'scope', setup = {}) {
   }
 
   function draw(now = performance.now()) {
-    renderScreen(g, engine.acquire(now), profile);
+    const frame = engine.acquire(now);
+    if (frame.cursors) {
+      const hidden = new Set(cursorControls.filter((c) => c.isHidden()).map((c) => c.id));
+      frame.cursors.lines = frame.cursors.lines.filter((l) => !hidden.has(l.id));
+    }
+    renderScreen(g, frame, profile);
   }
 
   let raf = 0;
@@ -138,7 +158,7 @@ function mount(container, modeId = 'scope', setup = {}) {
   draw();
   lastState = JSON.stringify(engine.state());
 
-  const registry = () => controlRegistry([switcher.control, ...Object.values(source.controls), ...panel.controls]);
+  const registry = () => controlRegistry([switcher.control, ...Object.values(source.controls), ...panel.controls, ...cursorControls]);
 
   return {
     state: {

@@ -8,6 +8,7 @@
 //                         "CH1" in the channel colour)
 // Readouts without a slot are laid out along the bottom bar from style.readouts.spareX, so a
 // new readout shows up before it gets a slot.
+// Cursors (frame.cursors) are drawn over the traces: dashed lines, the selected one solid.
 // The softkey menu (frame.menu) is drawn last, over the graticule, in style.menu: the title at
 // style.menu.titleY, then one box per softkey slot with the item's label and its current value
 // (highlighted). Colours: style.colors.menu / menuText.
@@ -20,6 +21,9 @@ const READOUT_SLOTS = {
     'ch2-scale': [150, 455, 'left'],
     timebase: [330, 455, 'left'],
     trigger: [560, 455, 'left'],
+    'cursor-dt': [250, 15, 'left'],
+    'cursor-inv': [400, 15, 'left'],
+    'cursor-dv': [250, 15, 'left'],
   },
   // TDS1000C/2000C: trigger status top left, CH readouts then time base along the bottom.
   tds2001c: {
@@ -28,6 +32,9 @@ const READOUT_SLOTS = {
     'ch2-scale': [70, 228, 'left'],
     timebase: [134, 228, 'left'],
     trigger: [196, 228, 'left'],
+    'cursor-dt': [80, 7, 'left'],
+    'cursor-inv': [160, 7, 'left'],
+    'cursor-dv': [80, 7, 'left'],
   },
 };
 
@@ -135,6 +142,22 @@ export function renderScreen(g, frame, profile) {
     g.stroke();
   }
   g.restore();
+
+  // Cursors: dashed lines across the graticule, the selected one solid; amplitude cursors in
+  // their source channel's colour.
+  if (frame.cursors) {
+    g.save();
+    g.strokeStyle = colors[frame.cursors.channel] ?? colors.text;
+    g.lineWidth = 1;
+    frame.cursors.lines.forEach((l, i) => {
+      g.setLineDash(i + 1 === frame.cursors.selected ? [] : [4, 3]);
+      g.beginPath();
+      if (l.axis === 'x') { const X = Math.round(toX(l.pos)) + 0.5; g.moveTo(X, plot.y); g.lineTo(X, plot.y + plot.h); }
+      else { const Y = Math.round(toY(l.pos)) + 0.5; g.moveTo(plot.x, Y); g.lineTo(plot.x + plot.w, Y); }
+      g.stroke();
+    });
+    g.restore();
+  }
 
   // Trigger markers: the level as an arrow on the right edge in the source colour, the
   // trigger point as a "T" flag along the top. Off-screen positions pin to the edge.

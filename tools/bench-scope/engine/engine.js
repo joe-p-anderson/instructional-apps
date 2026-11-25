@@ -62,6 +62,7 @@
 
 import { acquireTraces, acquisition } from './acquire.js';
 import { autosetFeature } from './autoset.js';
+import { cursors } from './cursors.js';
 import { display } from './display.js';
 import { horizontal } from './horizontal.js';
 import { menuSystem } from './menus.js';
@@ -76,6 +77,7 @@ const SETTINGS_FEATURES = [
   trigger,
   acquisition,
   display,
+  cursors,
   autosetFeature, // last: it sets the features above through their Control hooks
 ];
 // Plus the softkey menus those features define (each feature's `menus` hook, see menus.js).
