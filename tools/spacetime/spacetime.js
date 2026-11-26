@@ -68,7 +68,8 @@ const CSS = `
   border: 1px solid var(--fw-border); background: var(--fw-bg); color: var(--fw-text); min-width: 0; }
 .st-tool input[type=text]:disabled { color: var(--fw-text-muted); }
 .st-displays { gap: 6px; position: relative; padding: 8px 10px; }
-.st-status { font-size: 14px; color: var(--fw-text-dim); min-height: 26px; line-height: 1.4; }
+/* Two lines reserved for the tool help, so picking another tool doesn't resize (and rescale) the diagram. */
+.st-status { font-size: 14px; color: var(--fw-text-dim); min-height: 2.8em; line-height: 1.4; }
 .st-status button { font-size: 13px; padding: 0 6px; margin-left: 4px; }
 .st-panels { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .st-panels.st-single { grid-template-columns: minmax(0, 1fr); }
@@ -762,7 +763,7 @@ function mount(container, modeId = 'diagram', setup = {}) {
   // ── Pointer interaction ──
   const pointers = new Map();
   function ptOf(P, ev) {
-    const r = svgs[P].getBoundingClientRect(), g = geom[P];
+    const r = svgs[P].getBoundingClientRect(), g = freshGeom(P);
     const px = ev.clientX - r.left, py = ev.clientY - r.top;
     return { px, py, x: S.view.cx + (px - g.w / 2) / g.s, t: S.view.ct - (py - g.h / 2) / g.s };
   }
@@ -1041,6 +1042,14 @@ function mount(container, modeId = 'diagram', setup = {}) {
     svg.innerHTML = drawPanel(P, S, w, hh, { sel, connectIds, tool, preview, primed: showPrimed(), colors: themeVars(root, COLOR_VARS) });
     geom[P] = panelGeometry(S.view, w, hh);
   }
+  // Panel P's geometry for its current size: redrawn now if the panel was resized since the last
+  // render (whose redraw waits for the next animation frame), so a click or toScreen() never
+  // maps through a stale scale. undefined while the panel is not laid out.
+  function freshGeom(P) {
+    const g = geom[P], svg = svgs[P];
+    if (!g || Math.abs(g.w - svg.clientWidth) >= 1 || Math.abs(g.h - svg.clientHeight) >= 1) drawSvg(P);
+    return geom[P];
+  }
   function doRender() {
     const single = !showKpPanel();
     figs.Kp.hidden = single;
@@ -1087,8 +1096,7 @@ function mount(container, modeId = 'diagram', setup = {}) {
       label: 'Spacetime diagrams',
       snapshot: snapshotPng,
       toScreen(x, t) {
-        const g = geom.K;
-        if (!g || Math.abs(g.w - svgs.K.clientWidth) >= 2) return null;
+        if (!freshGeom('K')) return null;
         const r = svgs.K.getBoundingClientRect();
         const [px, py] = toPx('K', [x, t]);
         return { x: r.left + px, y: r.top + py };
