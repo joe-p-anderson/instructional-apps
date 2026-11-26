@@ -1,7 +1,8 @@
 // Activity "Frequency Domain: Fourier Series" (PHY/EGR 3120), on the fourier Tool.
 // Part 1 builds the square and triangle waves from their series (Synthesis Mode); Parts 2 and 3
-// take a shifted sine and the square wave apart by hand (Analysis Mode). Parts 4 and 5 (the RC
-// low-pass and high-pass on the square wave) follow in ticket 08.
+// take a shifted sine and the square wave apart by hand (Analysis Mode). Parts 4 and 5 pass the
+// square wave through the RC low-pass and high-pass (Synthesis Mode, where the time plot shows
+// the filtered sum and its N = ∞ curve): gain only, phase only, both, then one harmonic by hand.
 //
 // Pure data (no DOM): the runner core and Node tests import it directly. Prompts and Questions
 // may use \( \) math; the ones students answer use Unicode subscripts so they read the same
@@ -16,12 +17,17 @@
 // judge it by eye. Hints guide and never state the passing value.
 // Points: 1 per Task with a Condition, none for a Task without one, 1 per graded Question.
 //
-// Every Setup fixes f₀ = 1 kHz, ±1 V, no offset and the filter off. The first Task of each Part
-// locks those Controls (FIXED); the coefficient Tasks hide the spectrum (and the Task after them
-// shows it), and the filter curves stay hidden until the filter Parts.
+// Every Setup fixes f₀ = 1 kHz, ±1 V and no offset; Parts 1–3 fix the filter off, and the first
+// Task of each locks those Controls (FIXED); the coefficient Tasks hide the spectrum (and the Task
+// after them shows it), and the filter curves stay hidden. Parts 4 and 5 fix the square wave,
+// f_c = 3 kHz and the filter type with both toggles off, lock all but the toggles (FILTER_LOCK)
+// and unlock the toggles (TOGGLES), whose states the toggle Tasks' Conditions check.
 
 const FIXED = ['amp', 'f0', 'offset', 'shift', 'filter', 'fc', 'applyGain', 'applyPhase'];
 const SETUP = { amp: 1, f0: 1000, offset: 0, filter: 'off' };
+const TOGGLES = ['applyGain', 'applyPhase'];
+const FILTER_LOCK = ['waveform', ...FIXED.filter((id) => !TOGGLES.includes(id))];
+const FILTERED = { ...SETUP, waveform: 'square', shift: 0, fc: 3000, applyGain: false, applyPhase: false, N: 30 };
 
 const AMP = { kind: 'numeric', relTol: 0.02, points: 1 };
 const PHASE = { kind: 'numeric', tol: 2, modulus: 360, points: 1 };
@@ -208,6 +214,173 @@ export default {
             correct: 'enc1:RBJbE18NGQQBGkxdAAsTERdfHEc',
             points: 1,
           }],
+          points: 0,
+        },
+      ],
+    },
+    {
+      id: 'lowpass',
+      title: 'Part 4: Low-Pass on the Square',
+      mode: 'synthesis',
+      setup: { ...FILTERED, filter: 'lowpass' },
+      tasks: [
+        {
+          id: 'gain-only',
+          title: 'Gain only',
+          prompt: 'The 1 V, 1 kHz square wave now feeds the first-order RC low-pass filter from the RC Activity, '
+            + 'with f_c = 3 kHz. The filter acts on each harmonic in two ways: <b>Apply gain</b> scales its amplitude '
+            + 'by the gain |H| at its frequency, and <b>Apply phase shift</b> adds the phase shift ∠H to its phase. Turn on '
+            + 'Apply gain only, and compare the partial sum and the N = ∞ curve with the square wave.',
+          lock: FILTER_LOCK,
+          show: TOGGLES,
+          condition: 'enc1:PQwPBUVBFwRRT0MNXRQJDSITGwtMWAIOFAxaTABHX1QzMTcMEkRRQwESWTpQQgYNUU9DLV0UCQ1FFRMMAFRPBUcEF1tRFhFBNSFwGhJRQEEKDn0eUFMGQ19XBB1YBQkHR0gUBAIHRUdHDVpSFAARbCAmN0wSChJwFgdBDxFQCwAAEEEfRQ0DAEUdFANMCX0',
+          points: 1,
+        },
+        {
+          id: 'phase-only',
+          title: 'Phase only',
+          prompt: 'Now turn on Apply phase shift only: every harmonic keeps its amplitude but is delayed by the filter. '
+            + 'Compare the shape with the square wave and with the gain-only shape.',
+          condition: 'enc1:PQwPBUVBFwRRT0MNXRQJDSITGwtMWAIOFAxaTABHX0YgKCFFHBJEUBQQSAJ9QQEEH1dbTmwUFRgcUhUEBxoABAMfGV1fHkdTNSUmRRIKElAWB0EPYUgCEhZXTU5IFRAVCQFQXxoGVQ5JW09BAQIAVA0lMEVcEgoTJwddGkgAEwkSBgRMXgwMEhFSHQtMCX0',
+          points: 1,
+        },
+        {
+          id: 'both',
+          title: 'Gain and phase',
+          prompt: 'Turn on both Apply gain and Apply phase shift. Try each of the three settings again if you like, and raise N to watch the partial sum approach the N = ∞ curve.',
+          condition: 'enc1:PQwPBUVBFwRRT0MNXRQJDSITGwtMWAIOFAxaTABHX1QzMTcMEkRRQwESWTpQQgYNUU9DLV0UCQ1FFRMMAFRPBUcEF1tRFhFBNSFwGhJRQEEKDn0eUFMGQ19XBB1YBQkHR0gGFxsRDEkRGElHFhEpQSMhPgIKEnFBFhtUVkFIAhIWVRIERAIRVAocUBgz',
+          questions: [{
+            id: 'rc-curve',
+            kind: 'choice',
+            prompt: 'Which setting turns the square wave into the RC charging curve, V_C rising and falling exponentially toward ±1 V?',
+            choices: [
+              { id: 'gain', text: 'Gain only' },
+              { id: 'phase', text: 'Phase only' },
+              { id: 'both', text: 'Gain and phase together' },
+              { id: 'either', text: 'Either one alone' },
+            ],
+            correct: 'enc1:RBVCAlkC',
+            points: 1,
+          }],
+          points: 1,
+        },
+        {
+          id: 'why-both',
+          title: 'Why both?',
+          prompt: 'Answer in a few sentences.',
+          questions: [{
+            id: 'why-both',
+            kind: 'text',
+            prompt: 'Why does the filter need both its gain and its phase shift to produce the RC charging curve? What goes wrong with each one alone?',
+            points: 1,
+          }],
+          points: 0,
+        },
+        {
+          id: 'harmonic-3',
+          title: 'The output 3rd harmonic',
+          prompt: 'Hand-compute the filtered output\'s 3rd harmonic, from the input\'s A₃ and φ₃ (Part 3). '
+            + 'The first-order RC low-pass filter has gain |H| = 1/√(1 + (f/f_c)²) and phase shift ∠H = −arctan(f/f_c), '
+            + 'at the harmonic\'s frequency f. The output harmonic has amplitude A₃·|H| and phase φ₃ + ∠H.',
+          questions: [
+            { ...AMP, id: 'A3out', prompt: 'Output A₃ (V)', answer: 'enc1:VlkeRgERU1RHRllbHF1VR1BG' },
+            { ...PHASE, id: 'phi3out', prompt: 'Output φ₃ (°)', answer: 'enc1:S0YeQw' },
+          ],
+          points: 0,
+          hint: { after: 3, text: 'The 3rd harmonic is at f = 3f₀: start from f/f_c there. Multiply the input\'s A₃ by |H|, and add ∠H, in degrees, to the input\'s φ₃.' },
+        },
+      ],
+    },
+    {
+      id: 'highpass',
+      title: 'Part 5: High-Pass on the Square',
+      mode: 'synthesis',
+      setup: { ...FILTERED, filter: 'highpass' },
+      tasks: [
+        {
+          id: 'gain-only',
+          title: 'Gain only',
+          prompt: 'The same square wave now feeds the first-order RC high-pass filter, f_c = 3 kHz: the output is '
+            + 'the voltage V_R across the resistor. Turn on Apply gain only, and compare the partial sum and the '
+            + 'N = ∞ curve with the square wave.',
+          lock: FILTER_LOCK,
+          show: TOGGLES,
+          condition: 'enc1:PQwPBUVBFwRRT0MNXRQJDSITGwtMWAIOFAxaTABHX1QzMTcMEkRRQwESWTpQQgYNUU9DLV0UCQ1FFRMMAFRPBUcEF1tRFhFBNSFwGhJRQEEKDn0eUFMGQ19XBB1YBQkHR0gUBAIHRUdHDVpSFAARbCAmN0wSChJwFgdBDxFQCwAAEEEfRQ0DAEUdFANMCX0',
+          points: 1,
+        },
+        {
+          id: 'phase-only',
+          title: 'Phase only',
+          prompt: 'Now turn on Apply phase shift only. The high-pass filter shifts each harmonic\'s phase forward rather than back.',
+          condition: 'enc1:PQwPBUVBFwRRT0MNXRQJDSITGwtMWAIOFAxaTABHX0YgKCFFHBJEUBQQSAJ9QQEEH1dbTmwUFRgcUhUEBxoABAMfGV1fHkdTNSUmRRIKElAWB0EPYUgCEhZXTU5IFRAVCQFQXxoGVQ5JW09BAQIAVA0lMEVcEgoTJwddGkgAEwkSBgRMXgwMEhFSHQtMCX0',
+          points: 1,
+        },
+        {
+          id: 'both',
+          title: 'Gain and phase',
+          prompt: 'Turn on both Apply gain and Apply phase shift, and raise N to watch the partial sum approach the N = ∞ curve.',
+          condition: 'enc1:PQwPBUVBFwRRT0MNXRQJDSITGwtMWAIOFAxaTABHX1QzMTcMEkRRQwESWTpQQgYNUU9DLV0UCQ1FFRMMAFRPBUcEF1tRFhFBNSFwGhJRQEEKDn0eUFMGQ19XBB1YBQkHR0gGFxsRDEkRGElHFhEpQSMhPgIKEnFBFhtUVkFIAhIWVRIERAIRVAocUBgz',
+          questions: [{
+            id: 'spikes',
+            kind: 'choice',
+            prompt: 'Which setting turns the square wave into the decaying spikes you measured, V_R jumping by 2 V at each edge and then decaying exponentially toward 0?',
+            choices: [
+              { id: 'gain', text: 'Gain only' },
+              { id: 'phase', text: 'Phase only' },
+              { id: 'both', text: 'Gain and phase together' },
+              { id: 'either', text: 'Either one alone' },
+            ],
+            correct: 'enc1:RBVCAlkC',
+            points: 1,
+          }],
+          points: 1,
+        },
+        {
+          id: 'why-both',
+          title: 'Why both?',
+          prompt: 'Answer in a few sentences.',
+          questions: [{
+            id: 'why-both',
+            kind: 'text',
+            prompt: 'Why does the high-pass filter need both its gain and its phase shift to produce the decaying spikes? Compare with what you found for the low-pass.',
+            points: 1,
+          }],
+          points: 0,
+        },
+        {
+          id: 'harmonic-3',
+          title: 'The output 3rd harmonic',
+          prompt: 'Hand-compute the high-pass output\'s 3rd harmonic, from the input\'s A₃ and φ₃ (Part 3). '
+            + 'The first-order RC high-pass filter has gain |H| = 1/√(1 + (f_c/f)²) and phase shift ∠H = arctan(f_c/f), '
+            + 'at the harmonic\'s frequency f. The output harmonic has amplitude A₃·|H| and phase φ₃ + ∠H.',
+          questions: [
+            { ...AMP, id: 'A3out', prompt: 'Output A₃ (V)', answer: 'enc1:VlkeRgERU1RHRllbHF1VR1BG' },
+            { ...PHASE, id: 'phi3out', prompt: 'Output φ₃ (°)', answer: 'enc1:S0MY' },
+          ],
+          points: 0,
+          hint: { after: 3, text: 'The 3rd harmonic is at f = 3f₀: start from f_c/f there. Multiply the input\'s A₃ by |H|, and add ∠H, in degrees, to the input\'s φ₃. The high-pass ∠H is positive.' },
+        },
+        {
+          id: 'gains-add',
+          title: 'Do the gains add to 1?',
+          prompt: 'Low-pass gives V_C and high-pass gives V_R, and V_C + V_R = v_in. The low-pass gain is '
+            + 'H_LP = 1/(1 + j f/f_c) and the high-pass gain is H_HP = (j f/f_c)/(1 + j f/f_c). Compare the two at f = 3 kHz.',
+          questions: [
+            { ...AMP, id: 'magSum', prompt: '|H_LP| + |H_HP| at 3 kHz', answer: 'enc1:V1kZRwUSUlJGQ1NfGldVTVBD' },
+            {
+              id: 'complex-sum',
+              kind: 'choice',
+              prompt: 'Which statement explains why V_C + V_R = v_in?',
+              choices: [
+                { id: 'one', text: 'The complex gains add to 1 at every f, H_LP + H_HP = 1, though their magnitudes do not: the phase shifts matter.' },
+                { id: 'magnitudes', text: 'The magnitudes add to 1 at every f, |H_LP| + |H_HP| = 1, so the amplitudes split between V_C and V_R.' },
+                { id: 'dc', text: 'The gains add to 1 only at f = 0, so V_C + V_R = v_in only for the DC term.' },
+                { id: 'neither', text: 'Neither adds to 1: V_C + V_R = v_in only at N = ∞.' },
+              ],
+              correct: 'enc1:RBhDExM',
+              points: 1,
+            },
+          ],
           points: 0,
         },
       ],

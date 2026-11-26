@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createRunner, decodeKey, isEncodedKey } from '../../../framework/v1/runner/index.js';
 import activity from '../../../tools/fourier/activities/fourier-series.js';
-import { ideal, partialSum, productAverage, series } from '../../../tools/fourier/engine.js';
+import { filterResponse, filterSeries, ideal, partialSum, productAverage, series } from '../../../tools/fourier/engine.js';
 import { stubTool } from '../runner/stub-tool.js';
 
 const SHARED = ['waveform', 'amp', 'f0', 'offset', 'shift', 'filter', 'fc', 'applyGain', 'applyPhase'];
@@ -26,7 +26,7 @@ function start() {
   return { runner, tools };
 }
 
-const [part1, part2, part3] = activity.parts;
+const [part1, part2, part3, part4, part5] = activity.parts;
 const taskOf = (part, id) => part.tasks.find((t) => t.id === id);
 const allTasks = () => activity.parts.flatMap((p) => p.tasks);
 const allQuestions = () => allTasks().flatMap((t) => t.questions ?? []);
@@ -54,12 +54,26 @@ const P2 = {
 const P3 = {
   'A-phi-square': { answers: { A1: '1.273', A2: '0', A3: '0.424', A4: '0', A5: '0.255', phi1: '-90', phi3: '-90', phi5: '-90' } },
 };
+// Parts 4 and 5: A3 = 4/(3*pi) through |H(3 kHz)| = 1/sqrt 2, and phi3 = -90 deg plus angle H = -/+45 deg.
+const TOGGLES = (gain, phase) => ({ state: { applyGain: gain, applyPhase: phase } });
+const P4 = {
+  'gain-only': TOGGLES(true, false),
+  'phase-only': TOGGLES(false, true),
+  both: { ...TOGGLES(true, true), answers: { 'rc-curve': 'both' } },
+  'why-both': {},
+  'harmonic-3': { answers: { A3out: '0.300', phi3out: '-135' } },
+};
+const P5 = {
+  ...P4,
+  both: { ...TOGGLES(true, true), answers: { spikes: 'both' } },
+  'harmonic-3': { answers: { A3out: '0.300', phi3out: '-45' } },
+};
 
 test('the Activity names the fourier Tool, for PHY/EGR 3120, with Parts on Synthesis, Analysis, Analysis', () => {
   assert.equal(activity.tool, 'fourier');
   assert.equal(activity.course, 'PHY/EGR 3120');
   assert.equal(activity.title, 'Frequency Domain: Fourier Series');
-  assert.deepEqual(activity.parts.slice(0, 3).map((p) => p.mode), ['synthesis', 'analysis', 'analysis']);
+  assert.deepEqual(activity.parts.map((p) => p.mode), ['synthesis', 'analysis', 'analysis', 'synthesis', 'synthesis']);
 });
 
 test('each Setup fixes the waveform, shift, f₀ = 1 kHz, ±1 V and the filter off; Part 1 shows the coefficient table', () => {
@@ -279,7 +293,7 @@ test('Conditions, numeric answers and choice keys are encoded answer keys', asyn
     if (q.kind === 'choice') assert.ok(isEncodedKey(q.correct), q.id);
   }
   const source = await readFile(new URL('../../../tools/fourier/activities/fourier-series.js', import.meta.url), 'utf8');
-  for (const leak of ['1.273', '0.424', '0.866', '-120', '240', 'above:', 'below:']) {
+  for (const leak of ['1.273', '0.424', '0.866', '-120', '240', 'above:', 'below:', 'equals:', '0.300', '-135', '-45', '1.414', '0.707']) {
     assert.ok(!source.includes(leak), `source contains "${leak}"`);
   }
 });
@@ -291,9 +305,129 @@ test('no Hint states the value that passes its Task', () => {
     'ab-1': [/0\.5\b/, /0\.866/, /0\.87/, /√3/],
     'A-phi-1': [/120/, /240/],
     'A-phi-square': [/1\.27/, /0\.42/, /0\.25/, /4\s*\/\s*\(?π/],
+    'harmonic-3': [/0\.30/, /0\.70?7/, /135/, /45/, /√2/],
+    'gains-add': [/1\.41/, /√2/],
   };
   for (const task of allTasks().filter((t) => t.hint)) {
     const text = isEncodedKey(task.hint.text) ? decodeKey(task.hint.text) : task.hint.text;
     for (const leak of leaks[task.id] ?? []) assert.doesNotMatch(text, leak, `Task "${task.id}" Hint: ${text}`);
   }
+});
+
+test('Parts 4 and 5 fix the square wave, f₀ = 1 kHz, f_c = 3 kHz and the filter type, with both toggles off', () => {
+  const fixed = { amp: 1, f0: 1000, offset: 0, waveform: 'square', shift: 0, fc: 3000, applyGain: false, applyPhase: false };
+  assert.equal(part4.title, 'Part 4: Low-Pass on the Square');
+  assert.equal(part5.title, 'Part 5: High-Pass on the Square');
+  assert.deepEqual(part4.setup, { ...fixed, filter: 'lowpass', N: 30 });
+  assert.deepEqual(part5.setup, { ...fixed, filter: 'highpass', N: 30 });
+});
+
+test('Parts 4 and 5 lock the input and filter type, leaving the gain and phase toggles, N and play open', () => {
+  const { tools } = start();
+  for (const part of [part4, part5]) {
+    for (const id of ['waveform', 'amp', 'f0', 'offset', 'shift', 'filter', 'fc']) {
+      assert.equal(tools[part.id].controls.get(id).isLocked, true, `${part.id} ${id}`);
+    }
+    for (const id of ['applyGain', 'applyPhase', 'N', 'play']) {
+      assert.equal(tools[part.id].controls.get(id).isLocked, false, `${part.id} ${id}`);
+    }
+  }
+});
+
+test('the toggle Tasks pass only on the toggle states they ask for', () => {
+  for (const [part, answers] of [[part4, P4], [part5, P5]]) {
+    for (const [taskId, want] of [['gain-only', [true, false]], ['phase-only', [false, true]], ['both', [true, true]]]) {
+      for (const gain of [false, true]) {
+        for (const phase of [false, true]) {
+          const { runner, tools } = start();
+          passUpTo(runner, tools, part, taskId, answers);
+          tools[part.id].setState({ applyGain: gain, applyPhase: phase });
+          const passed = gain === want[0] && phase === want[1];
+          const attempt = runner.submit(part.id, taskId, answers[taskId].answers ?? {});
+          assert.equal(attempt.passed, passed, `${part.id} ${taskId} gain ${gain} phase ${phase}`);
+        }
+      }
+    }
+  }
+});
+
+test('the choice on the RC curve (Part 4) and the spikes (Part 5) passes only on gain and phase together', () => {
+  for (const [part, answers, qId] of [[part4, P4, 'rc-curve'], [part5, P5, 'spikes']]) {
+    const { runner, tools } = start();
+    passUpTo(runner, tools, part, 'both', answers);
+    tools[part.id].setState({ applyGain: true, applyPhase: true });
+    const q = taskOf(part, 'both').questions.find((x) => x.id === qId);
+    assert.equal(q.kind, 'choice');
+    assert.deepEqual(q.choices.map((c) => c.id), ['gain', 'phase', 'both', 'either']);
+    assert.equal(runner.submit(part.id, 'both', { [qId]: 'gain' }).passed, false);
+    assert.equal(runner.submit(part.id, 'both', { [qId]: 'both' }).passed, true);
+  }
+});
+
+test('Parts 4 and 5 ask in free text why both are needed, recorded and not graded', () => {
+  for (const [part, answers] of [[part4, P4], [part5, P5]]) {
+    const { runner, tools } = start();
+    passUpTo(runner, tools, part, 'why-both', answers);
+    const task = taskOf(part, 'why-both');
+    assert.deepEqual(task.questions.map((q) => q.kind), ['text']);
+    assert.match(task.questions[0].prompt, /both/);
+    const attempt = runner.submit(part.id, 'why-both', {});
+    assert.equal(attempt.passed, true);
+    assert.ok(attempt.results.filter((r) => r.kind === 'question').every((r) => r.graded === false));
+  }
+});
+
+test('the Task text gives the low-pass formulas in Part 4 and the high-pass ones in Part 5', () => {
+  const p4 = taskOf(part4, 'harmonic-3').prompt;
+  assert.ok(p4.includes('|H| = 1/√(1 + (f/f_c)²)'), p4);
+  assert.ok(p4.includes('∠H = −arctan(f/f_c)'), p4);
+  const p5 = taskOf(part5, 'harmonic-3').prompt;
+  assert.ok(p5.includes('|H| = 1/√(1 + (f_c/f)²)'), p5);
+  assert.ok(p5.includes('∠H = arctan(f_c/f)'), p5);
+});
+
+test('the hand-computed output 3rd harmonic passes within 2% and ±2° mod 360, and fails outside', () => {
+  for (const [part, answers, phi] of [[part4, P4, -135], [part5, P5, -45]]) {
+    for (const [given, passed] of [
+      [{ A3out: '0.300', phi3out: String(phi) }, true],
+      [{ A3out: '0.305', phi3out: String(phi + 361.5) }, true],
+      [{ A3out: '0.424', phi3out: String(phi) }, false], // the input's A₃, unfiltered
+      [{ A3out: '0.212', phi3out: String(phi) }, false], // 1/2 in place of 1/√2
+      [{ A3out: '0.300', phi3out: '-90' }, false], // the input's φ₃
+      [{ A3out: '0.300', phi3out: String(phi + 3) }, false],
+    ]) {
+      const { runner, tools } = start();
+      passUpTo(runner, tools, part, 'harmonic-3', answers);
+      assert.equal(runner.submit(part.id, 'harmonic-3', given).passed, passed, `${part.id} ${JSON.stringify(given)}`);
+    }
+  }
+});
+
+test('Part 5 ends on the two gains: the magnitudes do not add to 1 but the complex gains do', () => {
+  const q = taskOf(part5, 'gains-add').questions.find((x) => x.id === 'complex-sum');
+  assert.equal(q.kind, 'choice');
+  for (const [answers, passed] of [
+    [{ magSum: '1.414', 'complex-sum': 'one' }, true],
+    [{ magSum: '1.40', 'complex-sum': 'one' }, true],
+    [{ magSum: '1', 'complex-sum': 'one' }, false],
+    [{ magSum: '1.414', 'complex-sum': 'magnitudes' }, false],
+  ]) {
+    const { runner, tools } = start();
+    passUpTo(runner, tools, part5, 'gains-add', P5);
+    assert.equal(runner.submit(part5.id, 'gains-add', answers).passed, passed, JSON.stringify(answers));
+  }
+});
+
+test('the filtered answer keys agree with the engine: filterSeries() and filterResponse() at 3 kHz', () => {
+  const keyOf = (part, taskId, qId) => decodeKey(taskOf(part, taskId).questions.find((q) => q.id === qId).answer);
+  const wrap = (d) => ((((d + 180) % 360) + 360) % 360) - 180;
+  const square = { waveform: 'square', amp: 1, f0: 1000, offset: 0, shift: 0 };
+  for (const [part, type] of [[part4, 'lowpass'], [part5, 'highpass']]) {
+    const out = filterSeries(series(square, 3), { type, fc: 3000, gain: true, phase: true }).terms[2];
+    assert.equal(out.n, 3);
+    assert.ok(Math.abs(keyOf(part, 'harmonic-3', 'A3out') - out.amp) < 1e-9, `${type} A₃`);
+    assert.ok(Math.abs(wrap(keyOf(part, 'harmonic-3', 'phi3out') - out.phase)) < 1e-9, `${type} φ₃`);
+  }
+  const sum = filterResponse({ type: 'lowpass', fc: 3000 }, 3000).gain + filterResponse({ type: 'highpass', fc: 3000 }, 3000).gain;
+  assert.ok(Math.abs(keyOf(part5, 'gains-add', 'magSum') - sum) < 1e-9);
 });
