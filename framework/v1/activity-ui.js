@@ -16,6 +16,9 @@
 //   All judging, ordering and Control exposure come from the core; this layer only renders
 //   what runner.parts()/runner.task() report and forwards Start and Submit.
 //   Once the Run starts, a Download Report button saves runner.report() as a JSON file.
+//   When the last Task of the Activity passes, a completion dialog (native <dialog>) opens once
+//   per Run (runner.completionShown, saved with the Run); whenever the Run is complete the header's
+//   Download button takes the primary style and reads "Activity complete · Download Report".
 //   In the side layout the Tasks take the Task drawer form when the frame says so (createFrame).
 //   Returns { tool, runner, instances: { [partId]: ToolInstance }, select(partId), render(), activePart }.
 //
@@ -76,7 +79,9 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
 
   // ── Name gate: the Part tabs stay hidden until a name starts the Run ──
   const student = h('div', { class: 'fw-student', hidden: true });
-  const download = reportButton(host);
+  const download = reportButton(host, 'fw-download');
+  download.hidden = true;
+  const completion = completionDialog();
   frame.addAction(student);
   frame.addAction(download);
   // Start over and sign-out both discard this Activity's saved Run and reload; on reload the
@@ -303,6 +308,11 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
       flash(feedback);
       render();
       views[part.id].drawer.flash(); // the drawer bar's copy of the feedback line flashes too
+      if (host.runner.complete && !host.runner.completionShown) {
+        host.runner.markCompletionShown();
+        autosave();
+        completion.open();
+      }
     }
 
     function showFeedback(attempt, passText) {
@@ -365,6 +375,28 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
       for (const t of part.tasks) view.cards[t.id].update();
       view.drawer.update();
     }
+    const complete = host.runner.complete;
+    download.textContent = complete ? 'Activity complete · Download Report' : 'Download Report';
+    download.classList.toggle('fw-button-primary', complete);
+  }
+
+  // The completion dialog: the Activity is done, download the Report, turn it in.
+  function completionDialog() {
+    const count = activity.parts.reduce((n, part) => n + part.tasks.length, 0);
+    const close = h('button', { type: 'button', class: 'fw-button' }, 'Close');
+    const el = h('dialog', { class: 'fw-dialog', 'aria-labelledby': 'fw-completion-title' },
+      h('h2', { class: 'fw-dialog-title', id: 'fw-completion-title' }, `Activity complete · ${count} of ${count} Tasks`),
+      h('p', { class: 'fw-dialog-text' },
+        'Download your Report, then turn the file in on this Activity’s assignment in Brightspace.'),
+      h('div', { class: 'fw-dialog-actions' }, reportButton(host, 'fw-button-primary'), close));
+    close.addEventListener('click', () => el.close());
+    // The Submit that finished the Activity is gone once its Task passes: if focus would land
+    // on nothing when the dialog closes, put it on the header's Download button.
+    el.addEventListener('close', () => {
+      if (!document.activeElement || document.activeElement === document.body) download.focus();
+    });
+    frame.app.append(el);
+    return { open: () => el.showModal() };
   }
 }
 
@@ -406,9 +438,9 @@ const questionInputs = {
   },
 };
 
-// Download the Run's Report so far (allowed at any time after the Run starts).
-function reportButton(host) {
-  const button = h('button', { type: 'button', class: 'fw-button fw-download', hidden: true }, 'Download Report');
+// A button that downloads the Run's Report so far (allowed at any time after the Run starts).
+function reportButton(host, className) {
+  const button = h('button', { type: 'button', class: `fw-button ${className}` }, 'Download Report');
   button.addEventListener('click', async () => {
     button.disabled = true;
     try {

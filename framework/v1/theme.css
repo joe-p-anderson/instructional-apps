@@ -394,6 +394,26 @@ html.fw-root, html.fw-root body {
 .fw-name-input:focus, .fw-question-input:focus { border-color: var(--fw-blue); }
 .fw-gate-error { color: var(--fw-red); font-size: 15px; font-style: italic; min-height: 1em; }
 
+/* Primary button: the completed Download Report (header and completion dialog) */
+.fw-button.fw-button-primary { background: var(--fw-blue); color: #fff; }
+.fw-button.fw-button-primary:hover:not(:disabled) { background: var(--fw-blue-dk); border-color: var(--fw-blue-dk); }
+
+/* ── Completion dialog (native <dialog>, activity-ui.js) ── */
+.fw-dialog {
+  width: min(440px, calc(100% - 32px));
+  padding: 20px 24px;
+  border: 1.5px solid var(--fw-border-dk);
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font-family: var(--fw-font);
+  box-shadow: 0 4px 12px rgba(26, 16, 8, 0.18);
+}
+.fw-dialog::backdrop { background: rgba(26, 16, 8, 0.35); }
+.fw-dialog-title { margin: 0 0 8px; font-size: 20px; letter-spacing: 0.04em; }
+.fw-dialog-text { margin: 0 0 16px; font-size: 16px; line-height: 1.45; }
+.fw-dialog-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.fw-dialog-actions .fw-button-primary { order: -1; }
+
 .fw-part-tasks {
   flex-shrink: 0;
   border-top: 2px solid var(--fw-border-dk);

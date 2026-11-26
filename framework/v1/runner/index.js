@@ -16,6 +16,9 @@
 //   runner.save()                 // JSON-able Run: name, fingerprint, Attempts, drafts, per-Part Tool State
 //   runner.restore(saved)         // resume a saved Run in a fresh runner; Attempts for Task ids
 //                                 //   that no longer exist are dropped. Returns false if unusable.
+//   runner.complete               // true once every Task in every Part has passed
+//   runner.completionShown        // the completion dialog has been shown in this Run (saved with
+//   runner.markCompletionShown()  //   the Run, never in the Report)
 //   await runner.report()         // the sealed Report so far (format: ../report.js)
 //   await runner.snapshotsTaken() // resolves once passing Attempts carry their Display snapshots
 //                                 //   (save() after this to persist them)
@@ -42,6 +45,7 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
     if (!tools[part.id]) throw new Error(`Part "${part.id}" needs a Tool instance.`);
   }
   let run = null;
+  let completionShown = false;
   const pendingSnapshots = new Set();
   const registry = createConditionRegistry(activity.conditionTypes, conditionTypes);
 
@@ -109,6 +113,17 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
 
   return {
     get run() { return run; },
+
+    get complete() {
+      return activity.parts.every((part) => part.tasks.every((task) => progress.get(part.id).get(task.id).passed));
+    },
+
+    get completionShown() { return completionShown; },
+
+    markCompletionShown() {
+      requireRun();
+      completionShown = true;
+    },
 
     start(name) {
       if (run) throw new Error('This Run has already started; start over to change the name.');
@@ -198,6 +213,7 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
       return {
         activity: { id: activity.id, version: activity.version },
         run: run && { ...run },
+        completionShown,
         parts: Object.fromEntries(activity.parts.map((part) => [part.id, {
           state: tools[part.id].serialize?.() ?? null,
           attempts: Object.fromEntries(part.tasks.map((task) => [task.id,
@@ -232,6 +248,7 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
         }
       }
       run = Object.freeze({ name: r.name, fingerprint: r.fingerprint, startedAt: r.startedAt });
+      completionShown = saved.completionShown === true;
       // Replay exposure in Task order up to the first Task not yet passed.
       for (const part of activity.parts) {
         for (const [i, task] of part.tasks.entries()) {

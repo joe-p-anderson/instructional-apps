@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<!--
+  Test fixture: a short Activity on the oscilloscope that can be finished in a few clicks, with
+  the Run saved to localStorage as on a real page. Every Task's Condition holds at the Setup
+  (φ = 2π · 0.5 Hz · 0.25 s = π/4), so each Submit passes; Part 2 has a second Task, locked
+  until the first passes.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Completion fixture</title>
+<link rel="stylesheet" href="../../../framework/v1/theme.css">
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+  import oscilloscope from '../../../tools/oscilloscope/oscilloscope.js';
+  import { mountActivity } from '../../../framework/v1/activity-ui.js';
+
+  const setup = { Va: 2, f: 0.5, Dt: 0.25 };
+  const task = (id, title) => ({ id, title, prompt: 'Press Submit.', points: 1,
+    condition: { state: 'phi', target: Math.PI / 4, tol: 0.05 } });
+  const activity = {
+    id: 'completion-fixture', version: 1, title: 'Completion fixture', course: 'PHY 0000', tool: 'oscilloscope',
+    parts: [
+      { id: 'one', title: 'Part 1: One', mode: 'dual-trace', setup, tasks: [task('a', 'First')] },
+      { id: 'two', title: 'Part 2: Two', mode: 'dual-trace', setup, tasks: [task('b', 'Second'), task('c', 'Third')] },
+    ],
+  };
+  window.activityHost = mountActivity(oscilloscope, activity, document.getElementById('app'));
+</script>
+</body>
+</html>

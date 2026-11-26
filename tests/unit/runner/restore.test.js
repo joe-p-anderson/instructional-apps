@@ -132,3 +132,28 @@ test('a Submit replaces the draft with the answers it recorded', () => {
   r.submit('p1', 'q1', { T: '2.5' });
   assert.deepEqual(r.task('p1', 'q1').answers, { T: '2.5' });
 });
+test('the completion-dialog flag is saved with the Run, restored, and kept out of the Report', async () => {
+  const t = tool();
+  const r = createRunner(v1, { tools: { p1: t } });
+  r.start('Ada');
+  assert.equal(r.complete, false);
+  assert.equal(r.completionShown, false);
+  for (const [id, x] of [['reach-1', 1], ['reach-2', 2], ['reach-3', 3]]) { t.setState({ x }); r.submit('p1', id); }
+  assert.equal(r.complete, true);
+  r.markCompletionShown();
+  assert.equal(r.completionShown, true);
+
+  const saved = JSON.parse(JSON.stringify(r.save()));
+  const again = createRunner(v1, { tools: { p1: tool() } });
+  assert.equal(again.restore(saved), true);
+  assert.equal(again.complete, true);
+  assert.equal(again.completionShown, true);
+  assert.ok(!JSON.stringify(await r.report()).includes('completion'), 'the Report has no completion flag');
+
+  // A Run saved before the dialog was shown restores with the flag unset.
+  const { saved: midway } = savedRun();
+  const fresh = createRunner(v1, { tools: { p1: tool() } });
+  fresh.restore(midway);
+  assert.equal(fresh.completionShown, false);
+  assert.equal(fresh.complete, false);
+});
