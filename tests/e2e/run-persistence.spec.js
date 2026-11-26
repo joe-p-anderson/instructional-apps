@@ -42,7 +42,7 @@ test('a reload restores progress', async ({ page }) => {
   // No name gate: the same Run carries on where it left off.
   await expect(page.getByRole('textbox', { name: 'Your name' })).toBeHidden();
   expect(await run(page)).toEqual(before);
-  await expect(page.getByText('Ada Lovelace')).toBeVisible();
+  await expect(page.getByText('Ada Lovelace', { exact: true })).toBeVisible();
   const again = part(page, 1);
   await expect(again.getByRole('region', { name: 'Task 1.1' })).toHaveAttribute('data-status', 'passed');
   await expect(again.getByRole('region', { name: 'Task 1.2' })).toHaveAttribute('data-status', 'open');
@@ -51,9 +51,9 @@ test('a reload restores progress', async ({ page }) => {
   await expect(again.getByRole('spinbutton', { name: 'f', exact: true })).toHaveValue(/^0\.3/);
 });
 
-test('Start over, once confirmed, discards the Run and begins a new one', async ({ page }) => {
+test('Start over, once confirmed, discards the Run and begins a new one under the stored name', async ({ page }) => {
   await open(page);
-  await enterName(page, 'Ada Lovleace');
+  await enterName(page, 'Ada Lovelace');
   const first = await run(page);
   const p1 = part(page, 1);
   await setNumber(p1, 'Δt', 0.5);
@@ -67,9 +67,10 @@ test('Start over, once confirmed, discards the Run and begins a new one', async 
 
   page.once('dialog', (d) => d.accept());
   await startOver(page);
-  await page.waitForFunction(() => window.activityHost && !window.activityHost.runner.run);
-  await expect(page.getByRole('textbox', { name: 'Your name' })).toBeVisible();
-  await enterName(page, 'Ada Lovelace');
+  // The stored name starts the new Run at once, with no Name gate.
+  await page.waitForFunction((fp) => window.activityHost?.runner.run
+    && window.activityHost.runner.run.fingerprint !== fp, first.fingerprint);
+  await expect(page.getByRole('textbox', { name: 'Your name' })).toBeHidden();
   const second = await run(page);
   expect(second.name).toBe('Ada Lovelace');
   expect(second.fingerprint).not.toBe(first.fingerprint);

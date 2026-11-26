@@ -79,7 +79,7 @@ test('the name gate blocks Part 1 until a name is entered', async ({ page }) => 
   await expect(page.getByRole('textbox', { name: 'Your name' })).toBeHidden();
   await expect(page.getByRole('tab', { name: /Part 1/ })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('button', { name: 'Submit Task 1.1' })).toBeVisible();
-  await expect(page.getByText('Ada Lovelace')).toBeVisible();
+  await expect(page.getByText('Ada Lovelace', { exact: true })).toBeVisible();
 });
 
 test('Part 1 stages the Tool: v locked, the K′ panel and rod and join tools hidden', async ({ page }) => {

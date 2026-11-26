@@ -34,7 +34,7 @@ test('the name gate blocks Part 1 until a name is entered', async ({ page }) => 
   await expect(page.getByRole('tab', { name: /Part 1/ })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('tab', { name: /Part 2/ })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Submit Task 1.1' })).toBeVisible();
-  await expect(page.getByText('Ada Lovelace')).toBeVisible();
+  await expect(page.getByText('Ada Lovelace', { exact: true })).toBeVisible();
 });
 
 // Exposure of each Control in a Part, as the Tool contract reports it.

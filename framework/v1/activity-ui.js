@@ -5,10 +5,14 @@
 //   Task cards and a progress indicator to each Part and a progress badge ("1/3") to each Part
 //   tab, and shows a name gate before Part 1. The Tool's panel layout (tool.js) places them.
 //   The Run autosaves to `storage` (default localStorage; null disables it), keyed by Activity
-//   id, and a saved Run is restored on load in place of the name gate.
+//   id, and a saved Run is restored on load under its own sealed name. The name entered at the
+//   name gate is stored site-wide (nameStore): with no saved Run and a stored name, the Run
+//   starts at once under it and the gate is skipped; with neither, the gate appears.
 //   The header shows the Activity's title and course, the Part tabs, then the actions: the
-//   student's name, Download Report and the ⋯ menu, which holds Start over (confirmed; discards
-//   the saved Run and reloads the page for a new one) and Print.
+//   Run's name, Download Report and the ⋯ menu, which holds Start over (confirmed; discards
+//   this Activity's saved Run and reloads, starting a new Run under the stored name), Print and
+//   "Not <name>? Sign out" (confirmed; forgets the stored name, discards this Activity's saved
+//   Run and reloads to the name gate; other Activities' Runs are kept).
 //   All judging, ordering and Control exposure come from the core; this layer only renders
 //   what runner.parts()/runner.task() report and forwards Start and Submit.
 //   Once the Run starts, a Download Report button saves runner.report() as a JSON file.
@@ -18,7 +22,7 @@
 // Prompts, titles, Question prompts and Hints are trusted HTML from the Activity author and may
 // contain \( \) math, typeset with MathJax.
 
-import { browserStorage, runStore } from './persistence.js';
+import { browserStorage, nameStore, runStore } from './persistence.js';
 import { createRunner } from './runner/index.js';
 import { reportFilename } from './report.js';
 import { createFrame, createTabs, printItem } from './tool-host.js';
@@ -75,13 +79,26 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
   const download = reportButton(host);
   frame.addAction(student);
   frame.addAction(download);
+  // Start over and sign-out both discard this Activity's saved Run and reload; on reload the
+  // Run starts at once under the stored name, or the Name gate appears when none is stored.
+  const names = nameStore(storage);
   const startOver = frame.menu.add({ id: 'start-over', label: 'Start over', onSelect: () => {
-    if (!confirm('Start over? This discards your progress and begins a new Run; you will enter your name again.')) return;
+    const name = names.load();
+    if (!confirm(`Start over "${stripTags(activity.title)}"? This discards your progress in this Activity and `
+      + (name ? `begins a new Run as ${name}.` : 'begins a new Run; you will enter your name again.'))) return;
     store.clear();
     location.reload();
   } });
   startOver.hidden = true;
   frame.menu.add(printItem());
+  const signOut = frame.menu.add({ id: 'sign-out', label: 'Sign out', onSelect: () => {
+    if (!confirm(`Sign out ${host.runner.run.name}? This discards your progress in "${stripTags(activity.title)}" `
+      + 'and forgets your name on this computer. Your saved Runs in other Activities are kept.')) return;
+    names.clear();
+    store.clear();
+    location.reload();
+  } });
+  signOut.hidden = true;
   frame.tablist.hidden = true;
   frame.panels.hidden = true;
 
@@ -104,11 +121,17 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
       nameInput.focus();
       return;
     }
+    names.save(host.runner.run.name);
     autosave();
     enterRun();
   });
+  const storedName = names.load();
   if (restored) {
     for (const view of Object.values(views)) for (const card of Object.values(view.cards)) card.restore();
+    enterRun();
+  } else if (storedName) {
+    host.runner.start(storedName);
+    autosave();
     enterRun();
   } else {
     frame.app.insertBefore(gate, frame.panels);
@@ -124,6 +147,8 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
     student.textContent = host.runner.run.name;
     student.hidden = false;
     startOver.hidden = false;
+    signOut.textContent = `Not ${host.runner.run.name}? Sign out`;
+    signOut.hidden = false;
     download.hidden = false;
     frame.tablist.hidden = false;
     frame.panels.hidden = false;

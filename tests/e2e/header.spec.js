@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { copyShareLink } from './helpers/share-link.js';
 
 // The single-row header (shell revision 01): title, course, tabs and actions on one row at
-// 1366×768, and the ⋯ menu that holds Start over / Copy share link and Print.
+// 1366×768, and the ⋯ menu that holds Start over / Copy share link, Print and sign-out.
 
 const ACTIVITIES = [
   { url: '/tools/oscilloscope/activities/phase-period-amplitude.html',
@@ -60,7 +60,7 @@ for (const a of ACTIVITIES) {
     const banner = page.getByRole('banner');
     await expect(banner.getByRole('heading', { level: 1 })).toHaveText(a.title);
     await expect(banner.getByText(a.course, { exact: true })).toBeVisible();
-    await expectOneRow(page, [banner.getByText('Ada Lovelace'),
+    await expectOneRow(page, [banner.getByText('Ada Lovelace', { exact: true }),
       banner.getByRole('button', { name: 'Download Report' }), menuButton(page)]);
   });
 }
@@ -89,14 +89,15 @@ test('the ⋯ menu opens with Enter or Space, moves with the arrow keys and clos
   await expect(menu).toBeVisible();
   await expect(button).toHaveAttribute('aria-expanded', 'true');
   const items = menu.getByRole('menuitem');
-  await expect(items).toHaveText(['Start over', 'Print']);
+  await expect(items).toHaveText(['Start over', 'Print', 'Not Ada Lovelace? Sign out']);
   await expect(items.nth(0)).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(items.nth(1)).toBeFocused();
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await expect(items.nth(0)).toBeFocused();
   await page.keyboard.press('ArrowUp');
-  await expect(items.nth(1)).toBeFocused();
+  await expect(items.nth(2)).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(menu).toBeHidden();
   await expect(button).toBeFocused();

@@ -10,6 +10,8 @@
 //   standaloneStore(toolId, modeId, storage?) -> the store for one Tool's Mode in Standalone mode
 //   runStore(activityId, storage?)            -> the store for an Activity's Run
 //                                                (see runner.save()/restore())
+//   nameStore(storage?)                       -> the site-wide student name, one key shared by
+//                                                every Activity; load() gives a non-blank string or null
 //   createStore(key, storage)                 -> a store under any other key
 //   each store is { load(), save(value), clear() }
 //   load() returns null when nothing usable is saved. No method ever throws, so a
@@ -26,6 +28,18 @@ export function standaloneStore(toolId, modeId, storage = browserStorage()) {
 
 export function runStore(activityId, storage = browserStorage()) {
   return createStore(`fw1:run:${activityId}`, storage);
+}
+
+export function nameStore(storage = browserStorage()) {
+  const store = createStore('fw1:name', storage);
+  return {
+    load() {
+      const name = store.load();
+      return typeof name === 'string' && name.trim() ? name : null;
+    },
+    save: store.save,
+    clear: store.clear,
+  };
 }
 
 export function createStore(key, storage) {
