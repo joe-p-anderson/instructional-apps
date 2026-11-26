@@ -279,6 +279,9 @@ html.fw-root, html.fw-root body {
 .fw-legend-line { display: inline-block; width: 22px; height: 2.5px; flex-shrink: 0; }
 
 /* ── Handles and knobs (handle.js) ── */
+/* A layer over a Display to hold handles: it passes the pointer through except on a handle. */
+.fw-handle-layer { position: absolute; inset: 0; pointer-events: none; }
+.fw-handle-layer > * { pointer-events: auto; }
 /* A handle the kit makes is a round grab target centred on its toScreen() point inside a
    positioned parent; the Tool usually draws the marker itself beneath it. */
 .fw-handle { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;

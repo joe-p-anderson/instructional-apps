@@ -5,12 +5,14 @@
 //
 // Setup: { Va, f, Dt } (any subset; defaults below).
 // State (state.snapshot()): Va (V), f (Hz), Dt (s), phi (rad), T (s), pkpk (V), ratio (Δt/T).
-// Controls: sliders 'Va', 'f', 'Dt'; draggable plot markers 'Va-marker', 'f-marker', 'Dt-marker'.
+// Controls: sliders 'Va', 'f', 'Dt'; plot markers 'Va-marker', 'f-marker', 'Dt-marker' (kit handles:
+//   dragged, or focused and moved with the arrow keys; Right/Left move the Δt and f markers right/left
+//   on the plot, so they decrease/increase Δt and f).
 // Displays: 'scope' (with toScreen(t, V): the client position of a plot point).
 
-import { controlRegistry, createControl } from '../../framework/v1/control.js';
+import { controlRegistry } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
-import { h, metric, section, slider } from '../../framework/v1/ui-kit.js';
+import { h, handle, metric, section, slider } from '../../framework/v1/ui-kit.js';
 import { plotTheme } from '../../framework/v1/plot-theme.js';
 import { loadPlotly } from '../../framework/v1/vendor.js';
 import { cosWave, linspace, metrics } from './signal.js';
@@ -21,7 +23,6 @@ const WINDOW = 10; // seconds of time axis shown
 const DEFAULTS = { Va: 2, f: 0.5, Dt: 0.25 };
 const RANGES = { Va: [0, 3], f: [0.1, 1], Dt: [-WINDOW, WINDOW] };
 const TS = linspace(-0.1, WINDOW + 0.1, 300);
-const GRAB_RADIUS = 18; // px
 
 const STATE_INFO = {
   Va: { label: 'Amplitude Va', unit: 'V' },
@@ -84,38 +85,49 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
     h('span', { class: 'fw-legend-line', style: `background:${color}` }), h('span', { html }));
 
   const plotDiv = h('div', { style: 'width:100%;height:100%' });
+  const handleLayer = h('div', { class: 'fw-handle-layer' });
   const root = h('div', { class: 'fw-tool', 'data-tool': 'oscilloscope' },
     h('aside', { class: 'fw-controls' },
       section('Parameters', sliders.Va.el, sliders.f.el, sliders.Dt.el,
-        h('div', { class: 'fw-hint' }, '◯ Drag the dots on the plot to adjust Va, Δt and f.')),
+        h('div', { class: 'fw-hint' }, '◯ Drag the dots on the plot, or focus one and use the arrow keys, to adjust Va, Δt and f.')),
       section('Live Metrics', ...Object.values(readouts).map((r) => r.el)),
       section('Legend',
         legendRow(theme.traces[0], 'V<sub>a</sub> cos(2π f t)'),
         legendRow(theme.traces[1], 'V<sub>a</sub> cos(2π f (t + Δt))'))),
-    h('div', { class: 'fw-displays' }, h('div', { class: 'fw-display' }, plotDiv)));
+    h('div', { class: 'fw-displays' }, h('div', { class: 'fw-display', style: 'position:relative' }, plotDiv, handleLayer)));
   container.append(root);
 
-  // ── Draggable markers: Controls that live inside the Display ──
+  // ── Plot markers: kit handles over the Display (the plot draws the dots beneath them) ──
+  const at = (x, y) => toScreen(x, y);
+  const pointer = (cx, cy) => {
+    const fl = plotDiv._fullLayout;
+    const rect = plotDiv.getBoundingClientRect();
+    return { x: fl.xaxis.p2d(cx - rect.left - fl._size.l), y: fl.yaxis.p2d(cy - rect.top - fl._size.t) };
+  };
   const markerSpecs = {
-    'Va-marker': { key: 'Va', label: 'Va marker', fill: theme.traces[0],
-      at: (s) => [0, s.Va], drag: (x, y) => ({ Va: clamp(y, ...RANGES.Va) }) },
-    'Dt-marker': { key: 'Dt', label: 'Δt marker', fill: theme.traces[2],
-      at: (s) => [1 / s.f - s.Dt, s.Va], drag: (x) => ({ Dt: clamp(1 / signal.f - x, ...RANGES.Dt) }) },
-    'f-marker': { key: 'f', label: 'f marker', fill: theme.traces[0],
-      at: (s) => [1 / s.f, 0], drag: (x) => ({ f: Math.round((1 / clamp(x, 1, WINDOW)) * 10) / 10 }) },
+    'Va-marker': { key: 'Va', label: 'Va marker', fill: theme.traces[0], unit: 'V', reversed: false,
+      at: (s) => [0, s.Va], toScreen: (v) => at(0, v), fromScreen: (cx, cy) => pointer(cx, cy).y },
+    'Dt-marker': { key: 'Dt', label: 'Δt marker', fill: theme.traces[2], unit: 's', reversed: true,
+      at: (s) => [1 / s.f - s.Dt, s.Va], toScreen: (v) => at(1 / signal.f - v, signal.Va),
+      fromScreen: (cx, cy) => 1 / signal.f - pointer(cx, cy).x },
+    'f-marker': { key: 'f', label: 'f marker', fill: theme.traces[0], unit: 'Hz', reversed: true,
+      at: (s) => [1 / s.f, 0], toScreen: (v) => at(1 / v, 0),
+      fromScreen: (cx, cy) => Math.round((1 / clamp(pointer(cx, cy).x, 1, WINDOW)) * 10) / 10 },
   };
   const markerIds = Object.keys(markerSpecs);
   const markers = {};
   for (const id of markerIds) {
     const spec = markerSpecs[id];
-    markers[id] = createControl({
-      id,
-      label: spec.label,
-      get: () => signal[spec.key],
-      set: (v) => sliders[spec.key].set(v),
+    const [min, max] = RANGES[spec.key];
+    markers[id] = handle({
+      id, name: spec.label, unit: spec.unit, min, max, step: 0.01, coarse: 0.1, decimals: 2,
+      reversed: spec.reversed, value: signal[spec.key],
+      toScreen: spec.toScreen, fromScreen: spec.fromScreen,
+      onChange: (v) => sliders[spec.key].set(v),
       onLock: redrawMarkers,
       onHide: redrawMarkers,
     });
+    handleLayer.append(markers[id].el);
   }
 
   const controls = { ...sliders, ...markers };
@@ -131,7 +143,7 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
       y: c.isHidden() ? [] : [y],
       mode: 'markers',
       marker: { color: locked ? theme.muted : spec.fill, size: 11, line: { color: locked ? theme.axis : theme.ink, width: 2 } },
-      hovertemplate: locked ? `${spec.label} (locked)<extra></extra>` : `Drag: ${spec.label}<extra></extra>`,
+      hoverinfo: 'skip',
     };
   }
 
@@ -145,36 +157,30 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
 
   function redraw() {
     if (!ready) return;
-    Plotly.react(plotDiv, traces(), layout(theme), { displayModeBar: false, scrollZoom: false, responsive: true });
+    Plotly.react(plotDiv, traces(), layout(theme), { displayModeBar: false, scrollZoom: false, responsive: true })
+      .then(placeMarkers);
+    placeMarkers();
   }
+  function placeMarkers() { for (const id of markerIds) markers[id].place(); }
   function redrawMarkers() { redraw(); }
 
   function update() {
     const s = getState();
     for (const [k, r] of Object.entries(readouts)) r.update(s[k]);
+    for (const id of markerIds) markers[id].update(signal[markerSpecs[id].key]);
     redraw();
     changes.emit(s);
   }
 
-  Plotly.newPlot(plotDiv, traces(), layout(theme), { displayModeBar: false, scrollZoom: false, responsive: true });
+  Plotly.newPlot(plotDiv, traces(), layout(theme), { displayModeBar: false, scrollZoom: false, responsive: true })
+    .then(placeMarkers);
   ready = true;
 
   // Keep the plot sized to its box: it may be mounted into a hidden tab and shown later.
-  const fit = () => { if (plotDiv.offsetParent) Plotly.Plots.resize(plotDiv); };
+  const fit = () => { if (plotDiv.offsetParent) Plotly.Plots.resize(plotDiv).then(placeMarkers); };
   const resizeObserver = new ResizeObserver(fit);
   resizeObserver.observe(plotDiv);
 
-  // Dragging: grab the nearest operable marker, follow the pointer until release.
-  function toData(evt) {
-    const fl = plotDiv._fullLayout;
-    const rect = plotDiv.getBoundingClientRect();
-    return {
-      px: evt.clientX - rect.left - fl._size.l,
-      py: evt.clientY - rect.top - fl._size.t,
-      xa: fl.xaxis,
-      ya: fl.yaxis,
-    };
-  }
   // Display contract: client pixel position of the data point (x s, y V), once laid out.
   function toScreen(x, y) {
     const fl = plotDiv._fullLayout;
@@ -182,35 +188,6 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
     const rect = plotDiv.getBoundingClientRect();
     return { x: rect.left + fl._size.l + fl.xaxis.d2p(x), y: rect.top + fl._size.t + fl.yaxis.d2p(y) };
   }
-  let dragging = null;
-  function onPointerDown(evt) {
-    if (!plotDiv._fullLayout) return;
-    const { px, py, xa, ya } = toData(evt);
-    dragging = markerIds.find((id) => {
-      const c = markers[id];
-      if (c.isLocked() || c.isHidden()) return false;
-      const [x, y] = markerSpecs[id].at(signal);
-      return Math.hypot(px - xa.d2p(x), py - ya.d2p(y)) < GRAB_RADIUS;
-    }) || null;
-    if (!dragging) return;
-    evt.preventDefault();
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp, { once: true });
-  }
-  function onPointerMove(evt) {
-    const c = dragging && markers[dragging];
-    if (!c || c.isLocked()) return;
-    evt.preventDefault();
-    const { px, py, xa, ya } = toData(evt);
-    const next = markerSpecs[dragging].drag(xa.p2d(px), ya.p2d(py));
-    for (const [k, v] of Object.entries(next)) sliders[k].set(v);
-  }
-  function onPointerUp() {
-    dragging = null;
-    window.removeEventListener('pointermove', onPointerMove);
-  }
-  plotDiv.addEventListener('pointerdown', onPointerDown);
-
   update();
 
   return {
@@ -233,8 +210,7 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
     resize: fit,
     destroy() {
       resizeObserver.disconnect();
-      onPointerUp();
-      plotDiv.removeEventListener('pointerdown', onPointerDown);
+      for (const id of markerIds) markers[id].destroy();
       changes.clear();
       Plotly.purge(plotDiv);
       root.remove();
