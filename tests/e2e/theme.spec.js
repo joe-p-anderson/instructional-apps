@@ -96,7 +96,13 @@ test('no visible framework text is below 4.5:1 contrast on the Activity page', a
   const p1 = part(page, 1);
   // Reveal miss feedback and the Hint on Task 1.1; Tasks 1.2 and 1.3 are locked.
   const submit = p1.getByRole('button', { name: 'Submit Task 1.1' });
-  for (let i = 0; i < 3; i++) await submit.click();
+  // Three different misses (an identical repeat would be refused, and not count).
+  for (const dt of [0.1, 0.2, 0.3]) {
+    const field = p1.getByRole('spinbutton', { name: 'Δt (s)', exact: true });
+    await field.fill(String(dt));
+    await field.press('Enter');
+    await submit.click();
+  }
   await expect(p1.getByText(/Hint:/)).toBeVisible();
   expect(await contrastFailures(page, 2), 'Part 1').toEqual([]);
 
@@ -132,7 +138,13 @@ test('Question prompts read as text with a blue rule, and the Hint sits in a tin
   await enterName(page);
   const p1 = part(page, 1);
   const submit = p1.getByRole('button', { name: 'Submit Task 1.1' });
-  for (let i = 0; i < 3; i++) await submit.click();
+  // Three different misses (an identical repeat would be refused, and not count).
+  for (const dt of [0.1, 0.2, 0.3]) {
+    const field = p1.getByRole('spinbutton', { name: 'Δt (s)', exact: true });
+    await field.fill(String(dt));
+    await field.press('Enter');
+    await submit.click();
+  }
   const style = (el) => el.evaluate((e) => {
     const s = getComputedStyle(e);
     return { color: s.color, fontStyle: s.fontStyle, rule: `${s.borderLeftStyle} ${s.borderLeftColor}`, bg: s.backgroundColor };
@@ -155,10 +167,12 @@ test('Question prompts read as text with a blue rule, and the Hint sits in a tin
   expect(label).toEqual({ variant: 'normal', transform: 'uppercase', fontStyle: 'normal' });
 });
 
+const smallCapsText = (page) => page.evaluate(() => [...document.querySelectorAll('body *')]
+  .filter((e) => e.checkVisibility() && e.textContent.trim() && getComputedStyle(e).fontVariantCaps !== 'normal')
+  .map((e) => e.textContent.trim().slice(0, 30)));
+
 test('no text is set in small caps, which Libre Baskerville would have to synthesise', async ({ page }) => {
-  const smallCaps = () => page.evaluate(() => [...document.querySelectorAll('body *')]
-    .filter((e) => e.checkVisibility() && e.textContent.trim() && getComputedStyle(e).fontVariantCaps !== 'normal')
-    .map((e) => e.textContent.trim().slice(0, 30)));
+  const smallCaps = () => smallCapsText(page);
   await open(page);
   expect(await smallCaps(), 'name gate').toEqual([]);
   await enterName(page);
@@ -167,6 +181,44 @@ test('no text is set in small caps, which Libre Baskerville would have to synthe
   await expect(page.getByRole('tab', { name: /Part 1/ })).toBeVisible();
   await expect(part(page, 1).getByRole('heading', { level: 3 }).first()).toBeVisible();
   expect(await smallCaps(), 'Part 1').toEqual([]);
+});
+
+// The app-ports Tools' Standalone pages follow the same rules.
+for (const tool of ['electrostatics', 'spacetime', 'least-squares']) {
+  test(`the ${tool} page has no small caps and no framework text below 4.5:1`, async ({ page }) => {
+    await page.goto(`/tools/${tool}/`);
+    await page.waitForFunction(() => window.toolHost);
+    expect(await smallCapsText(page), 'small caps').toEqual([]);
+    expect(await contrastFailures(page), 'contrast').toEqual([]);
+  });
+}
+
+test('the electrostatics plot takes its font and palette from the --fw-plot-* tokens', async ({ page }) => {
+  await page.addInitScript(() => {
+    const set = (html) => {
+      html.style.setProperty('--fw-plot-bg', '#fffdf0');
+      html.style.setProperty('--fw-plot-grid', '#e0e0e0');
+      html.style.setProperty('--fw-plot-text', '#3a3a3a');
+      html.style.setProperty('--fw-plot-font-size', '12px');
+    };
+    if (document.documentElement) set(document.documentElement);
+    else new MutationObserver((_, obs) => { if (document.documentElement) { set(document.documentElement); obs.disconnect(); } })
+      .observe(document, { childList: true });
+  });
+  await page.goto('/tools/electrostatics/');
+  await page.waitForFunction(() => window.toolHost);
+  const plot = await page.locator('.js-plotly-plot').first().evaluate((div) => ({
+    paper: div.layout.paper_bgcolor,
+    grid: div.layout.xaxis.gridcolor,
+    font: div.layout.font,
+    token: getComputedStyle(document.documentElement).getPropertyValue('--fw-plot-font').trim(),
+  }));
+  expect(plot.paper).toBe('#fffdf0');
+  expect(plot.grid).toBe('#e0e0e0');
+  expect(plot.font.family).toBe(plot.token);
+  expect(plot.font.family).toMatch(/^'?"?Libre Baskerville/);
+  expect(plot.font.size).toBe(12);
+  expect(plot.font.color).toBe('#3a3a3a');
 });
 
 test('locked Task cards stay readable and say they are locked; locked Controls are at 0.55', async ({ page }) => {
@@ -192,7 +244,7 @@ test('the oscilloscope plot takes its palette and font from the --fw-plot-* toke
     const set = (html) => {
       html.style.setProperty('--fw-plot-trace-1', '#007a33');
       html.style.setProperty('--fw-plot-bg', '#fffdf0');
-      html.style.setProperty('--fw-plot-font-size', '13px');
+      html.style.setProperty('--fw-plot-font-size', '15px');
     };
     if (document.documentElement) set(document.documentElement);
     else new MutationObserver((_, obs) => { if (document.documentElement) { set(document.documentElement); obs.disconnect(); } })
@@ -210,7 +262,7 @@ test('the oscilloscope plot takes its palette and font from the --fw-plot-* toke
   expect(plot.paper).toBe('#fffdf0');
   expect(plot.font.family).toBe(plot.token);
   expect(plot.font.family).toMatch(/^'?"?Libre Baskerville/);
-  expect(plot.font.size).toBe(13);
+  expect(plot.font.size).toBe(15);
 });
 
 test('slider thumbs are 18 px and round on a 4 px track', async ({ page }) => {
@@ -250,20 +302,27 @@ test('buttons, tabs and reset buttons show a focus-visible outline', async ({ pa
   await open(page);
   await enterName(page);
   const p1 = part(page, 1);
+  // Move Va off its default so its reset is enabled (and so focusable).
+  const va = p1.getByRole('spinbutton', { name: 'Va (V)', exact: true });
+  await va.fill('2.5');
+  await va.press('Enter');
   const targets = [
     page.getByRole('tab', { name: /Part 1/ }),
-    p1.getByRole('button', { name: 'Reset Va' }),
+    p1.getByRole('button', { name: /^Reset to [\d.]+ V$/ }),
     p1.getByRole('button', { name: 'Submit Task 1.1' }),
   ];
   for (const target of targets) {
-    // Keyboard focus: focus the element before it, then Tab onto it.
-    await target.evaluate((e) => {
+    // Keyboard focus: focus the element before it and Tab onto it, or, when it is the first
+    // focusable element (the first Part tab, now in the header row), Shift+Tab back from the next.
+    const key = await target.evaluate((e) => {
       const all = [...document.querySelectorAll('button, input, textarea, [tabindex]')]
         .filter((x) => x.tabIndex >= 0 && !x.disabled && x.checkVisibility());
       const i = all.indexOf(e);
-      if (i > 0) all[i - 1].focus(); else document.body.focus();
+      if (i > 0) { all[i - 1].focus(); return 'Tab'; }
+      all[i + 1].focus();
+      return 'Shift+Tab';
     });
-    await page.keyboard.press('Tab');
+    await page.keyboard.press(key);
     await expect(target).toBeFocused();
     await expect(target).toHaveCSS('outline-style', 'solid');
     await expect(target).toHaveCSS('outline-width', '2px');

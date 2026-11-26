@@ -1,5 +1,6 @@
 // Seam 3 (Spec 0003): the real spacetime Standalone page.
 import { test, expect } from '@playwright/test';
+import { copyShareLink } from './helpers/share-link.js';
 import { readFile } from 'node:fs/promises';
 
 const PAGE = '/tools/spacetime/';
@@ -164,8 +165,7 @@ test('a reload keeps the diagram, and a share link reproduces it elsewhere', asy
   // A restore starts a fresh history.
   await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeDisabled();
 
-  await page.getByRole('button', { name: 'Copy share link' }).click();
-  const url = await page.getByRole('textbox', { name: 'Share link' }).inputValue();
+  const url = await copyShareLink(page);
   expect(url).toMatch(/#s=/);
   const other = await browser.newContext();
   const theirs = await other.newPage();
@@ -337,4 +337,56 @@ test('the layout fits a 1366×768 laptop screen without horizontal scrolling', a
   await open(page);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
+});
+
+// Keyboard access (story 63): every draggable point (an event, a rod end, a rod's time, a
+// worldline's position) is a kit handle in each diagram: focusable without a pointer first,
+// named, announcing its value, and moved with the arrow keys (0.1; Shift 1).
+test('every draggable point can be focused and moved with the arrow keys, with no pointer selection first', async ({ page }) => {
+  await open(page);
+  await page.evaluate(() => window.toolHost.instances[0].restore({
+    v: 0,
+    objs: [
+      { id: 1, kind: 'event', home: 'K', x: 1, t: 2, label: 'E' },
+      { id: 2, kind: 'rod', frame: 'K', T: 3, ends: [{ x: -2, wl: null }, { x: 2, wl: null }], label: 'R1' },
+      { id: 3, kind: 'wl', mode: 'param', frame: 'K', u: 0.5, x0: 1, label: 'W1' },
+    ],
+  }));
+  const k = page.getByRole('figure').filter({ has: page.getByRole('img', { name: 'Spacetime diagram in frame K', exact: true }) });
+  const objs = async () => (await saved(page)).objs;
+  const obj = async (id) => (await objs()).find((o) => o.id === id);
+
+  // Event E in K: a 2-D handle naming both coordinates.
+  const e = k.getByRole('group', { name: 'Event E', exact: true });
+  await expect(e).toHaveAccessibleDescription('x = 1.0, t = 2.0');
+  await e.focus();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Shift+ArrowUp');
+  expect(await obj(1)).toMatchObject({ x: 1.1, t: 3 });
+  await expect(e).toHaveAccessibleDescription('x = 1.1, t = 3.0');
+  await expect(e).toBeFocused(); // a redraw keeps the focus
+  // It sits on the drawn event.
+  const p = await at(page, 1.1, 3), box = await e.boundingBox();
+  expect(Math.abs(box.x + box.width / 2 - p.x)).toBeLessThan(2);
+  expect(Math.abs(box.y + box.height / 2 - p.y)).toBeLessThan(2);
+  // Undo takes back one key press.
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  expect(await obj(1)).toMatchObject({ x: 1.1, t: 2 });
+
+  // The rod's ends move along x; the rod itself moves in t.
+  const end1 = k.getByRole('slider', { name: 'Rod R1 end 1', exact: true });
+  await expect(end1).toHaveAttribute('aria-valuetext', 'x = -2.0');
+  await end1.focus();
+  await page.keyboard.press('ArrowLeft');
+  expect((await obj(2)).ends[0].x).toBeCloseTo(-2.1, 9);
+  const rodT = k.getByRole('slider', { name: 'Rod R1 time', exact: true });
+  await rodT.focus();
+  await page.keyboard.press('Shift+ArrowDown');
+  expect((await obj(2)).T).toBeCloseTo(2, 9);
+
+  // The worldline shifts sideways.
+  const w = k.getByRole('slider', { name: 'Worldline W1', exact: true });
+  await w.focus();
+  await page.keyboard.press('ArrowRight');
+  expect((await obj(3)).x0).toBeCloseTo(1.1, 9);
 });

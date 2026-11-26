@@ -24,7 +24,14 @@ function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 
 function nameLabel(name, label, unit) {
   return h('span', { class: 'fw-control-name', html: label ?? escapeHtml(name) },
-    unit ? h('span', { class: 'fw-unit' }, ' ', unit) : null);
+    unit ? h('span', { class: 'fw-unit' }, ` (${unit})`) : null);
+}
+
+/** Plain text of trusted label HTML ('<i>v</i>/<i>c</i>' -> 'v/c'). */
+function labelText(label) {
+  const tmp = document.createElement('span');
+  tmp.innerHTML = label;
+  return tmp.textContent;
 }
 
 /** Escape text for HTML or XML markup (& < > " ' as numeric character references). */
@@ -33,32 +40,75 @@ export function escapeHtml(s) {
 }
 
 /**
+ * Reset button, the slider's: an icon-only ↻ named and titled "Reset to <text>".
+ * resetButton({ text, onReset, atDefault, isLocked }) -> { el, sync() }
+ *   sync() disables it while atDefault() or isLocked() is true; call it after every change of
+ *   value and on lock and unlock (a Control's onLock), so lock behaves the same in every Control.
+ */
+export function resetButton({ text, onReset = () => {}, atDefault = () => false, isLocked = () => false }) {
+  const name = `Reset to ${text}`;
+  const el = h('button', { type: 'button', class: 'fw-reset', 'aria-label': name, title: name }, '↻');
+  el.addEventListener('click', () => onReset());
+  return { el, sync() { el.disabled = isLocked() || atDefault(); } };
+}
+
+/**
+ * Number box, the slider's. numberBox({ name, min, max, step = 'any', width, onCommit(n) }) -> { el, show(text) }
+ *   onCommit(n) runs when the student enters a new number (Enter or change). A box still showing
+ *   the text it was last shown with is not committed, so rounding never feeds back into a value;
+ *   a box that isn't a number is marked invalid (aria-invalid) instead. show(text) displays a value.
+ */
+export function numberBox({ name, min, max, step = 'any', width, onCommit = () => {} }) {
+  const el = h('input', { type: 'number', class: 'fw-number', min, max, step, 'aria-label': name,
+    style: width ? `width:${width}` : null });
+  let shown = null;
+  const invalid = (bad) => {
+    el.classList.toggle('fw-invalid', bad);
+    if (bad) el.setAttribute('aria-invalid', 'true'); else el.removeAttribute('aria-invalid');
+  };
+  const commit = () => {
+    if (el.value === shown) return;
+    const n = parseFloat(el.value);
+    if (Number.isNaN(n)) { invalid(true); return; }
+    shown = el.value; // Enter then change commits once
+    onCommit(n);
+  };
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter') commit(); });
+  el.addEventListener('change', commit);
+  return { el, show(text) { el.value = text; shown = el.value; invalid(false); } };
+}
+
+/**
  * Slider paired with a number box and a reset button.
  * slider({ id, name, label, unit, min, max, step, value, reset = value, decimals = 2, log = false, onChange })
+ *   The label reads "Label (unit)"; both inputs are named "name (unit)", where name defaults to
+ *   the label's text (then the id). The reset is an icon-only ↻ named "Reset to <reset> <unit>",
+ *   disabled while the value equals the reset value.
  *   log: the range input moves on a logarithmic scale (min > 0), for values spanning decades
  *        such as a frequency; dragging it rounds to 3 significant digits. The number box and
  *        get/set stay in plain units.
  */
-export function slider({ id, name = id, label, unit = '', min, max, step = 'any', value, reset = value,
-  decimals = 2, log = false, onChange = () => {} }) {
+export function slider({ id, label, name = label != null ? labelText(label) : id, unit = '', min, max,
+  step = 'any', value, reset = value, decimals = 2, log = false, onChange = () => {} }) {
   let current = clamp(Number(value), min, max);
 
+  const a11yName = unit ? `${name} (${unit})` : name;
   const range = log
     ? h('input', { type: 'range', class: 'fw-range', min: Math.log10(min), max: Math.log10(max), step: 'any',
-      'aria-label': name })
-    : h('input', { type: 'range', class: 'fw-range', min, max, step, 'aria-label': name });
-  const num = h('input', { type: 'number', class: 'fw-number', min, max, step, 'aria-label': name });
-  const resetBtn = h('button', { type: 'button', class: 'fw-reset', 'aria-label': `Reset ${name}`,
-    title: `Reset to ${reset}` }, `↻ ${reset}`);
+      'aria-label': a11yName })
+    : h('input', { type: 'range', class: 'fw-range', min, max, step, 'aria-label': a11yName });
+  const num = numberBox({ name: a11yName, min, max, step, onCommit: (n) => set(n) });
+  const resetBtn = resetButton({ text: `${reset}${unit ? ` ${unit}` : ''}`, onReset: () => set(reset),
+    atDefault: () => current === clamp(Number(reset), min, max), isLocked: () => ctl.isLocked() });
 
-  const el = h('div', { class: 'fw-slider' },
-    h('div', { class: 'fw-slider-header' }, nameLabel(name, label, unit), num),
-    h('div', { class: 'fw-slider-row' }, range, resetBtn));
+  const el = h('div', { class: 'fw-slider', role: 'group', 'aria-label': a11yName },
+    h('div', { class: 'fw-slider-header' }, nameLabel(name, label, unit), num.el),
+    h('div', { class: 'fw-slider-row' }, range, resetBtn.el));
 
   function render() {
     range.value = String(log ? Math.log10(current) : current);
-    num.value = current.toFixed(decimals);
-    num.classList.remove('fw-invalid');
+    num.show(current.toFixed(decimals));
+    resetBtn.sync();
   }
 
   function set(v) {
@@ -69,19 +119,12 @@ export function slider({ id, name = id, label, unit = '', min, max, step = 'any'
     onChange(current);
   }
 
-  function commitNumber() {
-    const n = parseFloat(num.value);
-    if (Number.isNaN(n)) { num.classList.add('fw-invalid'); return; }
-    set(n);
-  }
-
   range.addEventListener('input', () => set(log ? Number((10 ** Number(range.value)).toPrecision(3)) : range.value));
-  num.addEventListener('keydown', (e) => { if (e.key === 'Enter') commitNumber(); });
-  num.addEventListener('change', commitNumber);
-  resetBtn.addEventListener('click', () => set(reset));
-  render();
 
-  return createControl({ id, label: name, el, get: () => current, set });
+  // Lock disables the reset with the inputs; unlock leaves it disabled at the default.
+  const ctl = createControl({ id, label: name, el, get: () => current, set, onLock: () => resetBtn.sync() });
+  render();
+  return ctl;
 }
 
 /** Checkbox toggle. toggle({ id, name, label, value = false, onChange, onLock, onHide }) */
@@ -141,6 +184,11 @@ const PALETTE = {
   '--fw-red': '#B81C1C', '--fw-orange': '#E8720C', '--fw-yellow': '#8A5F00', '--fw-hint-bg': '#FBF3DF',
   '--fw-green': '#2A6E2A', '--fw-text': '#1A1008', '--fw-text-dim': '#5C4F38', '--fw-text-muted': '#6E604A',
   '--fw-grid': '#DDD5C0', '--fw-font': "'Libre Baskerville', Georgia, serif",
+  // Plot tokens (plot-theme.js), resolved.
+  '--fw-plot-bg': '#FAF8F2', '--fw-plot-grid': '#DDD5C0', '--fw-plot-axis': '#8B7D5E', '--fw-plot-text': '#5C4F38',
+  '--fw-plot-ink': '#1A1008', '--fw-plot-muted': '#C8BFA0', '--fw-plot-trace-1': '#1B4F8A',
+  '--fw-plot-trace-2': '#B81C1C', '--fw-plot-trace-3': '#E8720C',
+  '--fw-plot-font': "'Libre Baskerville', Georgia, serif", '--fw-plot-font-size': '13px',
 };
 
 /**
@@ -159,4 +207,74 @@ export function themeVars(el, names) {
 /** Titled section of the Controls column. */
 export function section(title, ...children) {
   return h('div', { class: 'fw-section' }, h('div', { class: 'fw-section-label' }, title), ...children);
+}
+
+// The draggable handle (1-D and 2-D) and the rotary knob live in handle.js.
+export { handle, knob } from './handle.js';
+
+let menuCount = 0;
+
+/**
+ * Menu button (the WAI-ARIA menu button pattern): a button that opens a list of actions.
+ * menuButton({ label = '⋯', name = 'More actions', items = [] })
+ *   items: [{ id, label, onSelect }]. Add more later with add(item, { before }), where before is
+ *   the id of an item to insert ahead of (default: at the end).
+ *   Returns { el, button, menu, add(item, opts) -> menuitem element, item(id) -> element, open(), close() }.
+ *   Hide an item with item(id).hidden = true; the keyboard skips hidden items.
+ * Keys: Enter, Space or ArrowDown on the button open it on the first item, ArrowUp on the last;
+ * ArrowDown/ArrowUp (wrapping), Home and End move; Escape closes it and returns focus to the
+ * button; Tab closes it. Choosing an item closes the menu and returns focus to the button before
+ * onSelect runs, so a confirm() or print() it opens starts from the button. A click outside closes it.
+ */
+export function menuButton({ label = '⋯', name = 'More actions', items = [] } = {}) {
+  const menuId = `fw-menu-${++menuCount}`;
+  const button = h('button', { type: 'button', class: 'fw-button fw-menu-button', 'aria-label': name, title: name,
+    'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-controls': menuId }, label);
+  const menu = h('div', { class: 'fw-menu', role: 'menu', id: menuId, 'aria-label': name, hidden: true });
+  const el = h('div', { class: 'fw-menu-wrap' }, button, menu);
+  const byId = {};
+
+  const visible = () => [...menu.children].filter((i) => !i.hidden);
+  const focusAt = (i) => { const list = visible(); if (list.length) list[(i + list.length) % list.length].focus(); };
+  const isOpen = () => !menu.hidden;
+
+  function open(at = 0) {
+    menu.hidden = false;
+    button.setAttribute('aria-expanded', 'true');
+    document.addEventListener('pointerdown', outside, true);
+    focusAt(at);
+  }
+  function close(returnFocus = false) {
+    if (!isOpen()) return;
+    menu.hidden = true;
+    button.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', outside, true);
+    if (returnFocus) button.focus();
+  }
+  function outside(e) { if (!el.contains(e.target)) close(); }
+
+  button.addEventListener('click', () => (isOpen() ? close() : open(0)));
+  button.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    open(e.key === 'ArrowDown' ? 0 : -1);
+  });
+  menu.addEventListener('keydown', (e) => {
+    const i = visible().indexOf(document.activeElement);
+    const moves = { ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: -1 };
+    if (e.key in moves) { e.preventDefault(); focusAt(moves[e.key]); }
+    else if (e.key === 'Escape') { e.preventDefault(); close(true); }
+    else if (e.key === 'Tab') close();
+  });
+
+  function add({ id, label: text, onSelect = () => {} }, { before } = {}) {
+    const item = h('button', { type: 'button', class: 'fw-menu-item', role: 'menuitem', tabindex: '-1' }, text);
+    item.addEventListener('click', () => { close(true); onSelect(); });
+    menu.insertBefore(item, (before && byId[before]) || null);
+    byId[id] = item;
+    return item;
+  }
+  for (const item of items) add(item);
+
+  return { el, button, menu, add, item: (id) => byId[id], open, close: () => close(true) };
 }

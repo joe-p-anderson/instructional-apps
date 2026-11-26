@@ -1,8 +1,10 @@
-// Plot tokens: the --fw-plot-* custom properties in theme.css, read at runtime so a Tool's
-// plots follow the theme instead of hard-coding a palette or font. No DOM needed at import;
-// call plotTheme() once theme.css has loaded (module scripts run after the page's stylesheets).
+// Plot tokens: the --fw-plot-* custom properties in theme.css, as a plot-shaped palette and
+// font so a Tool's plots follow the theme instead of hard-coding them. It reads them through
+// themeVars (ui-kit.js), the one reader of theme variables for drawing, so it shares its
+// fallback: the v1 palette for a token the page doesn't set, or while `el` is not in a page.
 
-// The shape plotTheme() returns, with each value's token in its place.
+import { themeVars } from './ui-kit.js';
+
 const TOKENS = {
   background: '--fw-plot-bg',
   grid: '--fw-plot-grid',
@@ -10,26 +12,22 @@ const TOKENS = {
   text: '--fw-plot-text',      // tick labels and axis titles
   ink: '--fw-plot-ink',        // outlines of operable marks
   muted: '--fw-plot-muted',    // fill of locked marks
-  traces: ['--fw-plot-trace-1', '--fw-plot-trace-2', '--fw-plot-trace-3'],
-  font: { family: '--fw-plot-font', size: '--fw-plot-font-size' },
+  trace1: '--fw-plot-trace-1',
+  trace2: '--fw-plot-trace-2',
+  trace3: '--fw-plot-trace-3',
+  family: '--fw-plot-font',
+  size: '--fw-plot-font-size',
 };
 
 /**
- * The theme's plot palette and font:
+ * The theme's plot palette and font as computed at `el` (default: the root element):
  * { background, grid, axis, text, ink, muted, traces: [c1, c2, c3], font: { family, size } }
- * (size in px). `source` is an element (default: the root element) or a computed style.
- * Throws, naming the token, if theme.css isn't loaded.
+ * (size in px). `source` is an element or, as in v1, a computed style (CSSStyleDeclaration).
  */
 export function plotTheme(source = globalThis.document?.documentElement) {
-  const style = typeof source?.getPropertyValue === 'function' ? source : getComputedStyle(source);
-  const read = (token) => {
-    if (Array.isArray(token)) return token.map(read);
-    if (typeof token === 'object') return Object.fromEntries(Object.entries(token).map(([k, t]) => [k, read(t)]));
-    const value = style.getPropertyValue(token).trim();
-    if (!value) throw new Error(`Plot token ${token} is not set: is framework/v1/theme.css loaded?`);
-    return value;
-  };
-  const theme = read(TOKENS);
-  theme.font.size = parseFloat(theme.font.size);
-  return theme;
+  const el = typeof source?.getPropertyValue === 'function'
+    ? { isConnected: true, ownerDocument: { defaultView: { getComputedStyle: () => source } } }
+    : source;
+  const { trace1, trace2, trace3, family, size, ...colors } = themeVars(el, TOKENS);
+  return { ...colors, traces: [trace1, trace2, trace3], font: { family, size: parseFloat(size) } };
 }

@@ -11,9 +11,9 @@ Rendered maths (MathJax) no longer adds tab stops.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] e2e (ui-kit spec): a slider with a unit shows "(unit)", and its range and number inputs have accessible names from the label.
-- [ ] e2e: the reset button's accessible name is "Reset to …", it is disabled at the default and enabled after a change, and clicking it restores the default.
-- [ ] e2e: on the oscilloscope Activity and spacetime Lab 10, no MathJax element is in the Tab order.
-- [ ] The existing per-Tool e2e specs pass, with locators by name updated where labels changed.
+- [x] e2e (ui-kit spec): a slider with a unit shows "(unit)", and its range and number inputs have accessible names from the label.
+- [x] e2e: the reset button's accessible name is "Reset to …", it is disabled at the default and enabled after a change, and clicking it restores the default.
+- [x] e2e: on the oscilloscope Activity and spacetime Lab 10, no MathJax element is in the Tab order.
+- [x] The existing per-Tool e2e specs pass, with locators by name updated where labels changed.

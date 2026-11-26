@@ -79,7 +79,7 @@ test('the name gate blocks Part 1 until a name is entered', async ({ page }) => 
   await expect(page.getByRole('textbox', { name: 'Your name' })).toBeHidden();
   await expect(page.getByRole('tab', { name: /Part 1/ })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('button', { name: 'Submit Task 1.1' })).toBeVisible();
-  await expect(page.getByText('Ada Lovelace')).toBeVisible();
+  await expect(page.getByText('Ada Lovelace', { exact: true })).toBeVisible();
 });
 
 test('Part 1 stages the Tool: v locked, the K′ panel and rod and join tools hidden', async ({ page }) => {
@@ -98,6 +98,22 @@ test('Part 1 stages the Tool: v locked, the K′ panel and rod and join tools hi
   expect(JSON.parse(s.diagram)).toEqual([]);
 });
 
+test('each Part opens on the drawing tool its first Task uses: Worldline in both', async ({ page }) => {
+  await open(page);
+  await enterName(page);
+  const p1 = part(page, 1);
+  await expect(p1.getByRole('button', { name: 'Worldline', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(p1.getByRole('button', { name: 'Move', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  // Task 1.1 can be drawn straight away, without picking a tool first.
+  await drag(page, [2, 0], [2, 5]);
+  await p1.getByRole('button', { name: 'Submit Task 1.1' }).click();
+  await expect(p1.getByRole('region', { name: 'Task 1.1' })).toHaveAttribute('data-status', 'passed');
+
+  await page.getByRole('tab', { name: /Part 2/ }).click();
+  const p2 = part(page, 2);
+  await expect(p2.getByRole('button', { name: 'Worldline', exact: true })).toHaveAttribute('aria-pressed', 'true');
+});
+
 test('drawing the Part 1 worldlines with the real tools passes only on Submit', async ({ page }) => {
   await open(page);
   await enterName(page);
@@ -106,7 +122,7 @@ test('drawing the Part 1 worldlines with the real tools passes only on Submit', 
   await drawWorldline(page, [3, 0], [3, 5]);
   await expect(p1.getByRole('region', { name: 'Task 1.1' })).toHaveAttribute('data-status', 'open');
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click();
-  await expect(p1.getByRole('status', { name: 'Task 1.1 feedback' })).toContainText('need within 0.1');
+  await expect(p1.getByRole('status', { name: 'Task 1.1 feedback' })).toContainText('No vertical worldline at x = 2 yet (the nearest one is at x = 3)');
   await p1.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect.poll(async () => (await diagram(page)).length).toBe(0);
 
@@ -242,7 +258,7 @@ test('Part 2: only a rocket-frame rod lies from B to F, and it passes Task 2.5 o
   await task.locator('input[type=radio][value="xp-axis"]').check();
   await fill(p2, 'Task 2.5', ['Events simultaneous in one frame are not in another.']);
   await p2.getByRole('button', { name: 'Submit Task 2.5' }).click();
-  await expect(p2.getByRole('status', { name: 'Task 2.5 feedback' })).toContainText('nearest rod');
+  await expect(p2.getByRole('status', { name: 'Task 2.5 feedback' })).toContainText('No rod from (-1, 1) to (4, 4) yet (the nearest one has ends at');
   await expect(task).toHaveAttribute('data-status', 'open');
 
   // Make it simultaneous in the rocket frame, put its ends on the back and the front, and drag it
@@ -287,4 +303,14 @@ test('Part 2: only a rocket-frame rod lies from B to F, and it passes Task 2.5 o
   await p2.getByRole('button', { name: 'Submit Task 2.5' }).click();
   await expect(task).toHaveAttribute('data-status', 'passed');
   await expect(p2.getByText('5 of 5 Tasks done')).toBeVisible();
+});
+
+test('rendered maths (MathJax) is out of the Tab order', async ({ page }) => {
+  await open(page);
+  await enterName(page);
+  await expect(page.locator('mjx-container').first()).toBeAttached();
+  // MathJax elements Tab would stop on: tabindex >= 0 on a container or inside one.
+  const tabStops = () => page.evaluate(() => [...document.querySelectorAll('mjx-container, mjx-container *')]
+    .filter((el) => el.tabIndex >= 0).length);
+  await expect.poll(tabStops).toBe(0);
 });

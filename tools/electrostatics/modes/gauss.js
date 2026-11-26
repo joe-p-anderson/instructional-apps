@@ -7,14 +7,16 @@
 // Setup: { lambda, E0x, E0y, xc, yc, r, handleAngle } (any subset; defaults below).
 // State: lambda (nC/m), E0x, E0y (V/m), xc, yc, r, dist, outer, inner (cm), Qenc (nC/m).
 // Controls: 'lambda' (slider), 'E0' (joystick, value { x, y }),
-//           'center' (in-plot handle, value { x, y } cm, kept in the ±10 cm window),
-//           'radius' (in-plot handle on the surface's edge, value r cm, 0.3 to 10).
+//           'center' (kit 2-D handle over the plot, value { x, y } cm, kept in the ±10 cm window),
+//           'radius' (kit 1-D handle on the surface's edge, value r cm, 0.3 to 10).
+//           Both are dragged, or focused and moved with the arrow keys (0.1 cm a step, 1 with Shift).
 // Displays: 'gauss' (toScreen(x, y) in cm).
 
-import { controlRegistry, createControl } from '../../../framework/v1/control.js';
+import { controlRegistry } from '../../../framework/v1/control.js';
 import { createEmitter } from '../../../framework/v1/tool.js';
-import { h, metric, section, slider } from '../../../framework/v1/ui-kit.js';
+import { h, handle, metric, section, slider } from '../../../framework/v1/ui-kit.js';
 import { WINDOW, clamp, fieldGrid, gaussField, gaussFlux, sigmaRing } from '../conductor.js';
+import { plotlyMapping } from '../../../framework/v1/plot-map.js';
 import { e0Joystick } from '../controls.js';
 import { PLOT_CONFIG, Plotly, boundaryTrace, conductorLayout, heatmapTrace, plotDisplay, quiverTrace, sigmaTrace, plotColors, toolStyles } from '../plot.js';
 
@@ -23,7 +25,6 @@ export const title = 'Gauss’s law';
 
 const DEFAULTS = { lambda: 1, E0x: 0, E0y: 0, xc: 0, yc: 0, r: 2, handleAngle: 0 };
 const R_MIN = 0.3;  // smallest surface radius (cm)
-const GRAB = 1.5;   // how near (cm) a press must be to a handle to pick it up
 
 const STATE_INFO = {
   lambda: { label: 'Linear charge density λ', unit: 'nC/m' },
@@ -54,30 +55,31 @@ export function mount(container, setup = {}) {
   };
 
   // ── Controls ──
+  // The surface handles' mapping to the plot (client pixels), once the plot is drawn.
+  const plotDiv = h('div', { style: 'width:100%;height:100%;touch-action:none' });
+  const { toScreen, fromScreen: toData } = plotlyMapping(plotDiv);
+  const handleXY = () => [p.r * Math.cos(p.handleAngle) + p.xc, p.r * Math.sin(p.handleAngle) + p.yc];
+  const cmAxis = (min, name) => ({ name, unit: 'cm', min, max: WINDOW, step: 0.1, coarse: 1, decimals: 1 });
+
   const controls = {
     lambda: slider({ id: 'lambda', name: 'λ', unit: 'nC/m', min: -1, max: 1, step: 0.05, value: p.lambda, reset: 1,
       decimals: 2, onChange: (v) => { p.lambda = v; update(); } }),
     E0: e0Joystick({ id: 'E0', name: 'E₀', value: { x: p.E0x, y: p.E0y },
       onChange: ({ x, y }) => { p.E0x = x; p.E0y = y; update(); } }),
-    center: createControl({ id: 'center', label: 'Gaussian surface centre',
-      get: () => ({ x: p.xc, y: p.yc }),
-      set: (v) => {
-        const x = Number(v?.x);
-        const y = Number(v?.y);
-        if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-        p.xc = clamp(x, -WINDOW, WINDOW);
-        p.yc = clamp(y, -WINDOW, WINDOW);
-        update();
-      },
+    center: handle({ id: 'center', name: 'Gaussian surface centre', x: cmAxis(-WINDOW, 'x'), y: cmAxis(-WINDOW, 'y'),
+      value: { x: p.xc, y: p.yc }, toScreen: ({ x, y }) => toScreen(x, y), fromScreen: toData,
+      onChange: ({ x, y }) => { p.xc = x; p.yc = y; update(); },
       onLock: () => redraw(), onHide: () => redraw() }),
-    radius: createControl({ id: 'radius', label: 'Gaussian surface radius',
-      get: () => p.r,
-      set: (v) => {
-        const n = Number(v);
-        if (!Number.isFinite(n)) return;
-        p.r = clamp(n, R_MIN, WINDOW);
-        update();
+    // Dragging the edge handle also turns it to the pointer's side of the centre (handleAngle).
+    radius: handle({ ...cmAxis(R_MIN), id: 'radius', name: 'Gaussian surface radius', value: p.r,
+      toScreen: () => toScreen(...handleXY()),
+      fromScreen: (cx, cy) => {
+        const d = toData(cx, cy);
+        if (!d) return NaN;
+        p.handleAngle = Math.atan2(d.y - p.yc, d.x - p.xc);
+        return Math.hypot(d.x - p.xc, d.y - p.yc);
       },
+      onChange: (r) => { p.r = r; update(); },
       onLock: () => redraw(), onHide: () => redraw() }),
   };
   ({ x: p.E0x, y: p.E0y } = controls.E0.get()); // the joystick may have limited the Setup's E₀
@@ -93,7 +95,6 @@ export function mount(container, setup = {}) {
     inner: metric({ name: 'Inner extent', label: '<i>d</i> − <i>r</i>', format: cm }),
   };
 
-  const plotDiv = h('div', { style: 'width:100%;height:100%;touch-action:none' });
   const swatch = (bg, border, extra = '') => h('span', { class: 'es-swatch', style: `background:${bg};border-color:${border};${extra}` });
   const root = h('div', { class: 'fw-tool es-tool', 'data-tool': 'electrostatics', 'data-mode': id },
     toolStyles(),
@@ -106,20 +107,20 @@ export function mount(container, setup = {}) {
         h('div', { class: 'fw-legend-row' }, swatch('var(--fw-surface)', 'var(--fw-text)', 'border-radius:0'),
           h('span', {}, 'Gaussian surface (drag)')),
         h('div', { class: 'fw-hint', html: 'Fill: |<i>E</i>|  ·  Surface: <i>E</i>·n̂ (dark red inward, blue outward), limits ±|<i>E</i>|<sub>max</sub>' }),
-        h('div', { class: 'fw-hint' }, 'Drag the centre ○ or the radius handle ○'))),
-    h('div', { class: 'fw-displays' }, h('div', { class: 'fw-display es-square' }, plotDiv)));
+        h('div', { class: 'fw-hint' }, 'Drag the centre ○ or the radius handle ○, or focus one and use the arrow keys'))),
+    // The centre's handle comes last, so it is on top when a tiny surface puts the two together.
+    h('div', { class: 'fw-displays' }, h('div', { class: 'fw-display es-square', style: 'position:relative' }, plotDiv,
+      h('div', { class: 'fw-handle-layer' }, controls.radius.el, controls.center.el))));
   container.append(root);
   controls.E0.redraw();
 
   // ── Plot ──
-  const handleXY = () => [p.r * Math.cos(p.handleAngle) + p.xc, p.r * Math.sin(p.handleAngle) + p.yc];
-
   function traces() {
     const C = plotColors(root);
     gauss = gaussFlux({ lambda: p.lambda, E0x: p.E0x, E0y: p.E0y, xc: p.xc, yc: p.yc, r: p.r });
     const grid = fieldGrid(gaussField({ lambda: p.lambda, E0x: p.E0x, E0y: p.E0y }));
     const Emax = Math.max(grid.maxE, 1);
-    const handle = (show, [x, y], ring, hovertemplate, locked) => ({
+    const marker = (show, [x, y], ring, hovertemplate, locked) => ({
       x: show ? [x] : [], y: show ? [y] : [], mode: 'markers', hovertemplate,
       marker: { size: 10, color: C.surface, line: { color: locked ? C.border : ring, width: 2 } } });
     return [
@@ -131,9 +132,9 @@ export function mount(container, setup = {}) {
         mode: 'markers', hovertemplate: 'E·n̂: %{marker.color:.1f} V/m<extra></extra>',
         marker: { color: gauss.flux, colorscale: [[0, '#8B1A1A'], [0.5, C.surface], [1, C.blue]], size: 8,
           line: { width: 0 }, cmin: -Emax, cmax: Emax, showscale: false } },
-      handle(!controls.center.isHidden(), [p.xc, p.yc], C.text, 'Centre (%{x:.1f}, %{y:.1f})<extra></extra>',
+      marker(!controls.center.isHidden(), [p.xc, p.yc], C.text, 'Centre (%{x:.1f}, %{y:.1f})<extra></extra>',
         controls.center.isLocked()),
-      handle(!controls.radius.isHidden(), handleXY(), C.yellow, 'Radius handle<extra></extra>',
+      marker(!controls.radius.isHidden(), handleXY(), C.yellow, 'Radius handle<extra></extra>',
         controls.radius.isLocked()),
     ];
   }
@@ -147,56 +148,17 @@ export function mount(container, setup = {}) {
     redraw();
     const s = getState();
     for (const [k, r] of Object.entries(readouts)) r.update(k === 'centre' ? [s.xc, s.yc] : s[k]);
+    if (ready) placeHandles();
     changes.emit(s);
   }
+
+  // The edge handle moves with the centre, so both are re-placed on every change and redraw.
+  function placeHandles() { controls.center.place(); controls.radius.place(); }
 
   Plotly.newPlot(plotDiv, traces(), conductorLayout(plotColors(root)), PLOT_CONFIG);
   ready = true;
   const plot = plotDisplay(plotDiv, { id: 'gauss', label: 'Gauss’s law' });
-
-  // ── Dragging the surface: pointer capture on the plot, so no window-wide listeners ──
-  let dragging = null; // { which: 'center' | 'radius', pointerId }
-  function toData(evt) {
-    const fl = plotDiv._fullLayout;
-    const rect = plotDiv.getBoundingClientRect();
-    return [fl.xaxis.p2d(evt.clientX - rect.left - fl.xaxis._offset),
-      fl.yaxis.p2d(evt.clientY - rect.top - fl.yaxis._offset)];
-  }
-  const usable = (c) => !c.isLocked() && !c.isHidden();
-  function onPointerDown(evt) {
-    if (!plotDiv._fullLayout || evt.button !== 0) return;
-    const [x, y] = toData(evt);
-    const [hx, hy] = handleXY();
-    const dc = Math.hypot(x - p.xc, y - p.yc);
-    const dr = Math.hypot(x - hx, y - hy);
-    let which = null;
-    if (usable(controls.radius) && dr < GRAB && (dr < dc || !usable(controls.center))) which = 'radius';
-    else if (usable(controls.center) && dc < GRAB) which = 'center';
-    if (!which) return;
-    evt.preventDefault();
-    evt.stopPropagation();
-    dragging = { which, pointerId: evt.pointerId };
-    plotDiv.setPointerCapture?.(evt.pointerId);
-  }
-  function onPointerMove(evt) {
-    if (!dragging || dragging.pointerId !== evt.pointerId || !usable(controls[dragging.which])) return;
-    evt.preventDefault();
-    const [x, y] = toData(evt);
-    if (dragging.which === 'center') {
-      controls.center.set({ x, y });
-    } else {
-      const dx = x - p.xc;
-      const dy = y - p.yc;
-      p.handleAngle = Math.atan2(dy, dx);
-      controls.radius.set(Math.hypot(dx, dy));
-    }
-  }
-  const onPointerEnd = (evt) => { if (dragging && dragging.pointerId === evt.pointerId) dragging = null; };
-  plotDiv.addEventListener('pointerdown', onPointerDown, true);
-  plotDiv.addEventListener('pointermove', onPointerMove);
-  plotDiv.addEventListener('pointerup', onPointerEnd);
-  plotDiv.addEventListener('pointercancel', onPointerEnd);
-  plotDiv.addEventListener('lostpointercapture', onPointerEnd);
+  plotDiv.on('plotly_afterplot', placeHandles);
 
   update();
 
@@ -220,10 +182,12 @@ export function mount(container, setup = {}) {
       }
       if (Number.isFinite(saved.r)) controls.radius.set(saved.r);
       redraw();
+      placeHandles();
     },
     resize: plot.fit,
     destroy() {
-      dragging = null;
+      controls.center.destroy();
+      controls.radius.destroy();
       plot.stop();
       changes.clear();
       Plotly.purge(plotDiv);

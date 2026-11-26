@@ -14,16 +14,17 @@
 // Controls: selects 'dataset', 'y-transform', 'x-transform', 'view'; buttons 'new-data',
 //   'reset-data', 'optimize', 'copy-csv'; toggles 'show-residuals', 'edit-points',
 //   'through-origin'; 'check' (the "Check your …" reveal); custom 'line' (the (m, b) handle,
-//   value { m, b }) and 'points' (the draggable data points, value: array of raw y).
+//   value { m, b }) and 'points' (the draggable data points, value: array of raw y). Each is
+//   also a kit handle (focusable, arrow keys), not registered: '(m, b) handle' and 'Data point N'.
 // Displays: 'scatter' (toScreen(X, Y) in plotted units), 'residuals', 'plane' (toScreen(m, b)).
 
 import { controlRegistry, createControl } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
-import { button, h, metric, section, select, themeVars, toggle } from '../../framework/v1/ui-kit.js';
+import { button, h, handle, metric, section, select, themeVars, toggle } from '../../framework/v1/ui-kit.js';
 import { typeset } from '../../framework/v1/vendor.js';
 import {
   DATASETS, DATASET_IDS, PI, TF, TF_ORDER, axisLabel, bestLine, coarseRange, ellPoint, feasible,
-  feasibleM0, fineRange, fitMeasures, fmt, fmtTick, generate, hits, interpret, lineUnits, niceStep,
+  feasibleM0, fineRange, fitMeasures, fmt, fmtTick, fmtUnit, generate, hits, interpret, lineUnits, niceStep,
   startLine, stats, tfSym, toCsv, transformPoints,
 } from './fit.js';
 
@@ -32,22 +33,29 @@ const QUANTITY_LABELS = { g: 'Implied g', R: 'Implied R', A: 'Implied A', B: 'Im
 const R2_LEVELS = [0, 0.5, 0.75, 0.9, 0.95, 0.99, 0.999];
 const OUTER = [2, 4, 8]; // SSE as a multiple of SST, beyond the R² = 0 ring
 const MARGIN = { l: 64, r: 14, t: 12, b: 46 };
-const GRAB_RADIUS = 16; // px
 
 const STYLE = `
-.ls-displays { flex: 1; min-height: 0; overflow-y: auto; display: grid; gap: 12px;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); align-items: start; }
-.ls-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+/* The Display never scrolls inside itself (framework README): the Graph and the parameter plane
+   take whatever height is left, and secondary text sits in collapsed notes (.ls-more). */
+.ls-displays { flex: 1; min-height: 0; display: grid; gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px); grid-template-rows: minmax(0, 1fr); }
+.ls-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
+.ls-col[hidden] { display: none; }
+.ls-col > .ls-col { flex: none; }
 .ls-displays .fw-display { flex: none; }
+.ls-displays .fw-display.ls-grow { flex: 1 1 0; min-height: 120px; }
 .ls-canvas { display: block; width: 100%; }
-.ls-scatter { height: 380px; }
-.ls-residuals { height: 170px; }
-.ls-plane { height: 300px; touch-action: none; cursor: crosshair; }
-.ls-scatter.ls-editing { cursor: ns-resize; touch-action: none; }
-.ls-caption { font-size: 14px; font-variant: small-caps; letter-spacing: 0.12em; color: var(--fw-text-muted); }
-.ls-note { font-size: 13px; color: var(--fw-text-dim); font-style: italic; line-height: 1.4; margin: 0;
+.ls-grow > .ls-canvas { height: 100%; }
+.ls-residuals { height: 150px; }
+.ls-plane { touch-action: none; cursor: crosshair; }
+.ls-more { font-size: 13px; color: var(--fw-text-dim); line-height: 1.4;
   border-left: 3px solid var(--fw-border); padding-left: 8px; }
-.ls-legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 12px; font-size: 13px; color: var(--fw-text-dim); }
+.ls-more > summary { cursor: pointer; font-style: italic; }
+.ls-more > summary:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: 2px; }
+.ls-more[open] > summary { margin-bottom: 4px; }
+.ls-scatter.ls-editing { cursor: ns-resize; touch-action: none; }
+.ls-caption { font-size: 13px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--fw-text-muted); }
+.ls-legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 4px 12px; }
 .ls-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .ls-row .fw-toggle, .ls-row .fw-select { margin-bottom: 0; }
 .ls-story { font-size: 15px; line-height: 1.45; margin-bottom: 8px; }
@@ -142,7 +150,8 @@ function mount(container, modeId = 'fit', setup = {}) {
       clampHandle();
       commit();
     },
-    onLock: () => redraw(), onHide: () => redraw() });
+    onLock: (locked) => { if (locked) planeHandle.lock(); else planeHandle.unlock(); redraw(); },
+    onHide: (hidden) => { if (hidden) planeHandle.hide(); else planeHandle.show(); redraw(); } });
   ctl.points = createControl({ id: 'points', label: 'Data points',
     get: () => st.raw.map((p) => p.y),
     set: (ys) => { applyYs(ys); commit(); },
@@ -153,13 +162,111 @@ function mount(container, modeId = 'fit', setup = {}) {
   const scatterCv = h('canvas', { class: 'ls-canvas ls-scatter', role: 'img', 'aria-label': 'Scatter plot with error bars and your line' });
   const residualCv = h('canvas', { class: 'ls-canvas ls-residuals', role: 'img', 'aria-label': 'Residuals' });
   const planeCv = h('canvas', { class: 'ls-canvas ls-plane', role: 'img', 'aria-label': 'Parameter plane: drag to choose m and b' });
+
+  // ── kit handles over the plots: the (m, b) point and, in edit mode, each data point ──
+  // The plot windows change with the data, axes and view, so each handle's value is its place
+  // within the current window (0 to 1 on each axis): an arrow key moves it 1% of the window,
+  // Shift+arrow 10%. Its accessible text gives the real values.
+  const scatterLayer = h('div', { class: 'fw-handle-layer' });
+  const planeLayer = h('div', { class: 'fw-handle-layer' });
+  const unitText = (u) => (u ? ` ${u}` : '');
+  const frac = (v, lo, hi) => (hi > lo ? (v - lo) / (hi - lo) : 0);
+  const lerp = (t, lo, hi) => lo + t * (hi - lo);
+  const local = (cv, cx, cy) => { const r = cv.getBoundingClientRect(); return [cx - r.left, cy - r.top]; };
+  const unit01 = (name) => ({ name, min: 0, max: 1, step: 0.01, coarse: 0.1 });
+
+  const planeHandle = handle({ id: 'line-handle', name: '(m, b) handle', x: unit01('m'), y: unit01('b'),
+    value: { x: 0, y: 0 },
+    format: () => {
+      const u = lineUnits(st.ds, st.xT, st.yT);
+      return `m = ${fmt(st.m, 4)}${unitText(u.m)}, b = ${fmt(st.b, 4)}${unitText(u.b)}`;
+    },
+    toScreen: ({ x, y }) => {
+      const f = frames.plane, R = range();
+      if (!f || !R) return null;
+      const r = planeCv.getBoundingClientRect();
+      return { x: r.left + f.X(lerp(x, R.m0, R.m1)), y: r.top + f.Y(lerp(y, R.b0, R.b1)) };
+    },
+    fromScreen: (cx, cy) => {
+      const f = frames.plane, R = range();
+      if (!f || !R) return null;
+      const [px, py] = local(planeCv, cx, cy);
+      return { x: frac(f.ix(px), R.m0, R.m1), y: frac(f.iy(py), R.b0, R.b1) };
+    },
+    onChange: ({ x, y }) => {
+      const R = range();
+      stopAnim();
+      st.m = lerp(x, R.m0, R.m1);
+      st.b = st.locked ? 0 : lerp(y, R.b0, R.b1);
+      commit();
+    } });
+  planeLayer.append(planeHandle.el);
+
+  let pointHandles = [];
+  function pointHandle(i) {
+    const yr = () => frames.scatterRange.yr;
+    const ph = handle({ id: `point-${i + 1}`, name: `Data point ${i + 1}`, ...unit01(`Data point ${i + 1}`), value: 0,
+      format: () => {
+        const d = D();
+        return `${d.y.sym} = ${fmt(st.raw[i]?.y ?? 0, 4)}${unitText(fmtUnit(d.y.unit))}`;
+      },
+      toScreen: (v) => {
+        const f = frames.scatter, p = points()[i];
+        if (!f || !p) return null;
+        const r = scatterCv.getBoundingClientRect();
+        return { x: r.left + f.X(p.X), y: r.top + f.Y(lerp(v, ...yr())) };
+      },
+      fromScreen: (cx, cy) => {
+        const f = frames.scatter;
+        if (!f) return null;
+        return frac(f.iy(local(scatterCv, cx, cy)[1]), ...yr());
+      },
+      onChange: (v) => {
+        const raw = TF[st.yT].inv(lerp(v, ...yr()));
+        const ys = st.raw.map((p) => p.y);
+        ys[i] = Number.isFinite(raw) ? raw : 0;
+        applyYs(ys);
+        commit();
+      } });
+    // While a point is dragged the scatter window stays put, so the point follows the pointer.
+    ph.el.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 || ph.isLocked() || ph.isHidden()) return;
+      stopAnim();
+      st.dragPt = i; st.scRange = scatterRange(points());
+    });
+    const end = () => { if (st.dragPt === i) { st.dragPt = -1; st.scRange = null; redraw(); } };
+    ph.el.addEventListener('pointerup', end);
+    ph.el.addEventListener('pointercancel', end);
+    return ph;
+  }
+
+  /** Bring the handles in step with the State and the plots just drawn. */
+  function syncHandles() {
+    const R = range();
+    if (R) planeHandle.update({ x: frac(st.m, R.m0, R.m1), y: frac(st.b, R.b0, R.b1) });
+    if (pointHandles.length !== st.raw.length) {
+      for (const ph of pointHandles) { ph.destroy(); ph.el.remove(); }
+      pointHandles = st.raw.map((p, i) => pointHandle(i));
+      scatterLayer.append(...pointHandles.map((ph) => ph.el));
+    }
+    const editing = st.edit && !ctl.points.isHidden();
+    const pts = points();
+    pointHandles.forEach((ph, i) => {
+      if (editing) ph.show(); else ph.hide();
+      if (ctl.points.isLocked()) ph.lock(); else ph.unlock();
+      if (frames.scatterRange && pts[i]) ph.update(frac(pts[i].Y, ...frames.scatterRange.yr));
+    });
+  }
+
   const residualWrap = h('div', { class: 'ls-col', hidden: true },
     h('div', { class: 'ls-caption' }, 'Residuals  y − (m x + b)'),
     h('div', { class: 'fw-display' }, residualCv),
-    h('div', { class: 'ls-legend' },
-      h('div', { html: '<b>Random scatter about 0</b>: the straight line describes the data.' }),
-      h('div', { html: '<b>A curve or trend</b>: wrong model or wrong axes. The line is systematically off.' }),
-      h('div', { html: '<b>One far-off point</b>: an outlier. Check that measurement before trusting the fit.' })));
+    h('details', { class: 'ls-more' },
+      h('summary', {}, 'Reading the residuals'),
+      h('div', { class: 'ls-legend' },
+        h('div', { html: '<b>Random scatter about 0</b>: the straight line describes the data.' }),
+        h('div', { html: '<b>A curve or trend</b>: wrong model or wrong axes. The line is systematically off.' }),
+        h('div', { html: '<b>One far-off point</b>: an outlier. Check that measurement before trusting the fit.' }))));
 
   const out = {
     eq: h('div', { class: 'ls-eq' }),
@@ -184,25 +291,31 @@ function mount(container, modeId = 'fit', setup = {}) {
       section('Experiment', ctl.dataset.el, h('div', { class: 'ls-row' }, ctl['new-data'].el, ctl['copy-csv'].el, copyStatus)),
       section('Model', story, ctl.check.el, checkPanel),
       section('Axes', ctl['y-transform'].el, ctl['x-transform'].el),
+      section('Parameter space', ctl.view.el, ctl.optimize.el, ctl['through-origin'].el),
       section('Show', ctl['show-residuals'].el, ctl['edit-points'].el, ctl['reset-data'].el)),
     h('div', { class: 'fw-displays ls-displays' },
       h('div', { class: 'ls-col' },
         h('div', { class: 'ls-caption' }, 'Graph'),
-        h('div', { class: 'fw-display' }, scatterCv),
+        h('div', { class: 'fw-display ls-grow', style: 'position:relative' }, scatterCv, scatterLayer),
         residualWrap,
-        h('p', { class: 'ls-note' }, 'This is unweighted least squares: error bars are drawn, but every point counts equally in the fit.')),
+        h('details', { class: 'ls-more' },
+          h('summary', {}, 'How the line is fitted'),
+          'This is unweighted least squares: error bars are drawn, but every point counts equally in the fit.')),
       h('div', { class: 'ls-col' },
         h('div', { class: 'ls-caption' }, 'Parameter space'),
-        h('div', { class: 'fw-display' }, planeCv),
-        h('div', { class: 'ls-row' }, ctl.view.el, ctl.optimize.el, ctl['through-origin'].el),
-        h('p', { class: 'ls-note', html: 'Each point here is a line. Drag to choose the slope <i>m</i> and intercept <i>b</i>. '
-          + 'Rings are contours of equal error, labeled by R². The least-squares line sits at the bottom of the bowl. '
-          + '<b>Fine</b> zooms in near the bottom. The green patch is every line that passes through all the error bars.' }),
+        h('div', { class: 'fw-display ls-grow', style: 'position:relative' }, planeCv, planeLayer),
+        h('details', { class: 'ls-more' },
+          h('summary', {}, 'Reading the parameter plane'),
+          h('span', { html: 'Each point here is a line. Drag to choose the slope <i>m</i> and intercept <i>b</i>. '
+            + 'Rings are contours of equal error, labeled by R². The least-squares line sits at the bottom of the bowl. '
+            + '<b>Fine</b> zooms in near the bottom. The green patch is every line that passes through all the error bars.' })),
         h('div', { class: 'ls-fit' },
           h('div', { class: 'ls-caption' }, 'Fit'),
           out.eq, out.m.el, out.b.el, out.pass, bars.SST.el, bars.SSE.el, out.ratio.el, out.R2.el, out.why,
-          h('p', { class: 'ls-note', html: 'R² is the fraction of the variation in y that the line accounts for. It does <b>not</b> tell you '
-            + 'whether the model is right, and it is not an uncertainty on <i>m</i>. Look at the graph and the residuals first.' })))));
+          h('details', { class: 'ls-more' },
+            h('summary', {}, 'What R² tells you'),
+            h('span', { html: 'R² is the fraction of the variation in y that the line accounts for. It does <b>not</b> tell you '
+              + 'whether the model is right, and it is not an uncertainty on <i>m</i>. Look at the graph and the residuals first.' }))))));
   container.append(root);
 
   // ── operations (no emit; commit() publishes) ──
@@ -406,7 +519,7 @@ function mount(container, modeId = 'fit', setup = {}) {
   // ── drawing ──
   const colors = () => themeVars(root, { accent: '--fw-blue', ink: '--fw-text', muted: '--fw-text-dim',
     faint: '--fw-text-muted', grid: '--fw-grid', axis: '--fw-border-dk', ok: '--fw-green', bad: '--fw-red',
-    res: '--fw-orange', panel: '--fw-surface', font: '--fw-font' });
+    res: '--fw-orange', panel: '--fw-surface', font: '--fw-font', size: '--fw-plot-font-size' });
 
   // Canvases are drawn at their box size, or at a fallback size while hidden (for snapshots).
   function prep(cv, fallbackH) {
@@ -430,7 +543,7 @@ function mount(container, modeId = 'fit', setup = {}) {
     const xs = niceStep(xr[1] - xr[0], Math.max(3, (R - L) / 90));
     const ys = niceStep(yr[1] - yr[0], Math.max(3, (B - T) / 55));
     ctx.lineWidth = 1;
-    ctx.font = `13px ${C.font}`;
+    ctx.font = `${C.size} ${C.font}`;
     ctx.fillStyle = C.muted;
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     for (let v = Math.ceil(xr[0] / xs) * xs; v <= xr[1] + xs * 1e-9; v += xs) {
@@ -474,12 +587,13 @@ function mount(container, modeId = 'fit', setup = {}) {
     return { xr: [x0 < 0 ? x0 - px : 0, x1 > 0 ? x1 + px : 0], yr: [y0 < 0 ? y0 - py : 0, y1 > 0 ? y1 + py : 0] };
   }
 
-  const frames = { scatter: null, plane: null };
+  const frames = { scatter: null, plane: null, scatterRange: null };
   function drawScatter(pts) {
     const { ctx, W, H, laidOut } = prep(scatterCv, 380);
     const rg = st.scRange ?? scatterRange(pts);
     const f = frame(ctx, W, H, rg.xr, rg.yr, axisLabel(st.xT, D().x), axisLabel(st.yT, D().y));
     frames.scatter = laidOut ? f : null;
+    frames.scatterRange = rg;
     clip(ctx, f);
     ctx.strokeStyle = C.accent; ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.moveTo(f.L, f.Y(st.m * rg.xr[0] + st.b)); ctx.lineTo(f.R, f.Y(st.m * rg.xr[1] + st.b)); ctx.stroke();
@@ -528,7 +642,7 @@ function mount(container, modeId = 'fit', setup = {}) {
     ctx.moveTo(x - 5, y); ctx.lineTo(x + 5, y); ctx.moveTo(x, y - 5); ctx.lineTo(x, y + 5);
     ctx.stroke();
     if (text) {
-      ctx.font = `bold 13px ${C.font}`; ctx.fillStyle = C.accent;
+      ctx.font = `bold ${C.size} ${C.font}`; ctx.fillStyle = C.accent;
       ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(text, x + 13, y - 10);
     }
   }
@@ -576,11 +690,11 @@ function mount(container, modeId = 'fit', setup = {}) {
       const xs = ps.map((p) => p[0]), ys = ps.map((p) => p[1]);
       if (Math.max(...xs) - Math.min(...xs) < 40 && Math.max(...ys) - Math.min(...ys) < 40) return;
       const [x, y] = inside.reduce((a, p) => (p[1] < a[1] ? p : a));
-      ctx.font = `12px ${C.font}`;
+      ctx.font = `${C.size} ${C.font}`;
       const w = ctx.measureText(text).width + 6;
       if (placed.some((q) => Math.abs(q[0] - x) < (q[2] + w) / 2 + 2 && Math.abs(q[1] - y) < 16)) return;
       placed.push([x, y, w]);
-      ctx.fillStyle = C.panel; ctx.fillRect(x - w / 2, y - 7, w, 14);
+      ctx.fillStyle = C.panel; ctx.fillRect(x - w / 2, y - 8, w, 16);
       ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, x, y);
     };
     if (st.view === 'fine') {
@@ -622,6 +736,7 @@ function mount(container, modeId = 'fit', setup = {}) {
     drawScatter(pts);
     if (st.showRes) drawResid(pts);
     drawPlane(S, pts);
+    syncHandles();
   }
   let queued = 0;
   function redraw() {
@@ -648,32 +763,8 @@ function mount(container, modeId = 'fit', setup = {}) {
   planeCv.addEventListener('pointerup', onPlaneUp);
   planeCv.addEventListener('pointercancel', onPlaneUp);
 
-  // edit mode: drag a data point vertically (the scatter window is frozen during the drag)
-  function onScatterDown(e) {
-    const f = frames.scatter;
-    if (!st.edit || !f || ctl.points.isLocked() || ctl.points.isHidden()) return;
-    const r = scatterCv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
-    let best = -1, bd = GRAB_RADIUS;
-    points().forEach((p, i) => { const dd = Math.hypot(f.X(p.X) - px, f.Y(p.Y) - py); if (dd < bd) { bd = dd; best = i; } });
-    if (best < 0) return;
-    st.dragPt = best; st.scRange = scatterRange(points());
-    scatterCv.setPointerCapture?.(e.pointerId);
-    redraw();
-  }
-  function onScatterMove(e) {
-    if (st.dragPt < 0 || !frames.scatter) return;
-    const r = scatterCv.getBoundingClientRect();
-    const raw = TF[st.yT].inv(frames.scatter.iy(e.clientY - r.top));
-    const ys = st.raw.map((p) => p.y);
-    ys[st.dragPt] = Number.isFinite(raw) ? raw : 0;
-    applyYs(ys);
-    commit();
-  }
-  function onScatterUp() { if (st.dragPt >= 0) { st.dragPt = -1; st.scRange = null; redraw(); } }
-  scatterCv.addEventListener('pointerdown', onScatterDown);
-  scatterCv.addEventListener('pointermove', onScatterMove);
-  scatterCv.addEventListener('pointerup', onScatterUp);
-  scatterCv.addEventListener('pointercancel', onScatterUp);
+  // edit mode: each data point is a kit handle (pointHandle), dragged up and down or moved with
+  // the arrow keys; a press elsewhere on the plane above jumps the (m, b) point there.
 
   const resizeObserver = new ResizeObserver(() => redraw());
   resizeObserver.observe(root);
@@ -711,7 +802,8 @@ function mount(container, modeId = 'fit', setup = {}) {
       cancelAnimationFrame(queued);
       resizeObserver.disconnect();
       planeCv.removeEventListener('pointerdown', onPlaneDown);
-      scatterCv.removeEventListener('pointerdown', onScatterDown);
+      planeHandle.destroy();
+      for (const ph of pointHandles) ph.destroy();
       changes.clear();
       root.remove();
     },
@@ -722,5 +814,8 @@ export default defineTool({
   id: 'least-squares',
   title: 'Least Squares Fitting',
   modes: [{ id: 'fit', title: 'Fit' }],
+  // The Graph column sits beside a 360 px Fit panel: below this the scatter plot is too narrow
+  // to read (about 180 px at the default 480).
+  minDisplayWidth: 760,
   mount,
 });

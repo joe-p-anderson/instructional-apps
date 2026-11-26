@@ -2,17 +2,21 @@
    Linked inside each instance's root (plot.js toolStyles()); every rule is scoped to .es-tool. */
 
 .es-tool { grid-template-columns: 270px minmax(0, 1fr); }
-.es-tool .es-pad { display: block; cursor: crosshair; touch-action: none; }
+/* A pad (controls.js) is a kit handle wrapping its canvas: focusable, dragged without scrolling. */
+.es-tool .es-pad { position: relative; flex-shrink: 0; width: fit-content; cursor: crosshair; touch-action: none; }
+.es-tool .es-pad canvas { display: block; }
+.es-tool .es-pad:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: 2px; }
 .es-tool .fw-locked .es-pad { cursor: not-allowed; }
 .es-tool .es-joystick .es-pad { border: 1.5px solid var(--fw-border-dk); background: var(--fw-bg); }
+.es-tool .es-pair .fw-reset { align-self: flex-end; }
+.es-tool .es-box-row { display: flex; align-items: center; gap: 6px; }
 .es-tool .es-pad-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 10px; }
 .es-tool .es-caption { font-size: 13px; color: var(--fw-text-muted); font-style: italic; text-align: center; }
 .es-tool .es-pair { display: flex; gap: 6px; margin-bottom: 4px; }
 .es-tool .es-pair label { flex: 1; min-width: 0; }
 .es-tool .es-pair .fw-number { text-align: center; }
 .es-tool .es-box-label { display: block; font-size: 13px; color: var(--fw-text-muted); }
-.es-tool .es-wide { width: 100%; margin-top: 6px; }
 .es-tool .es-arc { margin-bottom: 12px; }
 .es-tool .es-arc-row { display: flex; align-items: flex-start; gap: 4px; }
-.es-tool .es-arc-caption { font-size: 11px; line-height: 1.6; text-align: left; }
+.es-tool .es-arc-caption { font-size: 13px; line-height: 1.6; text-align: left; }
 .es-tool .es-swatch { display: inline-block; width: 13px; height: 13px; border: 1.5px solid; border-radius: 50%; flex-shrink: 0; }

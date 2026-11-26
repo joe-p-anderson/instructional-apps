@@ -50,12 +50,13 @@ for (const layout of LAYOUTS) {
     // Part 1 with the Hint showing, then Part 1's next Task, then Part 2.
     const p1 = part(page, 1);
     const submit11 = p1.getByRole('button', { name: 'Submit Task 1.1' });
-    for (let i = 0; i < 3; i++) await submit11.click();
+    // Three different misses (an identical repeat would be refused, and not count).
+    for (const dt of [0.1, 0.2, 0.3]) { await setNumber(p1, 'Δt (s)', dt); await submit11.click(); }
     await expect(p1.getByText(/Hint:/)).toBeVisible();
     expect(await noPageScroll()).toBe(true);
     await expect(submit11).toBeInViewport({ ratio: 1 });
 
-    await setNumber(p1, 'Δt', 0.5);
+    await setNumber(p1, 'Δt (s)', 0.5);
     await submit11.click();
     await expect(p1.getByRole('button', { name: 'Submit Task 1.2' })).toBeInViewport({ ratio: 1 });
 
@@ -115,7 +116,7 @@ test('side: Tasks in a 330 px column right of the Display; finished Tasks show t
   expect(await lines(locked.getByText('Locked until Task 1.2 is done'))).toBe(1);
 
   // Finished: the title and the result only.
-  await setNumber(p1, 'Δt', 0.5);
+  await setNumber(p1, 'Δt (s)', 0.5);
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click();
   const done = card(p1, '1.1');
   await expect(done).toHaveAttribute('data-status', 'passed');
@@ -170,7 +171,7 @@ test('banner: the current Task is a banner above a full-width Display; the other
   await expect(card(p1, '1.1').locator('.fw-task-prompt')).toBeVisible();
 
   // Passing Task 1.1 makes Task 1.2 the banner.
-  await setNumber(p1, 'Δt', 0.5);
+  await setNumber(p1, 'Δt (s)', 0.5);
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click();
   await expect(card(p1, '1.2').locator('.fw-task-prompt')).toBeVisible();
   await expect(card(p1, '1.1').locator('.fw-task-prompt')).toBeHidden();
@@ -205,12 +206,12 @@ for (const layout of LAYOUTS) {
     const empty = await badge('0/3').evaluate((e) => getComputedStyle(e).backgroundColor);
 
     const p1 = part(page, 1);
-    await setNumber(p1, 'Δt', 0.5);
+    await setNumber(p1, 'Δt (s)', 0.5);
     await p1.getByRole('button', { name: 'Submit Task 1.1' }).click();
     await expect(tab1).toHaveAccessibleName('Part 1: Phase Shift (1 of 3 Tasks done)');
     await expect(badge('1/3')).toHaveCSS('background-color', empty);
 
-    await setNumber(p1, 'f', 0.25);
+    await setNumber(p1, 'f (Hz)', 0.25);
     await p1.getByRole('button', { name: 'Submit Task 1.2' }).click();
     await p1.getByRole('textbox', { name: /difficult to measure/ }).fill('The traces must be lined up by eye.');
     await p1.getByRole('button', { name: 'Submit Task 1.3' }).click();

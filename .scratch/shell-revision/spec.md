@@ -2,7 +2,7 @@
 
 Vocabulary follows GLOSSARY.md (Task drawer, Name gate, Attempt and Submit as revised 2026-11-25). Builds on framework v1 (Spec 0001) and the theme refresh, and ships in place in framework v1 as a compatible change (ADR 0003).
 
-Status: ready-for-agent
+Status: resolved
 
 ## Problem Statement
 

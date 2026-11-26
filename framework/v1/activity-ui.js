@@ -5,66 +5,111 @@
 //   Task cards and a progress indicator to each Part and a progress badge ("1/3") to each Part
 //   tab, and shows a name gate before Part 1. The Tool's panel layout (tool.js) places them.
 //   The Run autosaves to `storage` (default localStorage; null disables it), keyed by Activity
-//   id, and a saved Run is restored on load in place of the name gate. "Start over" (confirmed)
-//   discards the saved Run and reloads the page for a new one.
+//   id, and a saved Run is restored on load under its own sealed name. The name entered at the
+//   name gate is stored site-wide (nameStore): with no saved Run and a stored name, the Run
+//   starts at once under it and the gate is skipped; with neither, the gate appears.
+//   The header shows the Activity's title and course, the Part tabs, then the actions: the
+//   Run's name, the save status (tool-host.js saveStatus), Download Report and the ⋯ menu,
+//   which holds Start over (confirmed; discards this Activity's saved Run and reloads, starting
+//   a new Run under the stored name), Print and "Not <name>? Sign out" (confirmed; forgets the stored name, discards this Activity's saved
+//   Run and reloads to the name gate; other Activities' Runs are kept).
 //   All judging, ordering and Control exposure come from the core; this layer only renders
 //   what runner.parts()/runner.task() report and forwards Start and Submit.
 //   Once the Run starts, a Download Report button saves runner.report() as a JSON file.
-//   Returns { runner, instances: { [partId]: ToolInstance }, select(partId), render(), activePart }.
+//   When the last Task of the Activity passes, a completion dialog (native <dialog>) opens once
+//   per Run (runner.completionShown, saved with the Run); whenever the Run is complete the header's
+//   Download button takes the primary style and reads "Activity complete · Download Report".
+//   In the side layout the Tasks take the Task drawer form when the frame says so (createFrame).
+//   Returns { tool, runner, instances: { [partId]: ToolInstance }, select(partId), render(), activePart }.
 //
 // Prompts, titles, Question prompts and Hints are trusted HTML from the Activity author and may
 // contain \( \) math, typeset with MathJax.
 
-import { browserStorage, runStore } from './persistence.js';
+import { browserStorage, nameStore, runStore } from './persistence.js';
 import { createRunner } from './runner/index.js';
 import { reportFilename } from './report.js';
-import { createFrame, createTabs } from './tool-host.js';
+import { createFrame, createTabs, printItem, saveStatus } from './tool-host.js';
 import { defineTool } from './tool.js';
 import { h } from './ui-kit.js';
 import { typeset } from './vendor.js';
 
-export function mountActivity(definition, activity, root, { conditionTypes, storage = browserStorage() } = {}) {
+export function mountActivity(definition, activity, root, { conditionTypes, storage } = {}) {
   const tool = defineTool(definition);
   if (activity.tool !== tool.id) throw new Error(`Activity "${activity.id}" is for Tool "${activity.tool}", not "${tool.id}".`);
   if (!document.title) document.title = activity.title;
 
-  const frame = createFrame(root, { title: activity.title, subtitle: activity.course, layout: tool.layout });
-  const host = { runner: null, instances: {}, activePart: null, select: null, render };
+  const frame = createFrame(root, { title: activity.title, course: activity.course, layout: tool.layout,
+    minDisplayWidth: tool.minDisplayWidth, maxDisplayWidth: tool.maxDisplayWidth, tasks: true });
+  const host = { tool, runner: null, instances: {}, activePart: null, select: null, render };
 
   const tabs = createTabs(frame, activity.parts, (id) => {
     host.activePart = id;
+    frame.updateForm();
     host.instances[id]?.resize?.();
   });
 
-  const views = {}; // partId -> { progress, cards: { taskId: card } }
+  const views = {}; // partId -> { progress, cards: { taskId: card }, drawer }
   activity.parts.forEach((part, p) => {
     const panel = tabs.panels[part.id];
     host.instances[part.id] = tool.mount(panel, part.mode, part.setup);
     views[part.id] = partView(part, p);
     panel.append(views[part.id].el);
     tabs.buttons[part.id].append(views[part.id].badgeText, views[part.id].badge);
+    // Clicking or focusing the Display (anything in the Part outside its Tasks) closes the drawer.
+    const outside = (e) => { if (!views[part.id].el.contains(e.target)) views[part.id].drawer.close(); };
+    panel.addEventListener('pointerdown', outside);
+    panel.addEventListener('focusin', outside);
+  });
+
+  // Side layout: the Tasks column or the Task drawer (createFrame decides). Same DOM, restyled.
+  frame.onFormChange(() => {
+    for (const view of Object.values(views)) { view.drawer.close(); view.drawer.update(); }
+    host.instances[host.activePart]?.resize?.();
   });
 
   host.runner = createRunner(activity, { tools: host.instances, conditionTypes });
   host.select = tabs.select;
 
   // ── Autosave: the whole Run after every Start, Submit and Tool State change ──
+  // storage: null turns autosave (and its status) off; left out, it is localStorage, and a
+  // browser without one gets the "Not saved" warning.
+  const autosaveOn = storage !== null;
+  if (storage === undefined) storage = browserStorage();
   const store = runStore(activity.id, storage);
-  const autosave = () => { if (host.runner.run) store.save(host.runner.save()); };
+  let reportSave = () => {}; // the header's save status, once it exists
+  const autosave = () => { if (host.runner.run) reportSave(store.save(host.runner.save())); };
   let restored = false;
   try { restored = host.runner.restore(store.load()); } catch { /* unusable save: new Run */ }
   for (const instance of Object.values(host.instances)) instance.state.onChange(autosave);
 
   // ── Name gate: the Part tabs stay hidden until a name starts the Run ──
-  const student = h('div', { class: 'fw-student', hidden: true });
-  const startOver = h('button', { type: 'button', class: 'fw-button fw-start-over', hidden: true }, 'Start over');
-  startOver.addEventListener('click', () => {
-    if (!confirm('Start over? This discards your progress and begins a new Run; you will enter your name again.')) return;
+  const student = h('div', { class: 'fw-student', role: 'note', 'aria-label': 'Student', hidden: true });
+  const download = reportButton(host, 'fw-download');
+  download.hidden = true;
+  const completion = completionDialog();
+  frame.addAction(student);
+  if (autosaveOn) reportSave = saveStatus(frame);
+  frame.addAction(download);
+  // Start over and sign-out both discard this Activity's saved Run and reload; on reload the
+  // Run starts at once under the stored name, or the Name gate appears when none is stored.
+  const names = nameStore(storage);
+  const startOver = frame.menu.add({ id: 'start-over', label: 'Start over', onSelect: () => {
+    const name = names.load();
+    if (!confirm(`Start over "${stripTags(activity.title)}"? This discards your progress in this Activity and `
+      + (name ? `begins a new Run as ${name}.` : 'begins a new Run; you will enter your name again.'))) return;
     store.clear();
     location.reload();
-  });
-  const download = reportButton(host);
-  frame.header.append(student, download, startOver);
+  } });
+  startOver.hidden = true;
+  frame.menu.add(printItem());
+  const signOut = frame.menu.add({ id: 'sign-out', label: 'Sign out', onSelect: () => {
+    if (!confirm(`Sign out ${host.runner.run.name}? This discards your progress in "${stripTags(activity.title)}" `
+      + 'and forgets your name on this computer. Your saved Runs in other Activities are kept.')) return;
+    names.clear();
+    store.clear();
+    location.reload();
+  } });
+  signOut.hidden = true;
   frame.tablist.hidden = true;
   frame.panels.hidden = true;
 
@@ -87,14 +132,20 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
       nameInput.focus();
       return;
     }
+    names.save(host.runner.run.name);
     autosave();
     enterRun();
   });
+  const storedName = names.load();
   if (restored) {
     for (const view of Object.values(views)) for (const card of Object.values(view.cards)) card.restore();
     enterRun();
+  } else if (storedName) {
+    host.runner.start(storedName);
+    autosave();
+    enterRun();
   } else {
-    frame.app.insertBefore(gate, frame.tablist);
+    frame.app.insertBefore(gate, frame.panels);
     nameInput.focus();
   }
 
@@ -107,6 +158,8 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
     student.textContent = host.runner.run.name;
     student.hidden = false;
     startOver.hidden = false;
+    signOut.textContent = `Not ${host.runner.run.name}? Sign out`;
+    signOut.hidden = false;
     download.hidden = false;
     frame.tablist.hidden = false;
     frame.panels.hidden = false;
@@ -123,15 +176,94 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
     const badgeText = h('span', { class: 'fw-sr-only' });
     const badge = h('span', { class: 'fw-tab-badge', 'aria-hidden': 'true' });
     const cards = {};
-    const row = h('div', { class: 'fw-tasks' });
+    const row = h('div', { class: 'fw-tasks', id: `fw-tasks-${part.id}` });
     part.tasks.forEach((task, t) => {
       cards[task.id] = taskCard(part, task, taskNumber(p, t), t > 0 ? taskNumber(p, t - 1) : null);
       row.append(cards[task.id].el);
     });
-    const el = h('div', { class: 'fw-part-tasks' },
+    const drawer = drawerBar(row, cards);
+    const el = h('div', { class: 'fw-part-tasks', 'data-drawer': 'closed' },
+      drawer.el,
       h('div', { class: 'fw-progress' }, progressBar, progressText),
       row);
-    return { el, cards, progressBar, progressText, badge, badgeText };
+    drawer.attach(el);
+    return { el, cards, drawer, progressBar, progressText, badge, badgeText };
+  }
+
+  // The Task drawer's bar (shown only in the drawer form of the side layout, theme.css): the
+  // current Task's number and title as the expand toggle, its latest feedback and its Submit.
+  // Open, the drawer (the Tasks row) shows only the current Task's card over the Display.
+  function drawerBar(row, cards) {
+    let current = null; // the current Task's card, or null once all are done
+    let container = null;
+    const chevron = h('span', { class: 'fw-drawer-chevron', 'aria-hidden': 'true' });
+    const label = h('span', { class: 'fw-drawer-title' });
+    const toggleButton = h('button', { type: 'button', class: 'fw-drawer-toggle', 'aria-expanded': 'false',
+      'aria-controls': row.id }, chevron, label);
+    const feedback = h('span', { class: 'fw-task-feedback fw-drawer-feedback', role: 'status', 'aria-live': 'polite' });
+    const note = h('span', { class: 'fw-drawer-note', hidden: true }, 'Open to answer');
+    const submit = h('button', { type: 'button', class: 'fw-button fw-drawer-submit' }, 'Submit');
+    const el = h('div', { class: 'fw-drawer-bar', role: 'group', 'aria-label': 'Current Task' },
+      toggleButton, feedback, note, submit);
+
+    toggleButton.addEventListener('click', () => (isOpen() ? close({ focus: true }) : open()));
+    submit.addEventListener('click', () => current?.submit());
+
+    const isOpen = () => container?.dataset.drawer === 'open';
+    function setOpen(on) {
+      container.dataset.drawer = on ? 'open' : 'closed';
+      toggleButton.setAttribute('aria-expanded', String(on));
+      chevron.textContent = on ? '▴' : '▾';
+    }
+    function open() {
+      if (!current) return;
+      setOpen(true);
+      current.seen = true;
+      update();
+      current.el.focus();
+    }
+    function close({ focus = false } = {}) {
+      if (!isOpen()) return;
+      setOpen(false);
+      if (focus) toggleButton.focus();
+    }
+
+    // Re-read the current Task (the first open one) after render().
+    function update() {
+      const next = Object.values(cards).find((c) => c.status() === 'open') ?? null;
+      if (next !== current) {
+        for (const c of Object.values(cards)) delete c.el.dataset.current;
+        current = next;
+        if (current) {
+          current.el.dataset.current = '';
+          label.innerHTML = current.titleHtml;
+          typeset([label]);
+          submit.setAttribute('aria-label', `Submit ${current.number}`);
+          feedback.setAttribute('aria-label', `${current.number} feedback`);
+          if (isOpen()) current.seen = true;
+        } else {
+          label.textContent = '✓ All Tasks done';
+          close();
+        }
+      }
+      toggleButton.disabled = !current;
+      feedback.className = current ? current.feedback.className.replace(/\s*\bfw-emphasis\b/, '') + ' fw-drawer-feedback' : 'fw-task-feedback fw-drawer-feedback';
+      feedback.textContent = current ? current.feedback.textContent : '';
+      // A Task with Questions is answered in the drawer: until then the bar points there.
+      const unseen = !!current && current.hasQuestions && !current.seen && !current.answered();
+      note.hidden = !unseen;
+      submit.hidden = !current || unseen;
+    }
+
+    function attach(parent) {
+      container = parent;
+      setOpen(false);
+      parent.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && isOpen()) { e.preventDefault(); close({ focus: true }); }
+      });
+    }
+
+    return { el, update, close, attach, flash: () => flash(feedback) };
   }
 
   // previous: the number of the Task before this one, which unlocks it; null for a Part's first
@@ -150,11 +282,12 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
     const check = h('span', { class: 'fw-task-check', 'aria-hidden': 'true' });
     const lockedNote = previous ? h('span', { class: 'fw-task-locked', hidden: true }, `Locked until ${previous} is done`) : null;
     const submit = h('button', { type: 'button', class: 'fw-button', 'aria-label': `Submit ${number}` }, 'Submit');
-    const feedback = h('span', { class: 'fw-task-feedback', role: 'status', 'aria-label': `${number} feedback` });
+    const feedback = h('span', { class: 'fw-task-feedback', role: 'status', 'aria-live': 'polite', 'aria-label': `${number} feedback` });
     const hint = h('div', { class: 'fw-task-hint', hidden: true });
-    const el = h('section', { class: 'fw-task-card', 'aria-label': number, 'data-task': task.id },
+    const titleHtml = `${number} — ${task.title ?? ''}`;
+    const el = h('section', { class: 'fw-task-card', 'aria-label': number, 'data-task': task.id, tabindex: '-1' },
       h('div', { class: 'fw-task-heading' }, check,
-        h('h3', { class: 'fw-task-title', html: `${number} — ${task.title ?? ''}` }), lockedNote),
+        h('h3', { class: 'fw-task-title', html: titleHtml }), lockedNote),
       task.prompt ? h('div', { class: 'fw-task-prompt', html: task.prompt }) : null,
       ...questions,
       h('div', { class: 'fw-task-submit' }, submit, feedback),
@@ -167,13 +300,27 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
       autosave();
     });
 
-    submit.addEventListener('click', () => {
-      const attempt = host.runner.submit(part.id, task.id, given());
-      autosave();
-      if (attempt.passed) host.runner.snapshotsTaken().then(autosave); // persist the snapshots too
-      showFeedback(attempt, '✓ Correct!');
+    submit.addEventListener('click', submitTask);
+    function submitTask() {
+      const result = host.runner.submit(part.id, task.id, given());
+      if (result.refused) {
+        // Same State and answers as the last miss: nothing recorded, nothing to save.
+        feedback.className = 'fw-task-feedback fw-refused';
+        feedback.textContent = result.feedback;
+      } else {
+        autosave();
+        if (result.passed) host.runner.snapshotsTaken().then(autosave); // persist the snapshots too
+        showFeedback(result, '✓ Correct!');
+      }
+      flash(feedback);
       render();
-    });
+      views[part.id].drawer.flash(); // the drawer bar's copy of the feedback line flashes too
+      if (host.runner.complete && !host.runner.completionShown) {
+        host.runner.markCompletionShown();
+        autosave();
+        completion.open();
+      }
+    }
 
     function showFeedback(attempt, passText) {
       feedback.className = `fw-task-feedback ${attempt.passed ? 'fw-ok' : 'fw-fail'}`;
@@ -213,7 +360,13 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
       }
     }
 
-    return { el, update, restore };
+    return {
+      el, update, restore, number, titleHtml, feedback, submit: submitTask,
+      status: () => host.runner.task(part.id, task.id).status,
+      hasQuestions: answers.length > 0,
+      answered: () => answers.some((a) => { const v = a.read(); return v !== undefined && v !== ''; }),
+      seen: false, // the Task drawer has shown this Task (drawerBar)
+    };
   }
 
   // Re-read every Part's progress from the core.
@@ -227,8 +380,42 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
       view.badge.textContent = `${passed}/${part.tasks.length}`;
       view.badge.dataset.done = String(passed === part.tasks.length);
       for (const t of part.tasks) view.cards[t.id].update();
+      view.drawer.update();
     }
+    const complete = host.runner.complete;
+    download.textContent = complete ? 'Activity complete · Download Report' : 'Download Report';
+    download.classList.toggle('fw-button-primary', complete);
   }
+
+  // The completion dialog: the Activity is done, download the Report, turn it in.
+  function completionDialog() {
+    const count = activity.parts.reduce((n, part) => n + part.tasks.length, 0);
+    const close = h('button', { type: 'button', class: 'fw-button' }, 'Close');
+    const el = h('dialog', { class: 'fw-dialog', 'aria-labelledby': 'fw-completion-title' },
+      h('h2', { class: 'fw-dialog-title', id: 'fw-completion-title' }, `Activity complete · ${count} of ${count} Tasks`),
+      h('p', { class: 'fw-dialog-text' },
+        'Download your Report, then turn the file in on this Activity’s assignment in Brightspace.'),
+      h('div', { class: 'fw-dialog-actions' }, reportButton(host, 'fw-button-primary'), close));
+    close.addEventListener('click', () => el.close());
+    // The Submit that finished the Activity is gone once its Task passes: if focus would land
+    // on nothing when the dialog closes, put it on the header's Download button.
+    el.addEventListener('close', () => {
+      if (!document.activeElement || document.activeElement === document.body) download.focus();
+    });
+    frame.app.append(el);
+    return { open: () => el.showModal() };
+  }
+}
+
+// Re-trigger a feedback line's short emphasis (static under prefers-reduced-motion, theme.css),
+// then drop it, so the next Submit shows a fresh one.
+const flashTimers = new WeakMap();
+function flash(el) {
+  clearTimeout(flashTimers.get(el));
+  el.classList.remove('fw-emphasis');
+  void el.offsetWidth; // reflow, so re-adding the class restarts the animation
+  el.classList.add('fw-emphasis');
+  flashTimers.set(el, setTimeout(() => el.classList.remove('fw-emphasis'), 600));
 }
 
 // How each Question kind (runner/questions.js) is answered on the page: its field and how
@@ -258,9 +445,9 @@ const questionInputs = {
   },
 };
 
-// Download the Run's Report so far (allowed at any time after the Run starts).
-function reportButton(host) {
-  const button = h('button', { type: 'button', class: 'fw-button fw-download', hidden: true }, 'Download Report');
+// A button that downloads the Run's Report so far (allowed at any time after the Run starts).
+function reportButton(host, className) {
+  const button = h('button', { type: 'button', class: `fw-button ${className}` }, 'Download Report');
   button.addEventListener('click', async () => {
     button.disabled = true;
     try {

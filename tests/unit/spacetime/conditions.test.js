@@ -42,7 +42,7 @@ test('st-event passes for an event within tol of (x, t)', () => {
 test('st-event misses and names the nearest event', () => {
   const attempt = judge({ type: 'st-event', x: 3, t: 5, tol: 0.1 }, 0, [ev(1, 0, 0), ev(2, 2.9, 4.6)]);
   assert.equal(attempt.passed, false);
-  assert.equal(attempt.results[0].feedback, 'nearest event is at (2.9, 4.6); need (3, 5) ± 0.1');
+  assert.equal(attempt.results[0].feedback, 'No event at (3, 5) yet (the nearest one is at (2.9, 4.6))');
 });
 
 test('st-event reads an event placed in K′ at its K coordinates', () => {
@@ -53,7 +53,7 @@ test('st-event reads an event placed in K′ at its K coordinates', () => {
 
 test('st-event on a diagram with no events says so', () => {
   const attempt = judge({ type: 'st-event', x: 3, t: 5, tol: 0.1 }, 0, [param(1, 0.5, 0)]);
-  assert.equal(attempt.results[0].feedback, 'no event found; need (3, 5) ± 0.1');
+  assert.equal(attempt.results[0].feedback, 'No event at (3, 5) yet');
 });
 
 test('st-worldline passes for a parametric worldline of velocity u through (x, t), in either frame', () => {
@@ -65,14 +65,45 @@ test('st-worldline passes for a parametric worldline of velocity u through (x, t
 test('st-worldline misses when no worldline has the velocity', () => {
   const attempt = judge({ type: 'st-worldline', u: 0.6, uTol: 0.01, x: 3, t: 5, tol: 0.1 }, 0, [param(1, 0.5, 0)]);
   assert.equal(attempt.passed, false);
-  assert.equal(attempt.results[0].feedback, 'no worldline with u = 0.60 found');
+  assert.equal(attempt.results[0].feedback, 'No worldline moving right at 0.6c through (3, 5) yet');
 });
 
 test('st-worldline misses when the right velocity passes too far from the point', () => {
   // x = 0.6 t + 0.5 is 0.5 / √1.36 ≈ 0.43 from (3, 5).
   const attempt = judge({ type: 'st-worldline', u: 0.6, uTol: 0.01, x: 3, t: 5, tol: 0.1 }, 0, [param(1, 0.6, 0.5)]);
   assert.equal(attempt.passed, false);
-  assert.equal(attempt.results[0].feedback, 'nearest worldline with u = 0.60 passes 0.43 from (3, 5); need within 0.1');
+  assert.equal(attempt.results[0].feedback, 'No worldline moving right at 0.6c through (3, 5) yet (the nearest one passes 0.43 from it)');
+});
+
+test('st-worldline names a missing worldline in the Task\'s terms: vertical, light ray, or moving', () => {
+  const miss = (c, objs) => judge({ uTol: 0.01, tol: 0.1, type: 'st-worldline', ...c }, 0, objs).results[0].feedback;
+  assert.equal(miss({ u: 0, x: 2, t: 0 }, []), 'No vertical worldline at x = 2 yet');
+  // A vertical worldline elsewhere: the nearest one is named by its x.
+  assert.equal(miss({ u: 0, x: 2, t: 0 }, [param(1, 0, 3)]), 'No vertical worldline at x = 2 yet (the nearest one is at x = 3)');
+  assert.equal(miss({ u: 1, x: 0, t: 0 }, []), 'No light ray going right through (0, 0) yet');
+  assert.equal(miss({ u: -1, x: 0, t: 0 }, [param(1, 1, 3)]), 'No light ray going left through (0, 0) yet');
+  assert.equal(miss({ u: -0.6, x: 1.6, t: 0 }, []), 'No worldline moving left at 0.6c through (1.6, 0) yet');
+  // Something passes the point, but with the wrong tilt.
+  assert.equal(miss({ u: 0.6, x: 0, t: 0 }, [param(1, 0.62, 0)]),
+    'No worldline moving right at 0.6c through (0, 0) yet (one passes there, tilted differently)');
+});
+
+test('miss feedback uses no internal symbols such as u', () => {
+  const misses = [
+    judge({ type: 'st-worldline', u: 0, uTol: 0.01, x: 2, t: 0, tol: 0.1 }, 0, [param(1, 0.5, 0)]),
+    judge({ type: 'st-worldline', u: 0.6, uTol: 0.01, x: 0, t: 0, tol: 0.1 }, 0, []),
+    judge({ type: 'st-event', x: 3, t: 5, tol: 0.1 }, 0, []),
+    judge({ type: 'st-rod', ends: [[-1, 1], [4, 4]], tol: 0.1 }, 0, []),
+  ].map((a) => a.results[0].feedback);
+  for (const f of misses) {
+    assert.doesNotMatch(f, /\bu\s*=|uTol|tol|±/);
+    assert.match(f, /^No (vertical worldline|worldline|event|rod) .* yet/);
+  }
+});
+
+test('targetLabel names what is missing', () => {
+  const attempt = judge({ type: 'st-event', x: 3, t: 5, tol: 0.1, targetLabel: 'event E at (3, 5)' }, 0, [ev(1, 0, 0)]);
+  assert.equal(attempt.results[0].feedback, 'No event E at (3, 5) yet (the nearest one is at (0, 0))');
 });
 
 // A twin trip: out at u = 0.6 from (0, 0) to (3, 5), back at u = −0.6 to (0, 10).
@@ -90,7 +121,7 @@ test('st-worldline on a chain needs the matching segment to contain the point', 
   // which does pass near t = 7.5, has the wrong velocity.
   const attempt = judge({ type: 'st-worldline', u: 0.6, uTol: 0.01, x: 4.5, t: 7.5, tol: 0.1 }, 0, trip);
   assert.equal(attempt.passed, false);
-  assert.equal(attempt.results[0].feedback, 'nearest worldline with u = 0.60 passes 2.92 from (4.5, 7.5); need within 0.1');
+  assert.equal(attempt.results[0].feedback, 'No worldline moving right at 0.6c through (4.5, 7.5) yet (the nearest one passes 2.92 from it)');
   // The return leg matches at a point it contains.
   assert.equal(judge({ type: 'st-worldline', u: -0.6, uTol: 0.01, x: 1.5, t: 7.5, tol: 0.1 }, 0, trip).passed, true);
 });
@@ -114,9 +145,9 @@ test('st-rod reads a rod laid in K′, and ends riding worldlines', () => {
 test('st-rod misses and names the nearest rod', () => {
   const attempt = judge({ type: 'st-rod', ends: [[0, 2], [4, 2]], tol: 0.1 }, 0, [rod(1, 'K', 2, 4.5, 0)]);
   assert.equal(attempt.passed, false);
-  assert.equal(attempt.results[0].feedback, 'nearest rod has ends at (0, 2) and (4.5, 2); need (0, 2) and (4, 2) ± 0.1');
+  assert.equal(attempt.results[0].feedback, 'No rod from (0, 2) to (4, 2) yet (the nearest one has ends at (0, 2) and (4.5, 2))');
   assert.equal(judge({ type: 'st-rod', ends: [[0, 2], [4, 2]], tol: 0.1 }, 0, [ev(1, 0, 2)]).results[0].feedback,
-    'no rod found; need (0, 2) and (4, 2) ± 0.1');
+    'No rod from (0, 2) to (4, 2) yet');
 });
 
 test('a single joined segment that is extended counts beyond its events', () => {
@@ -131,14 +162,14 @@ test('the types work in a Condition list, inside anyOf, and encoded', () => {
 
   const list = judge([event, out, stayed], 0, trip);
   assert.deepEqual(list.results.map((r) => r.pass), [true, true, false]);
-  assert.equal(list.results[2].feedback, 'no worldline with u = 0.00 found');
+  assert.equal(list.results[2].feedback, 'No vertical worldline at x = 0 yet');
 
   assert.equal(judge({ type: 'anyOf', conditions: [stayed, out] }, 0, trip).passed, true);
   const none = judge({ type: 'anyOf', conditions: [stayed, { ...event, x: 9 }] }, 0, trip);
   assert.equal(none.results[0].feedback,
-    'Any one of: no worldline with u = 0.00 found — or — nearest event is at (3, 5); need (9, 5) ± 0.1');
+    'Any one of: No vertical worldline at x = 0 yet — or — No event at (9, 5) yet (the nearest one is at (3, 5))');
 
   assert.equal(judge(encodeKey([event, out]), 0, trip).passed, true);
   assert.equal(judge(encodeKey({ type: 'anyOf', conditions: [stayed, event] }), 0, trip).passed, true);
-  assert.equal(judge(encodeKey(stayed), 0, trip).results[0].feedback, 'no worldline with u = 0.00 found');
+  assert.equal(judge(encodeKey(stayed), 0, trip).results[0].feedback, 'No vertical worldline at x = 0 yet');
 });

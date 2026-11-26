@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { copyShareLink } from './helpers/share-link.js';
 
 const PAGE = '/tools/electrostatics/';
 
@@ -19,13 +20,14 @@ test('the Electric field tab loads with every Control shown and unlocked', async
   await open(page);
   await expect(page.getByRole('tab', { name: 'Electric field' })).toHaveAttribute('aria-selected', 'true');
 
-  await expect(page.getByRole('slider', { name: 'Q', exact: true })).toBeEnabled();
-  for (const name of ['Q', 'θ', 'E₀x', 'E₀y']) {
+  await expect(page.getByRole('slider', { name: 'Q (nC)', exact: true })).toBeEnabled();
+  for (const name of ['Q (nC)', 'θ', 'E₀x', 'E₀y']) {
     await expect(page.getByRole('spinbutton', { name, exact: true })).toBeEnabled();
   }
-  for (const name of ['Reset Q', 'Reset θ', 'Reset E₀']) {
-    await expect(page.getByRole('button', { name })).toBeEnabled();
-  }
+  // Q, θ and E₀ start at their defaults, so their resets start disabled.
+  await expect(page.getByRole('button', { name: 'Reset to 0 nC', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Reset to 0 rad', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Reset to (0, 0) V/m', exact: true })).toBeDisabled();
   await expect(page.getByLabel('θ arc picker')).toBeVisible();
   await expect(page.getByRole('tabpanel', { name: 'Electric field' }).getByLabel('E₀ joystick')).toBeVisible();
   await expect(page.getByRole('checkbox', { name: 'Induced charges' })).not.toBeChecked();
@@ -54,7 +56,7 @@ test('the State carries every value with a label and unit, and changing Q update
   expect(info.E0mag.unit).toBe('V/m');
   expect(info.theta.unit).toBe('rad');
 
-  await setNumber(page, 'Q', 1.5);
+  await setNumber(page, 'Q (nC)', 1.5);
   const s = await snapshot(page);
   expect(s.Q).toBeCloseTo(1.5, 9);
   expect(s.Emax).toBeGreaterThan(0);
@@ -72,7 +74,7 @@ test('typing E₀x and E₀y sets E₀; its magnitude is kept to 2000 V/m', asyn
   s = await snapshot(page);
   expect(s.E0mag).toBeCloseTo(2000, 6);
 
-  await page.getByRole('button', { name: 'Reset E₀' }).click();
+  await page.getByRole('button', { name: 'Reset to (0, 0) V/m' }).click();
   s = await snapshot(page);
   expect(s).toMatchObject({ E0x: 0, E0y: 0 });
 });
@@ -112,7 +114,7 @@ test('the arc picker sets θ between 0 and π/2, but not while locked', async ({
   let s = await snapshot(page);
   expect(s.theta).toBeCloseTo(Math.PI / 2, 1);
 
-  await page.getByRole('button', { name: 'Reset θ' }).click();
+  await page.getByRole('button', { name: 'Reset to 0 rad' }).click();
   expect((await snapshot(page)).theta).toBe(0);
 
   await page.evaluate(() => window.toolHost.instances[0].controls.get('theta').lock());
@@ -123,7 +125,7 @@ test('the arc picker sets θ between 0 and π/2, but not while locked', async ({
 
 test('a reload and a share link restore the same setup', async ({ page, browser }) => {
   await open(page);
-  await setNumber(page, 'Q', -2.3);
+  await setNumber(page, 'Q (nC)', -2.3);
   await setNumber(page, 'θ', 0.7);
   await setNumber(page, 'E₀x', -600);
   await setNumber(page, 'E₀y', 800);
@@ -135,10 +137,9 @@ test('a reload and a share link restore the same setup', async ({ page, browser 
   await page.reload();
   await page.waitForFunction(() => window.toolHost);
   expect(await snapshot(page)).toEqual(want);
-  await expect(page.getByRole('spinbutton', { name: 'Q', exact: true })).toHaveValue('-2.3');
+  await expect(page.getByRole('spinbutton', { name: 'Q (nC)', exact: true })).toHaveValue('-2.3');
 
-  await page.getByRole('button', { name: 'Copy share link' }).click();
-  const url = await page.getByRole('textbox', { name: 'Share link' }).inputValue();
+  const url = await copyShareLink(page);
   expect(url).toMatch(/#s=/);
   const other = await browser.newContext();
   const theirs = await other.newPage();
@@ -185,4 +186,77 @@ test('two instances on one page are independent, and only a visible one animates
     return out;
   });
   expect(result).toEqual({ aMoved: true, bMoved: false, aQ: 2, bQ: 0, bChanges: 0, leftover: 0 });
+});
+
+// Shell revision 09: the joystick and arc picker are the kit's handle, so the keyboard moves them.
+test('the E₀ joystick is a focusable 2-D handle the arrow keys move, and the Live Metrics follow', async ({ page }) => {
+  await open(page);
+  const panel = page.getByRole('tabpanel', { name: 'Electric field' });
+  const stick = panel.getByRole('group', { name: 'E₀ joystick' });
+  await expect(panel.locator('[role="img"]')).toHaveCount(0);
+  await expect(stick).toHaveAttribute('tabindex', '0');
+  await expect(stick).toHaveAccessibleDescription('E₀x = 0 V/m, E₀y = 0 V/m');
+  await stick.focus();
+  for (let i = 0; i < 3; i += 1) await page.keyboard.press('Shift+ArrowRight');
+  await page.keyboard.press('ArrowUp');
+  let s = await snapshot(page);
+  expect(s).toMatchObject({ E0x: 300, E0y: 10 });
+  await expect(page.getByRole('status', { name: '|E₀|' })).toContainText('300 V/m');
+  await expect(page.getByRole('spinbutton', { name: 'E₀x', exact: true })).toHaveValue('300');
+  await expect(stick).toHaveAccessibleDescription('E₀x = 300 V/m, E₀y = 10 V/m');
+
+  await page.keyboard.press('Shift+ArrowLeft');
+  await page.keyboard.press('ArrowDown');
+  s = await snapshot(page);
+  expect(s).toMatchObject({ E0x: 200, E0y: 0 });
+
+  // Locked, the keys do nothing.
+  await page.evaluate(() => window.toolHost.instances[0].controls.get('E0').lock());
+  await page.keyboard.press('Shift+ArrowRight');
+  expect((await snapshot(page)).E0x).toBe(200);
+});
+
+test('the θ arc picker is a slider the arrow keys move, and the Live Metrics follow', async ({ page }) => {
+  await open(page);
+  const arc = page.getByRole('slider', { name: 'θ arc picker' });
+  await expect(arc).toHaveAttribute('tabindex', '0');
+  await expect(arc).toHaveAttribute('aria-valuetext', '0.00 rad');
+  await arc.focus();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Shift+ArrowRight');
+  expect((await snapshot(page)).theta).toBeCloseTo(0.11, 9);
+  await expect(page.getByRole('status', { name: 'θ value' })).toContainText('0.11 rad');
+  await expect(page.getByRole('spinbutton', { name: 'θ', exact: true })).toHaveValue('0.11');
+  await page.keyboard.press('End');
+  expect((await snapshot(page)).theta).toBeCloseTo(Math.PI / 2, 9);
+  await page.keyboard.press('Home');
+  expect((await snapshot(page)).theta).toBe(0);
+});
+
+test('the θ and E₀ resets are icons named "Reset to …", disabled at the default', async ({ page }) => {
+  await open(page);
+  const resetTheta = page.getByRole('button', { name: 'Reset to 0 rad', exact: true });
+  const resetE0 = page.getByRole('button', { name: 'Reset to (0, 0) V/m', exact: true });
+  await expect(resetTheta).toHaveText('↻');
+  await expect(resetE0).toHaveText('↻');
+  await expect(resetTheta).toBeDisabled();
+  await expect(resetE0).toBeDisabled();
+
+  await setNumber(page, 'θ', 0.5);
+  await setNumber(page, 'E₀y', 300);
+  await expect(resetTheta).toBeEnabled();
+  await expect(resetE0).toBeEnabled();
+
+  // Lock disables them; unlock gives back the state they had.
+  await page.evaluate(() => { const c = window.toolHost.instances[0].controls; c.get('theta').lock(); c.get('E0').lock(); });
+  await expect(resetTheta).toBeDisabled();
+  await expect(resetE0).toBeDisabled();
+  await page.evaluate(() => { const c = window.toolHost.instances[0].controls; c.get('theta').unlock(); c.get('E0').unlock(); });
+  await expect(resetTheta).toBeEnabled();
+
+  await resetTheta.click();
+  await resetE0.click();
+  expect(await snapshot(page)).toMatchObject({ theta: 0, E0x: 0, E0y: 0 });
+  await expect(resetTheta).toBeDisabled();
+  await expect(resetE0).toBeDisabled();
 });

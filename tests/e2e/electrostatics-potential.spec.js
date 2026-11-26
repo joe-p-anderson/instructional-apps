@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { copyShareLink } from './helpers/share-link.js';
 
 // Standalone smoke test of the electrostatics Tool's potential Mode (the second tab).
 const PAGE = '/tools/electrostatics/';
@@ -41,8 +42,8 @@ async function drag(page, from, to) {
 
 test('the Potential tab has every Control shown and unlocked, with the old defaults', async ({ page }) => {
   await open(page);
-  await expect(page.getByRole('slider', { name: 'Q', exact: true })).toBeEnabled();
-  await expect(page.getByRole('spinbutton', { name: 'Q', exact: true })).toHaveValue('1.0');
+  await expect(page.getByRole('slider', { name: 'Q (nC)', exact: true })).toBeEnabled();
+  await expect(page.getByRole('spinbutton', { name: 'Q (nC)', exact: true })).toHaveValue('1.0');
   await expect(page.getByRole('checkbox', { name: 'Lock to surface' })).toBeEnabled();
   await expect(page.getByRole('checkbox', { name: 'Measure at infinity' })).toBeEnabled();
 
@@ -127,7 +128,7 @@ test('lock to surface and measure at infinity are never on together', async ({ p
 
 test('a reload and a share link restore the same setup', async ({ page, browser }) => {
   await open(page);
-  await setNumber(page, 'Q', -2.4);
+  await setNumber(page, 'Q (nC)', -2.4);
   await drag(page, [-6, -6], [3, -8]);
   await page.getByRole('checkbox', { name: 'Measure at infinity' }).check();
   const want = await snapshot(page);
@@ -138,8 +139,7 @@ test('a reload and a share link restore the same setup', async ({ page, browser 
   expect(await snapshot(page)).toEqual(want);
 
   await page.getByRole('tab', { name: 'Potential' }).click();
-  await page.getByRole('button', { name: 'Copy share link' }).click();
-  const url = await page.getByRole('textbox', { name: 'Share link' }).inputValue();
+  const url = await copyShareLink(page);
   expect(url).toMatch(/#s=/);
   const other = await browser.newContext();
   const theirs = await other.newPage();
@@ -155,4 +155,41 @@ test('the Display gives a PNG snapshot', async ({ page }) => {
   await open(page);
   const png = await page.evaluate(() => window.potential.displays[0].snapshot());
   expect(png).toMatch(/^data:image\/png;base64,/);
+});
+
+// Shell revision 09: P1 and P2 are the kit's 2-D handle, so the keyboard moves them.
+test('P₁ and P₂ are focusable handles the arrow keys move, and the readouts follow', async ({ page }) => {
+  await open(page);
+  const p1 = page.getByRole('group', { name: 'P₁' });
+  const p2 = page.getByRole('group', { name: 'P₂' });
+  await expect(p1).toHaveAttribute('tabindex', '0');
+  await expect(p1).toHaveAccessibleDescription('x = -6.0 cm, y = -6.0 cm');
+
+  // The handle sits over its point on the plot.
+  const centre = async (loc) => { const b = await loc.boundingBox(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
+  const at = await screenAt(page, -6, -6);
+  await expect.poll(async () => (await centre(p1)).x).toBeCloseTo(at.x, 0);
+  expect((await centre(p1)).y).toBeCloseTo(at.y, 0);
+
+  await p1.focus();
+  for (let i = 0; i < 5; i += 1) await page.keyboard.press('Shift+ArrowRight');
+  await page.keyboard.press('Shift+ArrowUp');
+  await page.keyboard.press('ArrowDown');
+  let s = await snapshot(page);
+  expect(s.x1).toBeCloseTo(-1, 9);
+  expect(s.y1).toBeCloseTo(-5.1, 9);
+  await expect(page.getByRole('status', { name: 'P1 position' })).toContainText('(-1.0, -5.1) cm');
+  const moved = await screenAt(page, -1, -5.1);
+  expect((await centre(p1)).x).toBeCloseTo(moved.x, 0);
+
+  await p2.focus();
+  await page.keyboard.press('Shift+ArrowLeft');
+  s = await snapshot(page);
+  expect(s.x2).toBeCloseTo(6, 9);
+  await expect(page.getByRole('status', { name: 'P2 position' })).toContainText('(6.0, 7.0) cm');
+
+  // Locked, the keys do nothing.
+  await page.evaluate(() => window.potential.controls.get('P2').lock());
+  await page.keyboard.press('Shift+ArrowLeft');
+  expect((await snapshot(page)).x2).toBeCloseTo(6, 9);
 });

@@ -8,21 +8,22 @@
 // State: Q (nC); x1, y1, x2, y2 (cm), the probes after the toggles; r1, r2 (cm) from the centre;
 //        V1, V2, dV (V), dV = V1 − V2 (V1 − V(∞)); lockToSurface, measureAtInfinity.
 //        With measure at infinity on, P2 sits 2 × WINDOW out along P1's direction (off the plot).
-// Controls: 'Q' (slider), 'P1', 'P2' (probes dragged on the plot, value { x, y } cm, within the
-//           window), 'lockToSurface', 'measureAtInfinity' (toggles).
+// Controls: 'Q' (slider), 'P1', 'P2' (kit 2-D handles over the plot, named P₁ and P₂: dragged or
+//           moved with the arrow keys, value { x, y } cm, within the window),
+//           'lockToSurface', 'measureAtInfinity' (toggles).
 // Displays: 'potential' (toScreen(x, y) in cm).
 
-import { createControl, controlRegistry } from '../../../framework/v1/control.js';
+import { controlRegistry } from '../../../framework/v1/control.js';
 import { createEmitter } from '../../../framework/v1/tool.js';
-import { h, metric, section, slider, toggle } from '../../../framework/v1/ui-kit.js';
-import { RADIUS, WINDOW, clamp, fieldGrid, linspace, potentialProbe } from '../conductor.js';
+import { h, handle, metric, section, slider, toggle } from '../../../framework/v1/ui-kit.js';
+import { plotlyMapping } from '../../../framework/v1/plot-map.js';
+import { RADIUS, WINDOW, fieldGrid, linspace, potentialProbe } from '../conductor.js';
 import { PLOT_CONFIG, Plotly, boundaryTrace, conductorLayout, heatmapTrace, plotDisplay, quiverTrace, plotColors, toolStyles } from '../plot.js';
 
 export const id = 'potential';
 export const title = 'Potential';
 
 const DEFAULTS = { Q: 1, x1: -6, y1: -6, x2: 7, y2: 7, lockToSurface: false, measureAtInfinity: false };
-const GRAB = 1.5; // how near (cm) a press must be to a probe to pick it up
 
 const STATE_INFO = {
   Q: { label: 'Charge Q', unit: 'nC' },
@@ -40,22 +41,16 @@ const STATE_INFO = {
 };
 
 /**
- * A probe point dragged on the plot (no element of its own: it lives inside the Display).
- * get() -> { x, y } cm; set({ x, y }) clamps to the window. Lock: it can't be dragged.
- * Hide: it isn't drawn and can't be dragged.
+ * A probe point on the plot: the kit's 2-D handle, in a layer over the Display, placed over the
+ * point where the probe is drawn (after the toggles). get() -> { x, y } cm; set({ x, y }) clamps
+ * to the window. The arrow keys move it 0.1 cm (1 cm with Shift). Lock: it can't be moved.
+ * Hide: it isn't drawn and can't be moved. A probe with no point on the plot (P2 measured at
+ * infinity) is not shown, so it can't be focused or dragged.
  */
-function probe({ id, value, onChange, onLookChange }) {
-  let current = { x: 0, y: 0 };
-  const apply = (v) => {
-    const x = Number(v?.x);
-    const y = Number(v?.y);
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
-    current = { x: clamp(x, -WINDOW, WINDOW), y: clamp(y, -WINDOW, WINDOW) };
-    return true;
-  };
-  apply(value);
-  return createControl({ id, label: id, get: () => ({ ...current }),
-    set: (v) => { if (apply(v)) onChange({ ...current }); }, onLock: onLookChange, onHide: onLookChange });
+function probe({ id, name, value, at, fromScreen, onChange, onLookChange }) {
+  const axis = (n) => ({ name: n, unit: 'cm', min: -WINDOW, max: WINDOW, step: 0.1, coarse: 1, decimals: 1 });
+  return handle({ id, name, x: axis('x'), y: axis('y'), value, toScreen: at, fromScreen, onChange,
+    onLock: onLookChange, onHide: onLookChange });
 }
 
 /**
@@ -96,14 +91,20 @@ export function mount(container, setup = {}) {
   const getState = () => ({ Q: p.Q, ...probes(), lockToSurface: p.lockToSurface, measureAtInfinity: p.measureAtInfinity });
 
   // ── Controls ──
+  // The probes' mapping to the plot (in client pixels), once the plot is drawn.
+  const plotDiv = h('div', { style: 'width:100%;height:100%;touch-action:none' });
+  const { toScreen, fromScreen } = plotlyMapping(plotDiv);
+  const drawnAt = (k) => { const s = probes(); return toScreen(s[`x${k}`], s[`y${k}`]); };
+
   let pair = null;
   const controls = {
     Q: slider({ id: 'Q', name: 'Q', unit: 'nC', min: -3, max: 3, step: 0.1, value: p.Q, reset: 1, decimals: 1,
       onChange: (v) => { p.Q = v; update(); } }),
-    P1: probe({ id: 'P1', value: { x: p.x1, y: p.y1 }, onChange: ({ x, y }) => { p.x1 = x; p.y1 = y; update(); },
-      onLookChange: () => redraw() }),
-    P2: probe({ id: 'P2', value: { x: p.x2, y: p.y2 }, onChange: ({ x, y }) => { p.x2 = x; p.y2 = y; update(); },
-      onLookChange: () => redraw() }),
+    P1: probe({ id: 'P1', name: 'P₁', value: { x: p.x1, y: p.y1 }, at: () => drawnAt(1), fromScreen,
+      onChange: ({ x, y }) => { p.x1 = x; p.y1 = y; update(); }, onLookChange: () => redraw() }),
+    P2: probe({ id: 'P2', name: 'P₂', value: { x: p.x2, y: p.y2 },
+      at: () => (p.measureAtInfinity ? null : drawnAt(2)), fromScreen,
+      onChange: ({ x, y }) => { p.x2 = x; p.y2 = y; update(); }, onLookChange: () => redraw() }),
     lockToSurface: toggle({ id: 'lockToSurface', name: 'Lock to surface', value: p.lockToSurface,
       onChange: (v) => { p.lockToSurface = pair.settle(controls.lockToSurface, v); p.measureAtInfinity = controls.measureAtInfinity.get(); update(); } }),
     measureAtInfinity: toggle({ id: 'measureAtInfinity', name: 'Measure at infinity', label: 'Measure at ∞',
@@ -127,7 +128,6 @@ export function mount(container, setup = {}) {
   };
   const dVLabel = readouts.dV.el.firstChild;
 
-  const plotDiv = h('div', { style: 'width:100%;height:100%;touch-action:none' });
   const swatch = (bg, border, extra = '') => h('span', { class: 'es-swatch', style: `background:${bg};border-color:${border};${extra}` });
   const root = h('div', { class: 'fw-tool es-tool', 'data-tool': 'electrostatics', 'data-mode': id },
     toolStyles(),
@@ -141,8 +141,9 @@ export function mount(container, setup = {}) {
         h('div', { class: 'fw-legend-row' }, swatch('var(--fw-text)', 'var(--fw-text-muted)'), h('span', { html: 'Point <i>P</i><sub>2</sub> (drag)' })),
         h('div', { class: 'fw-legend-row' }, swatch('var(--fw-surface)', 'var(--fw-text)', 'border-radius:0;width:11px;height:11px'),
           h('span', { html: 'Path <i>P</i><sub>1</sub> → <i>P</i><sub>2</sub>' })),
-        h('div', { class: 'fw-hint' }, 'Fill: |E|  ·  Blue ring: conductor  ·  Drag the points on the plot'))),
-    h('div', { class: 'fw-displays' }, h('div', { class: 'fw-display es-square' }, plotDiv)));
+        h('div', { class: 'fw-hint' }, 'Fill: |E|  ·  Blue ring: conductor  ·  Drag the points on the plot, or focus one and use the arrow keys'))),
+    h('div', { class: 'fw-displays' }, h('div', { class: 'fw-display es-square', style: 'position:relative' }, plotDiv,
+      h('div', { class: 'fw-handle-layer' }, controls.P1.el, controls.P2.el))));
   container.append(root);
 
   // ── Plot ──
@@ -177,6 +178,8 @@ export function mount(container, setup = {}) {
     if (ready) Plotly.react(plotDiv, traces(), conductorLayout(plotColors(root)), PLOT_CONFIG);
   }
 
+  function placeProbes() { controls.P1.place(); controls.P2.place(); }
+
   function update() {
     redraw();
     const s = getState();
@@ -188,6 +191,7 @@ export function mount(container, setup = {}) {
     readouts.V1.update(s.V1);
     readouts.P2.update(s);
     readouts.V2.update(s.V2);
+    if (ready) placeProbes();
     changes.emit(s);
   }
 
@@ -195,38 +199,8 @@ export function mount(container, setup = {}) {
   ready = true;
   const plot = plotDisplay(plotDiv, { id: 'potential', label: 'Potential' });
 
-  // ── Dragging the probes: pointer capture on the plot, no window listeners ──
-  let dragging = null; // { control, pointerId }
-  function toData(e) {
-    const fl = plotDiv._fullLayout;
-    if (!fl) return null;
-    const rect = plotDiv.getBoundingClientRect();
-    return { x: fl.xaxis.p2d(e.clientX - rect.left - fl.xaxis._offset), y: fl.yaxis.p2d(e.clientY - rect.top - fl.yaxis._offset) };
-  }
-  const movable = (c) => !c.isLocked() && !c.isHidden();
-  function onPointerDown(e) {
-    if (e.button !== 0) return;
-    const d = toData(e);
-    if (!d) return;
-    const s = probes();
-    const near = [
-      { control: controls.P1, dist: Math.hypot(d.x - s.x1, d.y - s.y1) },
-      ...(p.measureAtInfinity ? [] : [{ control: controls.P2, dist: Math.hypot(d.x - s.x2, d.y - s.y2) }]),
-    ].filter((n) => n.dist < GRAB && movable(n.control)).sort((m, n) => m.dist - n.dist);
-    if (!near.length) return;
-    e.preventDefault();
-    dragging = { control: near[0].control, pointerId: e.pointerId };
-    plotDiv.setPointerCapture?.(e.pointerId);
-  }
-  function onPointerMove(e) {
-    if (dragging?.pointerId !== e.pointerId || !movable(dragging.control)) return;
-    const d = toData(e);
-    if (d) dragging.control.set(d);
-  }
-  const onPointerEnd = (e) => { if (dragging?.pointerId === e.pointerId) dragging = null; };
-  plotDiv.addEventListener('pointerdown', onPointerDown);
-  plotDiv.addEventListener('pointermove', onPointerMove);
-  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) plotDiv.addEventListener(type, onPointerEnd);
+  // ── The probe handles sit over the drawn points; re-place them whenever the plot is redrawn ──
+  plotDiv.on('plotly_afterplot', placeProbes);
 
   update();
 
@@ -251,7 +225,8 @@ export function mount(container, setup = {}) {
     },
     resize: plot.fit,
     destroy() {
-      plotDiv.removeEventListener('pointerdown', onPointerDown);
+      controls.P1.destroy();
+      controls.P2.destroy();
       plot.stop();
       changes.clear();
       Plotly.purge(plotDiv);

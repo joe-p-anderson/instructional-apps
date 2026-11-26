@@ -90,7 +90,7 @@ test('the Controls strip is one row of comfortable height, so the front panel ke
   await expect(page.getByRole('slider', { name: 'CH1 frequency', exact: true })).toBeVisible();
   expect((await box(strip)).height).toBeLessThanOrEqual(70);
   // The other source Controls wait in the closed drawer.
-  await expect(page.getByRole('spinbutton', { name: 'CH1 amplitude', exact: true })).toBeHidden();
+  await expect(page.getByRole('spinbutton', { name: 'CH1 amplitude (Vpp)', exact: true })).toBeHidden();
   await expect(page.getByRole('combobox', { name: 'CH2 source', exact: true })).toBeHidden();
 });
 
@@ -114,7 +114,7 @@ test('the source drawer opens over the Display, holds the other source Controls,
   expect(d.bottom).toBeLessThanOrEqual(displays.bottom + 1);
 
   await page.getByRole('combobox', { name: 'CH2 source', exact: true }).selectOption('independent');
-  for (const name of ['CH1 amplitude', 'CH1 offset', 'CH2 amplitude', 'CH2 phase']) {
+  for (const name of ['CH1 amplitude (Vpp)', 'CH1 offset (V)', 'CH2 amplitude (Vpp)', 'CH2 phase (°)']) {
     await expect(page.getByRole('spinbutton', { name, exact: true }), name).toBeVisible();
   }
   for (const name of ['CH1 output', 'CH2 source']) {
@@ -124,7 +124,7 @@ test('the source drawer opens over the Display, holds the other source Controls,
   }
   expect(await noPageScroll(page)).toBe(true);
 
-  await page.getByRole('spinbutton', { name: 'CH1 amplitude', exact: true }).focus();
+  await page.getByRole('spinbutton', { name: 'CH1 amplitude (Vpp)', exact: true }).focus();
   await page.keyboard.press('Escape');
   await expect(drawer).toBeHidden();
   await expect(toggle).toBeFocused();

@@ -10,12 +10,12 @@ Spec: .scratch/shell-revision/spec.md (Name storage and sign-out; stories 47–5
 
 **Blocked by:** 01 (single-row header).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] The persistence layer has a site-wide name store, with unit tests.
-- [ ] e2e: start Activity A with a name, then open Activity B: B starts with no Name gate and the header shows the name.
-- [ ] e2e: Sign out on B (after confirming) shows the Name gate on B. A's saved Run is still restored under the original name.
-- [ ] e2e: Start over (after confirming) starts a new Run with no Name gate when a name is stored.
-- [ ] The Start over and Sign out confirm texts describe exactly what is discarded.
-- [ ] The e2e helpers that fill in the Name gate still work, since each test starts with clean storage. Tests that rely on the gate across Activities are updated.
-- [ ] The framework README's runner description and the Activity runner UI's header comment are updated.
+- [x] The persistence layer has a site-wide name store, with unit tests.
+- [x] e2e: start Activity A with a name, then open Activity B: B starts with no Name gate and the header shows the name.
+- [x] e2e: Sign out on B (after confirming) shows the Name gate on B. A's saved Run is still restored under the original name.
+- [x] e2e: Start over (after confirming) starts a new Run with no Name gate when a name is stored.
+- [x] The Start over and Sign out confirm texts describe exactly what is discarded.
+- [x] The e2e helpers that fill in the Name gate still work, since each test starts with clean storage. Tests that rely on the gate across Activities are updated.
+- [x] The framework README's runner description and the Activity runner UI's header comment are updated.

@@ -14,9 +14,9 @@ The oscilloscope's draggable markers move onto `handle`, and bench-scope's knobs
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] e2e (ui-kit spec, on a fixture): a 1-D and a 2-D handle move with the arrow keys, Shift steps further, locked handles ignore keys and pointer, and the value is announced.
-- [ ] e2e: each oscilloscope marker can be focused and moved with the arrow keys, which updates the State the same way a drag does.
-- [ ] The bench-scope knob e2e specs still pass on the kit's knob.
-- [ ] The framework README's UI kit table documents `handle` and `knob`.
+- [x] e2e (ui-kit spec, on a fixture): a 1-D and a 2-D handle move with the arrow keys, Shift steps further, locked handles ignore keys and pointer, and the value is announced.
+- [x] e2e: each oscilloscope marker can be focused and moved with the arrow keys, which updates the State the same way a drag does.
+- [x] The bench-scope knob e2e specs still pass on the kit's knob.
+- [x] The framework README's UI kit table documents `handle` and `knob`.

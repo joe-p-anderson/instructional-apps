@@ -1,4 +1,5 @@
-// The Tool contract's panel layout (framework/v1/tool.js): side, strip or banner, default side.
+// The Tool contract's panel layout (framework/v1/tool.js): side, strip or banner, default side;
+// and its minimum Display width, default 480 px.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { defineTool } from '../../../framework/v1/tool.js';
@@ -25,4 +26,41 @@ test('defineTool leaves the definition it is given unchanged', () => {
   assert.equal(definition.layout, undefined);
   assert.equal(defined.layout, 'side');
   assert.equal(defined.mount, definition.mount);
+});
+
+test('a Tool without a minDisplayWidth gets 480 px', () => {
+  assert.equal(defineTool(tool()).minDisplayWidth, 480);
+});
+
+test('a Tool may declare a positive minDisplayWidth', () => {
+  for (const minDisplayWidth of [320, 600.5]) {
+    assert.equal(defineTool(tool({ minDisplayWidth })).minDisplayWidth, minDisplayWidth);
+  }
+});
+
+test('a minDisplayWidth that is not a positive number is rejected', () => {
+  for (const minDisplayWidth of [0, -10, '480', null, NaN, Infinity]) {
+    assert.throws(() => defineTool(tool({ minDisplayWidth })), /minDisplayWidth/);
+  }
+});
+
+test('a Tool without a maxDisplayWidth has none (unlimited)', () => {
+  assert.equal(defineTool(tool()).maxDisplayWidth, undefined);
+});
+
+test('a Tool may declare a positive maxDisplayWidth no smaller than its minDisplayWidth', () => {
+  assert.equal(defineTool(tool({ maxDisplayWidth: 1100 })).maxDisplayWidth, 1100);
+  assert.equal(defineTool(tool({ minDisplayWidth: 600, maxDisplayWidth: 600 })).maxDisplayWidth, 600);
+});
+
+test('a maxDisplayWidth that is not a positive number is rejected', () => {
+  for (const maxDisplayWidth of [0, -10, '900', null, NaN, Infinity]) {
+    assert.throws(() => defineTool(tool({ maxDisplayWidth })), /maxDisplayWidth/);
+  }
+});
+
+test('a maxDisplayWidth smaller than the minDisplayWidth is rejected', () => {
+  assert.throws(() => defineTool(tool({ minDisplayWidth: 600, maxDisplayWidth: 599 })), /maxDisplayWidth/);
+  // ... including the default minimum of 480 px.
+  assert.throws(() => defineTool(tool({ maxDisplayWidth: 400 })), /maxDisplayWidth/);
 });

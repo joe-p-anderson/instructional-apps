@@ -12,11 +12,11 @@ Spec: .scratch/shell-revision/spec.md (Header; stories 19–27).
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] At 1366×768 the title, tablist and actions share one row, checked by their top offsets, on every Activity and Standalone page.
-- [ ] Activity pages show the Activity's title and course. Standalone pages show the Tool title and no "Standalone" text.
-- [ ] The ⋯ menu opens with Enter or Space, moves with the arrow keys and closes with Escape, returning focus to its button.
-- [ ] Start over (with its confirm) and Print work from the menu. In Standalone mode, Copy share link copies the same `#s=` link as before.
-- [ ] The existing layouts, theme and persistence e2e specs still pass; selectors are updated where the share box or Start over moved.
-- [ ] The framework README's frame and header description is updated.
+- [x] At 1366×768 the title, tablist and actions share one row, checked by their top offsets, on every Activity and Standalone page.
+- [x] Activity pages show the Activity's title and course. Standalone pages show the Tool title and no "Standalone" text.
+- [x] The ⋯ menu opens with Enter or Space, moves with the arrow keys and closes with Escape, returning focus to its button.
+- [x] Start over (with its confirm) and Print work from the menu. In Standalone mode, Copy share link copies the same `#s=` link as before.
+- [x] The existing layouts, theme and persistence e2e specs still pass; selectors are updated where the share box or Start over moved.
+- [x] The framework README's frame and header description is updated.

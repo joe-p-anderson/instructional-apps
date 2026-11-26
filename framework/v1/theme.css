@@ -68,7 +68,7 @@
   --fw-plot-trace-2:   var(--fw-red);
   --fw-plot-trace-3:   var(--fw-orange);
   --fw-plot-font:      var(--fw-font);
-  --fw-plot-font-size: 14px;
+  --fw-plot-font-size: 13px;
 }
 
 .fw-app, .fw-app *, .fw-app *::before, .fw-app *::after { box-sizing: border-box; }
@@ -82,44 +82,101 @@ html.fw-root, html.fw-root body {
   font-size: 16px;   /* Libre Baskerville sets wide: 16px reads like the old 18px */
 }
 
-/* ── Page frame ── */
+/* ── Page frame: fills the window, so a wide screen gives its extra width to the Display ── */
 .fw-app {
-  max-width: 1280px;
-  margin: 0 auto;
   height: 100vh;
   display: flex;
   flex-direction: column;
   background: var(--fw-bg);
-  border-left: 1px solid var(--fw-border-dk);
-  border-right: 1px solid var(--fw-border-dk);
   overflow: hidden;
 }
 
+/* One row: title, course | tabs | actions. When the row is tight the course truncates with an
+   ellipsis first (its flex-shrink dwarfs the tabs'), then the tabs wrap onto more lines inside
+   their own column. The title and the actions never shrink or wrap. */
 .fw-header {
-  border-bottom: 3px double var(--fw-border-dk);
-  padding: 10px 20px 8px;
+  border-bottom: 2px solid var(--fw-border-dk);
+  padding: 0 16px 0 20px;
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
+  align-items: stretch;
+  gap: 14px;
   flex-shrink: 0;
   background: var(--fw-surface);
+  position: relative;
+  z-index: 5;   /* the ⋯ menu drops over the panels */
 }
-.fw-header-titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fw-header-titles { display: contents; }
 .fw-title {
   margin: 0;
-  font-size: 22px;
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 8px 0;
+  white-space: nowrap;
+  font-size: 18px;
   font-weight: bold;
   letter-spacing: 0.01em;
 }
-.fw-subtitle { font-size: 16px; color: var(--fw-text-dim); font-style: italic; }
+.fw-course, .fw-subtitle { font-size: 14px; color: var(--fw-text-dim); font-style: italic; }
+.fw-course { flex: 0 1000 auto; min-width: 3em; align-self: center; margin-left: -6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The short notes (the student's name, the save status, "Link copied") stack two to a column so
+   the save status costs the row no width; buttons and the ⋯ menu span both lines. */
+.fw-header-actions {
+  flex: 0 0 auto;
+  margin-left: auto;
+  align-self: center;
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: auto auto;
+  align-items: center;
+  justify-items: end;
+  column-gap: 10px;
+  white-space: nowrap;
+}
+.fw-header-actions > :not(.fw-student, .fw-save-status, .fw-share-status) { grid-row: 1 / span 2; }
+.fw-header-actions > .fw-student, .fw-header-actions > .fw-save-status, .fw-header-actions > .fw-share-status { line-height: 1.2; }
+.fw-header .fw-button { font-size: 14px; letter-spacing: 0.04em; padding: 3px 8px; }
+.fw-header .fw-student { font-size: 15px; }
 
-/* ── Tabs (Modes in Standalone mode, Parts in an Activity) ── */
-.fw-tabs {
+/* ── ⋯ menu (ui-kit menuButton) ── */
+.fw-menu-wrap { position: relative; }
+.fw-header .fw-menu-button { font-size: 18px; line-height: 1; padding: 2px 10px 5px; }
+.fw-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  min-width: 12em;
   display: flex;
-  border-bottom: 2px solid var(--fw-border-dk);
-  background: var(--fw-surface);
-  flex-shrink: 0;
+  flex-direction: column;
+  padding: 4px 0;
+  background: var(--fw-paper);
+  border: 1px solid var(--fw-border-dk);
+  box-shadow: 0 4px 12px rgba(26, 16, 8, 0.18);
+}
+.fw-menu[hidden], .fw-menu-item[hidden] { display: none; }
+.fw-menu-item {
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: var(--fw-font);
+  font-size: 15px;
+  color: var(--fw-text);
+  padding: 6px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fw-menu-item:hover, .fw-menu-item:focus { background: var(--fw-bg); color: var(--fw-blue); }
+.fw-menu-item:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: -2px; }
+
+/* ── Tabs (Modes in Standalone mode, Parts in an Activity), in the header row ── */
+.fw-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  align-content: flex-end;
 }
 .fw-tab {
   background: none;
@@ -128,9 +185,9 @@ html.fw-root, html.fw-root body {
   border-bottom: 3px solid transparent;
   color: var(--fw-text-dim);
   font-family: var(--fw-font);
-  font-size: 15px;
+  font-size: 14px;
   letter-spacing: 0.01em;
-  padding: 7px 20px 5px;
+  padding: 8px 12px 6px;
   cursor: pointer;
   position: relative;
   bottom: -2px;
@@ -161,7 +218,12 @@ html.fw-root, html.fw-root body {
   overflow-y: auto;
   background: var(--fw-surface);
 }
+/* The Display: as wide as its region up to the Tool's maxDisplayWidth (--fw-display-max, set by
+   createFrame), past which it centres in the region. */
 .fw-displays {
+  width: 100%;
+  max-width: var(--fw-display-max, none);
+  justify-self: center;
   padding: 12px 14px 10px;
   display: flex;
   flex-direction: column;
@@ -257,8 +319,9 @@ html.fw-root, html.fw-root body {
 }
 .fw-button { border: 1.5px solid var(--fw-blue); color: var(--fw-blue); font-size: 16px; letter-spacing: 0.08em; padding: 3px 10px; }
 .fw-button:hover:not(:disabled) { background: var(--fw-blue); color: #fff; }
-.fw-reset { min-width: 48px; }
+.fw-reset { min-width: 32px; }
 .fw-reset:hover:not(:disabled) { border-color: var(--fw-blue); color: var(--fw-blue); }
+.fw-reset:disabled { opacity: 0.4; cursor: default; }
 
 .fw-toggle, .fw-select { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 16px; }
 .fw-select select {
@@ -278,20 +341,43 @@ html.fw-root, html.fw-root body {
 .fw-legend-row { display: flex; align-items: center; gap: 7px; font-size: 14px; margin-bottom: 6px; }
 .fw-legend-line { display: inline-block; width: 22px; height: 2.5px; flex-shrink: 0; }
 
+/* ── Handles and knobs (handle.js) ── */
+/* A layer over a Display to hold handles: it passes the pointer through except on a handle. */
+.fw-handle-layer { position: absolute; inset: 0; pointer-events: none; }
+.fw-handle-layer > * { pointer-events: auto; }
+/* A handle the kit makes is a round grab target centred on its toScreen() point inside a
+   positioned parent; the Tool usually draws the marker itself beneath it. */
+.fw-handle { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;
+  cursor: grab; touch-action: none; }
+.fw-handle:active { cursor: grabbing; }
+.fw-handle:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: 1px; }
+.fw-handle.fw-locked { cursor: not-allowed; }
+.fw-knob { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; cursor: ns-resize;
+  touch-action: none; font-size: 14px; }
+.fw-knob-dial { position: relative; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--fw-border-dk);
+  background: var(--fw-surface); }
+.fw-knob-dial::after { content: ''; position: absolute; left: 50%; top: 4px; width: 2px; height: 12px; margin-left: -1px;
+  background: var(--fw-text); }
+.fw-knob:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: 2px; }
+.fw-knob.fw-locked { cursor: not-allowed; opacity: 0.55; }
+
 /* Read by screen readers, not shown. */
 .fw-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .fw-controls::-webkit-scrollbar { width: 5px; }
 .fw-controls::-webkit-scrollbar-thumb { background: var(--fw-border); }
 
-/* Standalone share link (tool-host.js) */
-.fw-share { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.fw-share-link { width: 16em; min-width: 0; font: inherit; font-size: 13px; padding: 3px 6px;
-  border: 1px solid var(--fw-border-dk); background: var(--fw-bg); color: inherit; }
-.fw-share-status { font-size: 13px; font-style: italic; min-width: 4em; }
+/* Standalone "Link copied" note beside the ⋯ menu (tool-host.js) */
+.fw-share-status { font-size: 14px; font-style: italic; color: var(--fw-text-dim); }
+.fw-share-status:empty { display: none; }
+
+/* Header save status (tool-host.js saveStatus): muted "Saved hh:mm", or the warning in the miss colour */
+.fw-save-status { font-size: 13px; color: var(--fw-text-dim); white-space: nowrap; }
+.fw-save-status:empty { display: none; }
+.fw-save-status[data-state="failed"] { color: var(--fw-red); font-weight: 600; }
 
 /* ── Activity runner UI: name gate, Task cards, Part progress ── */
-.fw-app .fw-tabs[hidden], .fw-app .fw-tabpanel-area[hidden], .fw-student[hidden], .fw-start-over[hidden], .fw-download[hidden], .fw-task-hint[hidden] { display: none !important; }
+.fw-app .fw-tabs[hidden], .fw-app .fw-tabpanel-area[hidden], .fw-student[hidden], .fw-download[hidden], .fw-task-hint[hidden] { display: none !important; }
 .fw-student { font-size: 16px; color: var(--fw-text-dim); font-style: italic; white-space: nowrap; }
 
 .fw-gate {
@@ -320,6 +406,26 @@ html.fw-root, html.fw-root body {
 }
 .fw-name-input:focus, .fw-question-input:focus { border-color: var(--fw-blue); }
 .fw-gate-error { color: var(--fw-red); font-size: 15px; font-style: italic; min-height: 1em; }
+
+/* Primary button: the completed Download Report (header and completion dialog) */
+.fw-button.fw-button-primary { background: var(--fw-blue); color: #fff; }
+.fw-button.fw-button-primary:hover:not(:disabled) { background: var(--fw-blue-dk); border-color: var(--fw-blue-dk); }
+
+/* ── Completion dialog (native <dialog>, activity-ui.js) ── */
+.fw-dialog {
+  width: min(440px, calc(100% - 32px));
+  padding: 20px 24px;
+  border: 1.5px solid var(--fw-border-dk);
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font-family: var(--fw-font);
+  box-shadow: 0 4px 12px rgba(26, 16, 8, 0.18);
+}
+.fw-dialog::backdrop { background: rgba(26, 16, 8, 0.35); }
+.fw-dialog-title { margin: 0 0 8px; font-size: 20px; letter-spacing: 0.04em; }
+.fw-dialog-text { margin: 0 0 16px; font-size: 16px; line-height: 1.45; }
+.fw-dialog-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.fw-dialog-actions .fw-button-primary { order: -1; }
 
 .fw-part-tasks {
   flex-shrink: 0;
@@ -366,11 +472,22 @@ html.fw-root, html.fw-root body {
 .fw-task-feedback { font-size: 15px; font-style: italic; }
 .fw-task-feedback.fw-ok { color: var(--fw-green); }
 .fw-task-feedback.fw-fail { color: var(--fw-red); }
+.fw-task-feedback.fw-refused { color: var(--fw-text-muted); }
+/* Every Submit result re-triggers a short emphasis, so a Submit always visibly registers.
+   The UI re-adds the class on each Submit and drops it after the 600ms the flash lasts. */
+.fw-task-feedback.fw-emphasis { animation: fw-feedback-flash 600ms ease-out; border-radius: 3px; }
+@keyframes fw-feedback-flash {
+  from { background: var(--fw-hint-bg); box-shadow: 0 0 0 4px var(--fw-hint-bg); }
+  to   { background: transparent; box-shadow: 0 0 0 4px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fw-task-feedback.fw-emphasis { animation: none; background: var(--fw-hint-bg); box-shadow: 0 0 0 4px var(--fw-hint-bg); }
+}
 .fw-task-hint { font-size: 14px; color: var(--fw-yellow); line-height: 1.4; background: var(--fw-hint-bg); border-left: 3px solid var(--fw-yellow); padding: 4px 8px; }
 .fw-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Part progress badge on each Part tab ("1/3"), filled once the Part is complete. */
-.fw-tab-badge { margin-left: 10px; padding: 0 6px; border: 1px solid var(--fw-border-dk); font-size: 12px; font-weight: normal; letter-spacing: 0; color: var(--fw-text-dim); }
+.fw-tab-badge { margin-left: 8px; padding: 0 6px; border: 1px solid var(--fw-border-dk); font-size: 12px; font-weight: normal; letter-spacing: 0; color: var(--fw-text-dim); }
 .fw-tab-badge:empty { display: none; }
 .fw-tab-badge[data-done="true"] { background: var(--fw-green); border-color: var(--fw-green); color: #fff; }
 
@@ -381,7 +498,9 @@ html.fw-root, html.fw-root body {
 /* side */
 .fw-layout-side .fw-tabpanel { flex-direction: row; }
 .fw-layout-side .fw-tabpanel > .fw-tool { flex: 1; min-width: 0; }
-.fw-layout-side .fw-part-tasks { width: 330px; max-height: none; border-top: none; border-left: 2px solid var(--fw-border-dk); }
+/* The Tasks column's width; createFrame (tool-host.js) reads it to decide the side form. */
+.fw-layout-side { --fw-tasks-column: 330px; }
+.fw-layout-side .fw-part-tasks { width: var(--fw-tasks-column); max-height: none; border-top: none; border-left: 2px solid var(--fw-border-dk); }
 .fw-layout-side .fw-progress-bar { flex: 1; width: auto; }
 .fw-layout-side .fw-tasks { flex-direction: column; overflow-y: auto; padding: 10px; gap: 10px; }
 .fw-layout-side .fw-task-card { flex: none; min-width: 0; border: 1px solid var(--fw-border); background: var(--fw-bg); }
@@ -391,6 +510,53 @@ html.fw-root, html.fw-root body {
 .fw-layout-side .fw-task-card[data-status="locked"] :is(.fw-task-prompt, .fw-question, .fw-task-submit, .fw-task-hint),
 .fw-layout-side .fw-task-card[data-status="passed"] :is(.fw-task-prompt, .fw-question, .fw-task-hint) { display: none; }
 .fw-layout-side .fw-task-card[data-status="passed"] .fw-task-submit { margin-bottom: 0; }
+.fw-task-card:focus { outline: none; }
+.fw-task-card:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: -2px; }
+
+/* side, Task drawer form: data-side-form="drawer" on .fw-app (createFrame, tool-host.js), set
+   when the Tasks column would leave the Display narrower than the Tool's minDisplayWidth. A bar
+   above the Display holds the current Task; opened, the drawer lies over the Display's right
+   part, so the Display never resizes, and shows only the current Task's card. */
+.fw-drawer-bar { display: none; }
+.fw-layout-side[data-side-form="drawer"] {
+  --fw-drawer-bar: 46px;
+}
+.fw-layout-side[data-side-form="drawer"] .fw-tabpanel { flex-direction: column; position: relative; }
+.fw-layout-side[data-side-form="drawer"] .fw-part-tasks {
+  order: -1; width: auto; border-left: none; border-bottom: 2px solid var(--fw-border-dk);
+}
+.fw-layout-side[data-side-form="drawer"] .fw-progress { display: none; }  /* the Part tab's badge shows progress */
+.fw-layout-side[data-side-form="drawer"] .fw-drawer-bar {
+  display: flex; align-items: center; gap: 10px; height: var(--fw-drawer-bar); padding: 0 14px; min-width: 0;
+}
+.fw-drawer-toggle {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 4px 6px;
+  border: none; background: none; color: var(--fw-text); font: bold 16px var(--fw-font); text-align: left; cursor: pointer;
+}
+.fw-drawer-toggle:hover:not(:disabled) { color: var(--fw-blue); }
+.fw-drawer-toggle:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: 1px; }
+.fw-drawer-toggle:disabled { cursor: default; color: var(--fw-green); }
+.fw-drawer-chevron { flex: none; color: var(--fw-blue); }
+.fw-drawer-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fw-drawer-feedback { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fw-drawer-note { flex: none; font-size: 15px; font-style: italic; color: var(--fw-text-dim); }
+.fw-drawer-note[hidden], .fw-drawer-submit[hidden] { display: none; }
+.fw-drawer-submit { flex: none; }
+/* The drawer itself: the Tasks row, over the Display, below the bar. */
+.fw-layout-side[data-side-form="drawer"] .fw-tasks {
+  position: absolute; z-index: 5; top: calc(var(--fw-drawer-bar) + 2px); right: 0; bottom: 0;
+  width: min(380px, 100%); overflow-y: auto;
+  background: var(--fw-surface); border-left: 2px solid var(--fw-border-dk);
+  box-shadow: -4px 0 12px rgba(26, 16, 8, 0.18);
+}
+.fw-layout-side[data-side-form="drawer"] .fw-part-tasks[data-drawer="closed"] .fw-tasks { display: none; }
+.fw-layout-side[data-side-form="drawer"] .fw-task-card:not([data-current]) { display: none; }
+/* The bar carries the current Task's Submit and feedback. */
+.fw-layout-side[data-side-form="drawer"] .fw-task-card .fw-task-submit { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .fw-layout-side[data-side-form="drawer"] .fw-part-tasks[data-drawer="open"] .fw-tasks { animation: fw-drawer-in 0.15s ease-out; }
+}
+@keyframes fw-drawer-in { from { transform: translateX(24px); opacity: 0; } }
 
 /* banner */
 .fw-layout-banner .fw-part-tasks { order: -1; max-height: none; border-top: none; border-bottom: 2px solid var(--fw-border-dk); }

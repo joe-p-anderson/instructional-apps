@@ -6,15 +6,15 @@ Spec: .scratch/shell-revision/spec.md (Runner core: refused identical Submit; st
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `runner.submit` returns a distinguishable refusal when the State snapshot and the answers deep-equal the last Attempt and that Attempt failed. Comparison uses canonical form, so key order doesn't matter, and snapshot images are excluded.
-- [ ] Runner unit tests:
+- [x] `runner.submit` returns a distinguishable refusal when the State snapshot and the answers deep-equal the last Attempt and that Attempt failed. Comparison uses canonical form, so key order doesn't matter, and snapshot images are excluded.
+- [x] Runner unit tests:
   - an identical repeat records nothing and doesn't advance the Hint;
   - a changed State alone, or changed answers alone, is recorded;
   - A, B, A records three Attempts;
   - the Report after refusals equals the Report without them.
-- [ ] The Task card shows the refusal text in the feedback line. The feedback line is a polite live region.
-- [ ] Every Submit re-triggers an emphasis on the feedback line, which is static under `prefers-reduced-motion`.
-- [ ] e2e: on the oscilloscope Activity, two identical failed Submits show the refusal, and the downloaded Report holds one Attempt for that Task.
-- [ ] The runner's header comment and the framework README document the refusal.
+- [x] The Task card shows the refusal text in the feedback line. The feedback line is a polite live region.
+- [x] Every Submit re-triggers an emphasis on the feedback line, which is static under `prefers-reduced-motion`.
+- [x] e2e: on the oscilloscope Activity, two identical failed Submits show the refusal, and the downloaded Report holds one Attempt for that Task.
+- [x] The runner's header comment and the framework README document the refusal.

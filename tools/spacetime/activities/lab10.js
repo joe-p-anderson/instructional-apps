@@ -14,7 +14,8 @@
 // Points: 1 per Task with a Condition, none for a Task without one, 1 per Question.
 //
 // Every Part starts from the same Setup and the same staged Controls (STAGE, applied by each
-// Part's first Task, and kept by the Tasks after it); a Part only adds which drawing tools it shows.
+// Part's first Task, and kept by the Tasks after it); a Part only adds which drawing tools it shows
+// and which one is selected at the start (the one its first Task uses).
 
 const SETUP = {
   v: 0.6,
@@ -39,7 +40,7 @@ const building = {
   id: 'building',
   title: 'Part 1: Building the diagram',
   mode: 'diagram',
-  setup: SETUP,
+  setup: { ...SETUP, tool: 'worldline' },
   tasks: [
     staged({
       id: 'lamp',
@@ -152,7 +153,7 @@ const simultaneity = {
   id: 'simultaneity',
   title: 'Part 2: Relativity of simultaneity',
   mode: 'diagram',
-  setup: SETUP,
+  setup: { ...SETUP, tool: 'worldline' },
   tasks: [
     staged({
       id: 'ends-flash',

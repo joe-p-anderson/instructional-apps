@@ -12,8 +12,8 @@ Bench-scope's front-panel artwork is exempt and marked as exempt.
 
 **Blocked by:** theme-refresh 05 (.scratch/theme-refresh/issues/05-app-ports-tools-follow-refined-cream.md), which points the electrostatics plot at the plot tokens and settles `themeVars()` against `plotTheme()`.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] e2e: for every Tool and Mode at 1366×768, no visible text inside the Display area is under 12 px, except elements marked as exempt artwork.
-- [ ] e2e: the same check on the three Activities.
-- [ ] The framework README documents the floor and the exemption marker.
+- [x] e2e: for every Tool and Mode at 1366×768, no visible text inside the Display area is under 12 px, except elements marked as exempt artwork.
+- [x] e2e: the same check on the three Activities.
+- [x] The framework README documents the floor and the exemption marker.

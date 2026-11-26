@@ -1,5 +1,6 @@
 // Seam 2 (Spec 0002): the real bench-scope Standalone page.
 import { test, expect } from '@playwright/test';
+import { copyShareLink } from './helpers/share-link.js';
 import { openSourceDrawer } from './helpers/bench-drawer.js';
 import { installScreenReader } from './helpers/bench-screen.js';
 
@@ -56,10 +57,13 @@ test('the source Controls are shown, registered and unlocked', async ({ page }) 
   await open(page);
   await openSourceDrawer(page);
   await expect(page.getByRole('combobox', { name: 'CH1 waveform', exact: true })).toBeEnabled();
-  for (const name of ['CH1 frequency', 'CH1 amplitude', 'CH1 offset']) {
+  // CH1 frequency is bench-scope's own dial; the others are kit sliders. Every reset is the
+  // kit's: disabled at the default.
+  for (const name of ['CH1 frequency', 'CH1 amplitude (Vpp)', 'CH1 offset (V)']) {
     await expect(page.getByRole('slider', { name, exact: true })).toBeEnabled();
     await expect(page.getByRole('spinbutton', { name, exact: true })).toBeEnabled();
-    await expect(page.getByRole('button', { name: `Reset ${name}` })).toBeEnabled();
+    const reset = page.getByRole('group', { name, exact: true }).getByRole('button', { name: /^Reset to / });
+    await expect(reset).toBeDisabled();
   }
   const controls = await page.evaluate(() => {
     const i = window.toolHost.instances[0];
@@ -68,6 +72,26 @@ test('the source Controls are shown, registered and unlocked', async ({ page }) 
   for (const id of SOURCE_CONTROLS) {
     expect(controls.find((c) => c.id === id), id).toMatchObject({ locked: false, hidden: false });
   }
+});
+
+test('the frequency dial reset is the kit icon "Reset to 1000 Hz", disabled at the default and while locked', async ({ page }) => {
+  await open(page);
+  await openSourceDrawer(page);
+  const reset = page.getByRole('group', { name: 'CH1 frequency', exact: true })
+    .getByRole('button', { name: 'Reset to 1000 Hz', exact: true });
+  await expect(reset).toHaveText('↻');
+  await expect(reset).toHaveAttribute('title', 'Reset to 1000 Hz');
+  await expect(reset).toBeDisabled();
+
+  await setNumber(page, 'CH1 frequency', 2500);
+  await expect(reset).toBeEnabled();
+  await page.evaluate(() => window.toolHost.instances[0].controls.get('gen1-freq').lock());
+  await expect(reset).toBeDisabled();
+  await page.evaluate(() => window.toolHost.instances[0].controls.get('gen1-freq').unlock());
+  await expect(reset).toBeEnabled();
+  await reset.click();
+  expect((await snapshot(page)).gen1Freq).toBe(1000);
+  await expect(reset).toBeDisabled();
 });
 
 test('changing the generator updates State and the trace', async ({ page }) => {
@@ -88,17 +112,16 @@ test('changing the generator updates State and the trace', async ({ page }) => {
 test('a reload keeps the setup, and a share link reproduces it elsewhere', async ({ page, browser }) => {
   await open(page);
   await openSourceDrawer(page);
-  await setNumber(page, 'CH1 amplitude', 6.5);
-  await setNumber(page, 'CH1 offset', -1);
+  await setNumber(page, 'CH1 amplitude (Vpp)', 6.5);
+  await setNumber(page, 'CH1 offset (V)', -1);
 
   await page.reload();
   await page.waitForFunction(() => window.toolHost);
   expect(await snapshot(page)).toMatchObject({ gen1Vpp: 6.5, gen1Offset: -1 });
   await openSourceDrawer(page);
-  await expect(page.getByRole('spinbutton', { name: 'CH1 amplitude', exact: true })).toHaveValue(/^6\.5/);
+  await expect(page.getByRole('spinbutton', { name: 'CH1 amplitude (Vpp)', exact: true })).toHaveValue(/^6\.5/);
 
-  await page.getByRole('button', { name: 'Copy share link' }).click();
-  const url = await page.getByRole('textbox', { name: 'Share link' }).inputValue();
+  const url = await copyShareLink(page);
   expect(url).toMatch(/#s=/);
   const other = await browser.newContext();
   const theirs = await other.newPage();

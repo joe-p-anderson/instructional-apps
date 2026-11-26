@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { copyShareLink } from './helpers/share-link.js';
 
 const PAGE = '/tools/vernier/';
 
@@ -133,8 +134,7 @@ test('a share link shows the same reading in a fresh browser', async ({ page, br
   await page.getByRole('button', { name: 'Next' }).click();
   const before = await snapshot(page);
 
-  await page.getByRole('button', { name: 'Copy share link' }).click();
-  const url = await page.getByRole('textbox', { name: 'Share link' }).inputValue();
+  const url = await copyShareLink(page);
   expect(url).toMatch(/#s=/);
 
   const other = await browser.newContext();

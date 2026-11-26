@@ -10,10 +10,12 @@
 //                 the range keeps the dial position and scales the frequency by the same factor.
 //
 // The dial steps in 1/1000 of the range (arrow keys), so a 1 kHz range moves 1 Hz per step.
-// The number box accepts any frequency within the limits.
+// The number box accepts any frequency within the limits. The number box and the reset are the
+// kit slider's (numberBox, resetButton): an icon-only ↻ named "Reset to <reset> Hz", disabled
+// at the default and while locked. The composite is a group named `name`.
 
 import { createControl } from '../../framework/v1/control.js';
-import { h } from '../../framework/v1/ui-kit.js';
+import { h, numberBox, resetButton } from '../../framework/v1/ui-kit.js';
 
 const STEPS = 1000;
 
@@ -47,14 +49,16 @@ export function freqDial({ id, name = id, label, limits, value, reset = value, o
   // Lock disables the inputs inside a Control's el, so the selector needs a wrapper of its own.
   const rangeWrap = h('span', { class: 'bs-freq-range-wrap' }, rangeSel);
   const dial = h('input', { type: 'range', class: 'fw-range', 'aria-label': name });
-  const num = h('input', { type: 'number', class: 'fw-number', min, max, step: 'any', 'aria-label': name });
-  const resetBtn = h('button', { type: 'button', class: 'fw-reset', 'aria-label': `Reset ${name}`,
-    title: `Reset to ${reset}` }, `↻ ${reset}`);
+  const num = numberBox({ name, min, max, onCommit: (n) => set(n) });
+  // The kit slider's reset: icon-only, disabled at the default and while locked.
+  const resetBtn = resetButton({ text: `${reset} Hz`, onReset: () => set(reset),
+    atDefault: () => current === roundTo(clampHz(Number(reset)), fitTop(clampHz(Number(reset)))),
+    isLocked: () => control.isLocked() });
 
-  const el = h('div', { class: 'fw-slider bs-freq-dial' },
+  const el = h('div', { class: 'fw-slider bs-freq-dial', role: 'group', 'aria-label': name },
     h('div', { class: 'fw-slider-header' },
-      h('span', { class: 'fw-control-name', html: label ?? name }, h('span', { class: 'fw-unit' }, ' Hz')), num),
-    h('div', { class: 'fw-slider-row' }, rangeWrap, dial, resetBtn));
+      h('span', { class: 'fw-control-name', html: label ?? name }, h('span', { class: 'fw-unit' }, ' Hz')), num.el),
+    h('div', { class: 'fw-slider-row' }, rangeWrap, dial, resetBtn.el));
 
   function render() {
     rangeSel.value = String(top);
@@ -63,8 +67,8 @@ export function freqDial({ id, name = id, label, limits, value, reset = value, o
     dial.max = String(Math.min(max, top));
     dial.step = String(top / STEPS);
     dial.value = String(current);
-    num.value = current.toFixed(decimalsFor(top));
-    num.classList.remove('fw-invalid');
+    num.show(current.toFixed(decimalsFor(top)));
+    resetBtn.sync();
   }
 
   function apply(f, keepRange = false) {
@@ -88,21 +92,14 @@ export function freqDial({ id, name = id, label, limits, value, reset = value, o
     apply(Math.min(Math.min(max, t), Math.max(Math.max(min, t / 10), scaled)), true);
   }
 
-  function commitNumber() {
-    const n = parseFloat(num.value);
-    if (Number.isNaN(n)) { num.classList.add('fw-invalid'); return; }
-    set(n);
-  }
-
   dial.addEventListener('input', () => apply(Number(dial.value), true));
   rangeSel.addEventListener('change', () => setRange(rangeSel.value));
-  num.addEventListener('keydown', (e) => { if (e.key === 'Enter') commitNumber(); });
-  num.addEventListener('change', commitNumber);
-  resetBtn.addEventListener('click', () => set(reset));
+
+  const control = createControl({ id, label: name, el, get: () => current, set, onLock: () => resetBtn.sync() });
   render();
 
   return {
-    control: createControl({ id, label: name, el, get: () => current, set }),
+    control,
     rangeControl: createControl({ id: `${id}-range`, label: `${name} range`, el: rangeWrap, get: () => top, set: setRange }),
   };
 }

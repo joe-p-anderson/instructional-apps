@@ -1,8 +1,10 @@
 // Plotly helpers shared by the electrostatics Modes: the square ±WINDOW conductor plot, the
-// |E| heatmap, quiver arrows and the conductor boundary. Colours come from the v1 theme
-// variables (read from the element the plot lives in).
+// |E| heatmap, quiver arrows and the conductor boundary. Colours and font come from the theme
+// (read from the element the plot lives in): the plot ground, grid, axes, text and font from
+// the --fw-plot-* tokens, the marks from the named theme colours.
 
 import { themeVars } from '../../framework/v1/ui-kit.js';
+import { plotlyMapping } from '../../framework/v1/plot-map.js';
 import { loadPlotly } from '../../framework/v1/vendor.js';
 import { RADIUS, WINDOW, linspace } from './conductor.js';
 
@@ -19,9 +21,11 @@ export function toolStyles() {
 export const PLOT_CONFIG = { displayModeBar: false, scrollZoom: false, responsive: true };
 
 const VARS = {
-  blue: '--fw-blue', red: '--fw-red', yellow: '--fw-yellow', text: '--fw-text', dim: '--fw-text-dim',
-  muted: '--fw-text-muted', surface: '--fw-surface', bg: '--fw-bg', grid: '--fw-grid', border: '--fw-border',
-  borderDk: '--fw-border-dk',
+  blue: '--fw-blue', red: '--fw-red', yellow: '--fw-yellow', text: '--fw-text', muted: '--fw-text-muted',
+  bg: '--fw-bg', border: '--fw-border',
+  // From the plot tokens:
+  surface: '--fw-plot-bg', grid: '--fw-plot-grid', borderDk: '--fw-plot-axis', dim: '--fw-plot-text',
+  font: '--fw-plot-font', fontSize: '--fw-plot-font-size',
 };
 
 /** The plot's theme colours as seen from `el` (the v1 palette before it is in the page). */
@@ -36,7 +40,7 @@ export function conductorLayout(C, { cmax = 1e4, colorTitle = '|E| (V/m)' } = {}
   return {
     paper_bgcolor: C.surface,
     plot_bgcolor: C.surface,
-    font: { family: "'Baskerville Old Face', Baskerville, Georgia, serif", size: 13, color: C.dim },
+    font: { family: C.font, size: parseFloat(C.fontSize), color: C.dim },
     xaxis: { ...axis, title: { text: 'x (cm)', standoff: 5, font: { size: 14 } }, scaleanchor: 'y', scaleratio: 1 },
     yaxis: { ...axis, title: { text: 'y (cm)', standoff: 5, font: { size: 14 } } },
     margin: { l: 50, r: 62, t: 12, b: 44 },
@@ -44,7 +48,7 @@ export function conductorLayout(C, { cmax = 1e4, colorTitle = '|E| (V/m)' } = {}
     dragmode: false,
     coloraxis: {
       colorscale: [[0, '#FFFFFF'], [1, C.blue]], showscale: true, cmin: 0, cmax,
-      colorbar: { title: { text: colorTitle, font: { size: 12 } }, thickness: 10, len: 0.75, x: 1.01 },
+      colorbar: { title: { text: colorTitle, font: { size: parseFloat(C.fontSize) } }, thickness: 10, len: 0.75, x: 1.01 },
     },
   };
 }
@@ -77,18 +81,14 @@ export function boundaryTrace({ color = 'rgba(26,16,8,0.25)', dash = 'dot', widt
 
 /**
  * Wire a plot div up as a Display: keeps it sized to its box (it may be mounted into a hidden
- * tab), and gives toScreen(x, y) in cm and a PNG snapshot. Returns { display, fit, stop }.
+ * tab), and gives toScreen(x, y) in cm (framework/v1/plot-map.js) and a PNG snapshot.
+ * Returns { display, fit, stop }.
  */
 export function plotDisplay(plotDiv, { id, label }) {
   const fit = () => { if (plotDiv.offsetParent && plotDiv._fullLayout) Plotly.Plots.resize(plotDiv); };
   const observer = new ResizeObserver(fit);
   observer.observe(plotDiv);
-  function toScreen(x, y) {
-    const fl = plotDiv._fullLayout;
-    if (!fl || !plotDiv.offsetParent || Math.abs(fl.width - plotDiv.clientWidth) >= 2) return null;
-    const rect = plotDiv.getBoundingClientRect();
-    return { x: rect.left + fl.xaxis._offset + fl.xaxis.d2p(x), y: rect.top + fl.yaxis._offset + fl.yaxis.d2p(y) };
-  }
+  const { toScreen } = plotlyMapping(plotDiv);
   const snapshot = () => {
     const size = Math.round(Math.min(plotDiv.clientWidth, plotDiv.clientHeight)) || 560;
     return Plotly.toImage(plotDiv, { format: 'png', width: size, height: size });

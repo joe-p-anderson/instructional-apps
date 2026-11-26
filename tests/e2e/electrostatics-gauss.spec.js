@@ -36,11 +36,11 @@ test('the Tool shows a third tab, Gauss’s law, with every Control shown and un
   await expect(tabs.last()).toHaveText('Gauss’s law');
   await expect(page.getByRole('tab', { name: 'Gauss’s law' })).toHaveAttribute('aria-selected', 'true');
 
-  const lambda = panel(page).getByRole('slider', { name: 'λ', exact: true });
+  const lambda = panel(page).getByRole('slider', { name: 'λ (nC/m)', exact: true });
   await expect(lambda).toHaveAttribute('min', '-1');
   await expect(lambda).toHaveAttribute('max', '1');
   await expect(lambda).toHaveAttribute('step', '0.05');
-  await expect(panel(page).getByRole('spinbutton', { name: 'λ', exact: true })).toHaveValue('1.00');
+  await expect(panel(page).getByRole('spinbutton', { name: 'λ (nC/m)', exact: true })).toHaveValue('1.00');
   await expect(panel(page).getByLabel('E₀ joystick')).toBeVisible();
   for (const name of ['E₀x', 'E₀y']) await expect(panel(page).getByRole('spinbutton', { name, exact: true })).toBeEnabled();
 
@@ -102,4 +102,53 @@ test('a reload restores the setup, and the Display gives a PNG snapshot', async 
 
   const png = await page.evaluate(inGauss('(i) => i.displays[0].snapshot()'));
   expect(png).toMatch(/^data:image\/png;base64,/);
+});
+
+// The surface's centre and radius are the kit's handle, so the keyboard moves them.
+test('the surface centre and radius handles move with the arrow keys, and the readouts follow', async ({ page }) => {
+  await open(page);
+  const centre = panel(page).getByRole('group', { name: 'Gaussian surface centre' });
+  const radius = panel(page).getByRole('slider', { name: 'Gaussian surface radius' });
+  await expect(centre).toHaveAttribute('tabindex', '0');
+  await expect(centre).toHaveAccessibleDescription('x = 0.0 cm, y = 0.0 cm');
+  await expect(radius).toHaveAttribute('aria-valuetext', '2.0 cm');
+
+  // Each handle sits over its point on the plot: the centre, and the edge on +x of it.
+  const mid = async (loc) => { const b = await loc.boundingBox(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
+  const edge = await toScreen(page, 2, 0);
+  await expect.poll(async () => (await mid(radius)).x).toBeCloseTo(edge.x, 0);
+  expect((await mid(radius)).y).toBeCloseTo(edge.y, 0);
+
+  await centre.focus();
+  for (let i = 0; i < 4; i += 1) await page.keyboard.press('Shift+ArrowRight');
+  await page.keyboard.press('ArrowUp');
+  let s = await snapshot(page);
+  expect(s.xc).toBeCloseTo(4, 9);
+  expect(s.yc).toBeCloseTo(0.1, 9);
+  await expect(panel(page).getByRole('status', { name: 'Surface centre' })).toContainText('(4.0, 0.1) cm');
+
+  await radius.focus();
+  await page.keyboard.press('Shift+ArrowUp');
+  await page.keyboard.press('ArrowDown');
+  s = await snapshot(page);
+  expect(s.r).toBeCloseTo(2.9, 9);
+  await expect(panel(page).getByRole('status', { name: 'Radius' })).toContainText('2.90 cm');
+  expect(s.Qenc).toBeGreaterThan(0.1); // the surface now crosses the edge
+  await page.keyboard.press('Home');
+  expect((await snapshot(page)).r).toBeCloseTo(0.3, 9);
+
+  // Locked, the keys do nothing.
+  await page.evaluate(inGauss("(i) => i.controls.get('radius').lock()"));
+  await page.keyboard.press('End');
+  expect((await snapshot(page)).r).toBeCloseTo(0.3, 9);
+});
+
+test('the E₀ joystick moves with the arrow keys here too', async ({ page }) => {
+  await open(page);
+  const stick = panel(page).getByRole('group', { name: 'E₀ joystick' });
+  await stick.focus();
+  await page.keyboard.press('Shift+ArrowUp');
+  await page.keyboard.press('Shift+ArrowUp');
+  expect(await snapshot(page)).toMatchObject({ E0x: 0, E0y: 200 });
+  await expect(panel(page).getByRole('spinbutton', { name: 'E₀y', exact: true })).toHaveValue('200');
 });

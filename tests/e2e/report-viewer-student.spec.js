@@ -10,7 +10,7 @@ async function downloadReport(page) {
   await page.getByRole('button', { name: 'Start' }).click();
   const p1 = page.getByRole('tabpanel', { name: /Part 1/ });
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click(); // a miss
-  const box = p1.getByRole('spinbutton', { name: 'Δt', exact: true });
+  const box = p1.getByRole('spinbutton', { name: 'Δt (s)', exact: true });
   await box.fill('0.5');
   await box.press('Enter');
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click(); // a pass
@@ -32,7 +32,7 @@ test('a Report downloaded from the oscilloscope Activity opens in the student vi
   await page.getByLabel('Open a Report').setInputFiles(reportPath);
 
   const view = page.getByRole('article', { name: 'Report' });
-  await expect(view).toContainText('Oscilloscope: Phase Shift, Period and Amplitude');
+  await expect(view).toContainText('Sinusoidal Signals');
   await expect(view).toContainText('PHY/EGR 3120');
   await expect(view).toContainText('Ada Lovelace');
   await expect(view.getByRole('heading', { name: 'Part 1: Phase Shift' })).toBeVisible();

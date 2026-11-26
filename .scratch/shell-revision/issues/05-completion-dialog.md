@@ -12,9 +12,9 @@ The dialog is shown once per Run, and that fact is saved with the Run, not the R
 
 **Blocked by:** 01 (single-row header).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] e2e: passing the last Task of an Activity opens the dialog, focus is inside it, Escape or Close dismisses it, and focus returns to the page.
-- [ ] e2e: Download Report from the dialog saves the Report.
-- [ ] e2e: reloading the completed Run doesn't reopen the dialog, and the header button shows the completed label.
-- [ ] The dialog-shown flag survives `save()`/`restore()` (runner restore unit test) and doesn't appear in the Report.
+- [x] e2e: passing the last Task of an Activity opens the dialog, focus is inside it, Escape or Close dismisses it, and focus returns to the page.
+- [x] e2e: Download Report from the dialog saves the Report.
+- [x] e2e: reloading the completed Run doesn't reopen the dialog, and the header button shows the completed label.
+- [x] The dialog-shown flag survives `save()`/`restore()` (runner restore unit test) and doesn't appear in the Report.
