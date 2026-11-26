@@ -27,7 +27,7 @@ test('the Standalone page opens on the Synthesis Mode with every Control shown a
     const i = window.toolHost.instances[0];
     return i.controls.ids().map((id) => ({ id, locked: i.controls.get(id).isLocked(), hidden: i.controls.get(id).isHidden() }));
   });
-  expect(controls.map((c) => c.id).sort()).toEqual(['N', 'play']);
+  expect(controls.map((c) => c.id).sort()).toEqual(['N', 'amp', 'f0', 'offset', 'play', 'shift', 'waveform']);
   for (const c of controls) expect(c, c.id).toMatchObject({ locked: false, hidden: false });
 });
 
@@ -118,17 +118,109 @@ test('the Tool mounts several times on one page with independent State, and dest
   expect(result).toEqual({ a: 7, b: 9, bChanges: 0, aChanges: 0 });
 });
 
-test('State serializes and restores', async ({ page }) => {
+test('State serializes and restores N and the input', async ({ page }) => {
   await open(page);
   const restored = await page.evaluate(() => {
     const i = window.toolHost.instances[0];
-    i.controls.get('N').set(12);
+    const set = (vals) => { for (const [k, v] of Object.entries(vals)) i.controls.get(k).set(v); };
+    set({ N: 12, waveform: 'triangle', amp: 2, f0: 250, offset: 0.5, shift: 45 });
     const saved = JSON.parse(JSON.stringify(i.serialize()));
-    i.controls.get('N').set(40);
+    set({ N: 40, waveform: 'sine', amp: 1, f0: 1000, offset: 0, shift: 0 });
     i.restore(saved);
-    return i.state.snapshot().N;
+    return i.state.snapshot();
   });
-  expect(restored).toBe(12);
+  expect(restored).toEqual({ mode: 'synthesis', waveform: 'triangle', amp: 2, f0: 250, offset: 0.5, shift: 45, N: 12 });
+});
+
+test('restore ignores bad values and clamps out-of-range ones', async ({ page }) => {
+  await open(page);
+  const restored = await page.evaluate(() => {
+    const i = window.toolHost.instances[0];
+    i.restore({ waveform: 'pulse', amp: 'loud', shift: 9999, N: 7 });
+    return i.state.snapshot();
+  });
+  expect(restored).toMatchObject({ waveform: 'square', amp: 1, shift: 180, N: 7 });
+});
+
+// ── The input Controls (ticket 03) ──
+
+const waveSelect = (page) => page.getByRole('combobox', { name: 'Waveform', exact: true });
+const box = (page, name) => page.getByRole('spinbutton', { name, exact: true });
+const setBox = async (page, name, v) => { await box(page, name).fill(String(v)); await box(page, name).press('Enter'); };
+
+test('the input Controls are kit Controls with units, and the waveform select offers all four waves', async ({ page }) => {
+  await open(page);
+  const options = await waveSelect(page).locator('option').allTextContents();
+  expect(options.map((o) => o.toLowerCase())).toEqual(['sine', 'square', 'triangle', 'sawtooth']);
+  for (const name of ['Amplitude (V)', 'f₀ (Hz)', 'DC offset (V)', 'Shift (°)']) {
+    await expect(page.getByRole('slider', { name, exact: true }), name).toBeVisible();
+  }
+});
+
+test('changing the waveform redraws the input, the N = ∞ curve and the partial sum', async ({ page }) => {
+  await open(page);
+  await setN(page, 5);
+  const before = { input: await traceY(page, 'Input'), sum: await traceY(page, 'Partial sum') };
+  for (const w of ['sine', 'triangle', 'sawtooth']) {
+    await waveSelect(page).selectOption(w);
+    expect((await state(page)).waveform).toBe(w);
+    expect(await traceY(page, 'Input'), w).not.toEqual(before.input);
+    expect(await traceY(page, 'N = ∞ (infinite series)'), w).not.toEqual(before.input);
+    expect(await traceY(page, 'Partial sum'), w).not.toEqual(before.sum);
+  }
+});
+
+test('the sawtooth has even harmonics: at N = 2 the highest harmonic is not zero', async ({ page }) => {
+  await open(page);
+  await waveSelect(page).selectOption('sawtooth');
+  await setN(page, 2);
+  expect((await traceY(page, 'Highest harmonic')).some((v) => Math.abs(v) > 0.1)).toBe(true);
+});
+
+test('amplitude scales every curve', async ({ page }) => {
+  await open(page);
+  await setN(page, 3);
+  const sum1 = await traceY(page, 'Partial sum');
+  await setBox(page, 'Amplitude (V)', 2);
+  expect((await state(page)).amp).toBe(2);
+  const sum2 = await traceY(page, 'Partial sum');
+  sum2.forEach((v, k) => expect(v).toBeCloseTo(2 * sum1[k], 9));
+});
+
+test('f₀ changes the time axis: two periods of the new fundamental', async ({ page }) => {
+  await open(page);
+  await setBox(page, 'f₀ (Hz)', 250);
+  expect((await state(page)).f0).toBe(250);
+  const xMax = await page.evaluate(() => {
+    const plot = document.querySelector('[data-tool="fourier"] [data-display="time"] .js-plotly-plot');
+    return Math.max(...plot.data[0].x);
+  });
+  expect(xMax).toBeCloseTo(8, 9); // ms
+});
+
+test('a DC offset shifts every curve by the offset, and N = 0 is the offset alone', async ({ page }) => {
+  await open(page);
+  await setN(page, 3);
+  const sum0 = await traceY(page, 'Partial sum');
+  await setBox(page, 'DC offset (V)', 0.5);
+  expect((await state(page)).offset).toBe(0.5);
+  const sum = await traceY(page, 'Partial sum');
+  sum.forEach((v, k) => expect(v).toBeCloseTo(sum0[k] + 0.5, 9));
+  await setN(page, 0);
+  expect((await traceY(page, 'Partial sum')).every((v) => Math.abs(v - 0.5) < 1e-12)).toBe(true);
+});
+
+test('a shift delays the waveform: 90° moves the square a quarter period later', async ({ page }) => {
+  await open(page);
+  const input0 = await traceY(page, 'Input');
+  await setBox(page, 'Shift (°)', 90);
+  expect((await state(page)).shift).toBe(90);
+  const input = await traceY(page, 'Input');
+  expect(input).not.toEqual(input0);
+  // 2401 samples over two periods: a quarter period is 300 samples.
+  for (let k = 0; k + 300 < input.length; k += 37) {
+    if (Math.abs(input0[k]) === 1) expect(input[k + 300]).toBe(input0[k]);
+  }
 });
 
 test('the Display snapshot is a PNG', async ({ page }) => {

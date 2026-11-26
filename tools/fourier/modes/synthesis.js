@@ -1,14 +1,16 @@
 // Fourier Tool, Synthesis Mode: build a waveform from its harmonics.
 //
-// Setup: { waveform, amp, f0, offset, shift, N } (any subset; defaults below). Ticket 02 has
-//   the square wave only and no input Controls, so the input stays at its Setup.
+// Setup: { waveform, amp, f0, offset, shift, N } (any subset; defaults in ../inputs.js and below).
 // State (state.snapshot()): mode ('synthesis'), waveform, amp (V), f0 (Hz), offset (V),
 //   shift (°, of the fundamental), N (the highest harmonic number in the partial sum).
-// Controls: slider 'N' (integer 0 to 100); 'play' (play/pause button: get() is whether it is
+// Controls: the shared input Controls 'waveform', 'amp', 'f0', 'offset', 'shift' (../inputs.js);
+//   slider 'N' (integer 0 to 100); 'play' (play/pause button: get() is whether it is
 //   playing, set(true|false) plays or pauses). Play steps N up by one every PLAY_MS and stops
 //   at 100; pressing it at 100 starts over from 0. Lock, restore and destroy all stop it.
-// Displays: 'time' (the time plot: the input, the N = ∞ curve, the highest included harmonic
-//   drawn faintly, and the partial sum through N; time in ms, voltage in V).
+// Displays: 'time' (the time plot over two periods of f₀: the input, the N = ∞ curve, the
+//   highest included harmonic drawn faintly, and the partial sum through N; time in ms, voltage
+//   in V).
+// serialize() is { waveform, amp, f0, offset, shift, N }; restore() validates and clamps each.
 //
 // No readout shows an, bn, An or φn.
 
@@ -18,6 +20,7 @@ import { h, section, slider } from '../../../framework/v1/ui-kit.js';
 import { plotTheme } from '../../../framework/v1/plot-theme.js';
 import { plotlyMapping } from '../../../framework/v1/plot-map.js';
 import { MAX_N, harmonic, limit, partialSum, series } from '../engine.js';
+import { INPUT_DEFAULTS, INPUT_STATE_INFO, inputControls } from '../inputs.js';
 import { PLOT_CONFIG, Plotly, fitToBox, themedLayout } from '../plot.js';
 
 export const id = 'synthesis';
@@ -27,26 +30,20 @@ export const PLAY_MS = 250; // how often play steps N up
 const PERIODS = 2; // periods of f0 shown on the time axis
 const SAMPLES = 2401; // time samples across the plot (about 12 per cycle of the 100th harmonic)
 
-const DEFAULTS = { waveform: 'square', amp: 1, f0: 1000, offset: 0, shift: 0, N: 1 };
+const DEFAULTS = { ...INPUT_DEFAULTS, N: 1 };
 
 const STATE_INFO = {
   mode: { label: 'Mode', unit: '' },
-  waveform: { label: 'Waveform', unit: '' },
-  amp: { label: 'Amplitude', unit: 'V' },
-  f0: { label: 'Fundamental frequency f₀', unit: 'Hz' },
-  offset: { label: 'DC offset', unit: 'V' },
-  shift: { label: 'Shift', unit: '°' },
+  ...INPUT_STATE_INFO,
   N: { label: 'Highest harmonic N', unit: '' },
 };
-
-const INPUT_KEYS = ['waveform', 'amp', 'f0', 'offset', 'shift'];
 
 const toN = (v) => Math.min(MAX_N, Math.max(0, Math.round(Number(v))));
 
 export function mount(container, setup = {}) {
   const start = { ...DEFAULTS, ...setup };
-  const input = Object.fromEntries(INPUT_KEYS.map((k) => [k, start[k]]));
-  const coeffs = series(input); // the input's exact table through MAX_N
+  const inputs = inputControls(start, () => { redraw(); update(); });
+  let input = inputs.value();
   const changes = createEmitter();
   const theme = plotTheme(); // read per mount, so the plot follows the page's theme
   let N = Number.isFinite(Number(start.N)) ? toN(start.N) : DEFAULTS.N;
@@ -56,12 +53,19 @@ export function mount(container, setup = {}) {
   const getState = () => ({ mode: id, ...input, N });
 
   // ── Time axis (ms on the plot, s in the engine) and the curves that do not depend on N ──
-  const T = 1 / input.f0;
-  const ts = Array.from({ length: SAMPLES }, (_, i) => (i / (SAMPLES - 1)) * PERIODS * T);
-  const tMs = ts.map((t) => t * 1e3);
-  const inputY = ts.map((t) => limit(input, t)); // no filter yet: the input is its own N = ∞
-  const limitY = ts.map((t) => limit(input, t));
-  const span = Math.abs(input.amp) * 1.4 || 1;
+  // redraw() recomputes them from the input; update() redraws the plot for N.
+  let coeffs; let T; let ts; let tMs; let inputY; let limitY; let span;
+  function redraw() {
+    input = inputs.value();
+    coeffs = series(input); // the input's exact table through MAX_N
+    T = 1 / input.f0;
+    ts = Array.from({ length: SAMPLES }, (_, i) => (i / (SAMPLES - 1)) * PERIODS * T);
+    tMs = ts.map((t) => t * 1e3);
+    inputY = ts.map((t) => limit(input, t)); // no filter yet: the input is its own N = ∞
+    limitY = inputY;
+    span = Math.abs(input.amp) * 1.4 || 1;
+  }
+  redraw();
 
   // ── Controls ──
   const nSlider = slider({ id: 'N', name: 'N', label: 'N (highest harmonic)', min: 0, max: MAX_N, step: 1,
@@ -93,7 +97,7 @@ export function mount(container, setup = {}) {
     onLock: (locked) => { if (locked) stop(); } });
   renderPlay();
 
-  const controls = { N: nSlider, play: playCtl };
+  const controls = { ...inputs.controls, N: nSlider, play: playCtl };
 
   // ── Layout ──
   const TRACE_STYLE = {
@@ -111,8 +115,9 @@ export function mount(container, setup = {}) {
   const plotDiv = h('div', { style: 'width:100%;height:100%' });
   const root = h('div', { class: 'fw-tool', 'data-tool': 'fourier', 'data-mode': id },
     h('aside', { class: 'fw-controls' },
+      inputs.el,
       section('Partial sum', nSlider.el, playBtn,
-        h('div', { class: 'fw-hint' }, 'N counts harmonic numbers, so an even N of a square wave adds a zero term.')),
+        h('div', { class: 'fw-hint' }, 'N counts harmonic numbers, so an even N of a square or triangle wave adds a zero term.')),
       section('Legend',
         legendRow(TRACE_STYLE.input, 'Input'),
         legendRow(TRACE_STYLE.limit, 'N = ∞ (the infinite series)'),
@@ -160,9 +165,10 @@ export function mount(container, setup = {}) {
       snapshot: () => Plotly.toImage(plotDiv, { format: 'png', width: 720, height: 360 }),
       toScreen,
     }],
-    serialize: () => ({ N }),
+    serialize: () => ({ ...input, N }),
     restore(saved = {}) {
       stop();
+      inputs.restore(saved);
       nSlider.set(Number.isFinite(Number(saved.N)) ? toN(saved.N) : N);
     },
     resize: box.fit,
