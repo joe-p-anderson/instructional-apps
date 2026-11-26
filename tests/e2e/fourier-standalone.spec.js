@@ -143,7 +143,7 @@ test('restore ignores bad values and clamps out-of-range ones', async ({ page })
   expect(restored).toMatchObject({ waveform: 'square', amp: 1, shift: 180, N: 7 });
 });
 
-// ── The input Controls (ticket 03) ──
+// ── The input Controls ──
 
 const waveSelect = (page) => page.getByRole('combobox', { name: 'Waveform', exact: true });
 const box = (page, name) => page.getByRole('spinbutton', { name, exact: true });

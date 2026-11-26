@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { readReport } from '../../framework/v1/report.js';
 
-// The Activity "Frequency Domain: Fourier Series" on the fourier Tool (tickets 07 and 08: Parts 1–5).
+// The Activity "Frequency Domain: Fourier Series" on the fourier Tool.
 
 const PAGE = '/tools/fourier/activities/fourier-series.html';
 
@@ -176,6 +176,13 @@ test('a full Run passes every Task through Part 5 and downloads a Report with th
   expect(both.snapshots).toEqual([
     { display: 'time', png: expect.stringMatching(/^data:image\/png;base64,.{100,}/) },
   ]);
+  // A coefficient Task's Report leaves out the spectrum it hid; the Task after it, which shows
+  // the spectrum, carries it.
+  const snapshotIds = (p, t) => report.parts[p].tasks.find((x) => x.id === t).attempts.find((a) => a.passed)
+    .snapshots.map((s) => s.display);
+  expect(snapshotIds(1, 'ab-1')).toEqual(['product']);
+  expect(snapshotIds(2, 'A-phi-square')).toEqual(['product']);
+  expect(snapshotIds(2, 'pattern')).toEqual(['product', 'spectrum']);
   const why = report.parts[4].tasks.find((t) => t.id === 'why-both').attempts[0];
   expect(why.answers['why-both']).toBe('Each harmonic must be scaled and delayed.');
 });

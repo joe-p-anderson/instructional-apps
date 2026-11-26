@@ -1,4 +1,4 @@
-// The RC filter in the Fourier Tool's Synthesis Mode (ticket 04).
+// The RC filter in the Fourier Tool's Synthesis Mode.
 import { test, expect } from '@playwright/test';
 
 const PAGE = '/tools/fourier/';

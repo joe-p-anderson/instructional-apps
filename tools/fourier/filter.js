@@ -9,11 +9,13 @@
 //   'applyPhase'  toggle "Apply phase shift": shift each harmonic by ∠H
 // Readouts (UI-kit metrics, also in State): 'fcRatio' f_c/f₀, and 'tau' τ = 1/(2π f_c) in ms.
 //
-// filterControls(start, onChange) returns { controls, el, value(), state(f0), update(f0), restore(saved) }:
+// filterControls(start, onChange) returns
+// { controls, el, value(), settings(), state(f0), update(f0), restore(saved) }:
 //   controls  { filter, fc, applyGain, applyPhase }, to spread into the Mode's controlRegistry
 //   el        the 'Filter' section holding them and the readouts
 //   value()   the filter as the engine takes it: { type, fc, gain, phase }
-//   state(f0) the State entries { filter, fc, applyGain, applyPhase, fcRatio, tau }
+//   settings() the Control values { filter, fc, applyGain, applyPhase }, as serialize() keeps them
+//   state(f0) the State entries: settings() plus the readouts fcRatio and tau
 //   update(f0) refreshes the readouts for the input's f₀ (call it whenever f₀ or f_c changes)
 //   restore(saved)  sets each saved field it can, then calls onChange once
 // onChange(filter) runs after any change, with value().
@@ -33,7 +35,8 @@ export const FILTER_STATE_INFO = {
   tau: { label: 'Time constant τ', unit: 'ms' },
 };
 
-const TYPE_LABELS = { off: 'Off', lowpass: 'RC low-pass', highpass: 'RC high-pass' };
+/** Each filter type's name, as the select and the Displays' notes show it. */
+export const FILTER_LABELS = { off: 'Off', lowpass: 'RC low-pass', highpass: 'RC high-pass' };
 
 const tauMs = (fc) => 1e3 / (2 * Math.PI * fc);
 const sig3 = (v) => Number(v.toPrecision(3)).toString();
@@ -45,7 +48,7 @@ export function filterControls(start = {}, onChange = () => {}) {
 
   const filter = select({
     id: 'filter', name: 'Filter', label: 'Filter',
-    options: FILTER_TYPES.map((t) => ({ value: t, label: TYPE_LABELS[t] })),
+    options: FILTER_TYPES.map((t) => ({ value: t, label: FILTER_LABELS[t] })),
     value: FILTER_TYPES.includes(start.filter) ? start.filter : FILTER_DEFAULTS.filter,
     onChange: changed,
   });
@@ -66,9 +69,11 @@ export function filterControls(start = {}, onChange = () => {}) {
   function value() {
     return { type: filter.get(), fc: fc.get(), gain: applyGain.get(), phase: applyPhase.get() };
   }
+  function settings() {
+    return Object.fromEntries(FILTER_KEYS.map((k) => [k, controls[k].get()]));
+  }
   function state(f0) {
-    return { ...Object.fromEntries(FILTER_KEYS.map((k) => [k, controls[k].get()])),
-      fcRatio: fc.get() / f0, tau: tauMs(fc.get()) };
+    return { ...settings(), fcRatio: fc.get() / f0, tau: tauMs(fc.get()) };
   }
   function update(f0) {
     const s = state(f0);
@@ -92,5 +97,5 @@ export function filterControls(start = {}, onChange = () => {}) {
 
   const el = section('Filter', filter.el, fc.el, applyGain.el, applyPhase.el,
     readouts.fcRatio.el, readouts.tau.el);
-  return { controls, el, value, state, update, restore };
+  return { controls, el, value, settings, state, update, restore };
 }

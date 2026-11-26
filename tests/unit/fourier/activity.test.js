@@ -95,6 +95,8 @@ test('the square N Task passes near the smallest N within 5% and fails far from 
   const t = tools[part1.id];
   for (const [state, passed] of [
     [{ waveform: 'square', N: 5 }, false],
+    [{ waveform: 'square', N: 15 }, false],
+    [{ waveform: 'square', N: 18 }, false],
     [{ waveform: 'square', N: 60 }, false],
     [{ waveform: 'triangle', N: 21 }, false],
     [{ waveform: 'square', N: 19 }, true],
@@ -201,6 +203,8 @@ test('Part 3: hand-computed Aₙ and φₙ of the square wave pass, with phases 
     [{ ...ok, phi1: '270', phi3: '-450', phi5: '-91.5' }, true],
     [{ ...ok, A3: '0.4' }, false],         // 6% low
     [{ ...ok, A2: '0.1' }, false],         // even terms are zero
+    [{ ...ok, A2: '0.005', A4: '-0.01' }, true], // zero within 0.01 V
+    [{ ...ok, A4: '0.02' }, false],
     [{ ...ok, phi3: '90' }, false],
   ]) {
     const { runner } = start();
@@ -242,11 +246,12 @@ test('the answer keys agree with the engine: series() for Aₙ, φₙ; productAv
   }
 });
 
-test('amplitude answers use a 2% relative tolerance, and phases ±2° mod 360', () => {
+test('amplitude answers use a 2% relative tolerance (0.01 V absolute for a zero), and phases ±2° mod 360', () => {
   const numeric = allQuestions().filter((q) => q.kind === 'numeric');
   assert.ok(numeric.length >= 12);
   for (const q of numeric) {
     if (q.id.startsWith('phi')) assert.deepEqual([q.tol, q.modulus, q.relTol], [2, 360, undefined], q.id);
+    else if (decodeKey(q.answer) === 0) assert.deepEqual([q.tol, q.relTol, q.modulus], [0.01, undefined, undefined], q.id);
     else assert.deepEqual([q.relTol, q.tol, q.modulus], [0.02, undefined, undefined], q.id);
   }
 });

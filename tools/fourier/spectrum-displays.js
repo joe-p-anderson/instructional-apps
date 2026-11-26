@@ -1,12 +1,15 @@
-// The Analysis Mode's spectrum and filter-curve Displays (ticket 06), each a Plotly plot in its
-// own .fw-display box.
+// The Analysis Mode's spectrum and filter-curve Displays, each a Plotly plot in its own
+// .fw-display box.
 //
 // Each builder takes the plot theme and returns
 //   { el, control, display, update(input, filter, source), fit, destroy }:
 //   el        the .fw-display box, to place in the Mode's .fw-displays column
-//   control   a Control with the Display's id, whose only job is hide()/show(): an Activity's
-//             show and hide lists name Control ids, so this is how a Task hides the Display
-//   display   the v1 Display { id, label, snapshot, toScreen } (snapshot works while hidden)
+//   control   a Control with the Display's id, whose only job is hide()/show(). It exists because
+//             an Activity's show and hide lists name Control ids and the v1 framework has no way
+//             to hide a Display itself, so this is how a Task hides the Display (the spectrum,
+//             while the student computes the coefficients it would give away)
+//   display   the v1 Display { id, label, snapshot, toScreen } (snapshot works while hidden; the
+//             Mode leaves a hidden Display out of its displays list, so no Report carries it)
 //   update    redraws for the input, the filter (engine form { type, fc, gain, phase }) and the
 //             spectrum source ('input' | 'output'; the filter curves ignore it)
 //
@@ -23,16 +26,16 @@ import { createControl } from '../../framework/v1/control.js';
 import { h } from '../../framework/v1/ui-kit.js';
 import { plotlyMapping } from '../../framework/v1/plot-map.js';
 import { SPECTRUM_N, filterResponse, spectrum } from './engine.js';
-import { PLOT_CONFIG, Plotly, fitToBox, themedLayout } from './plot.js';
+import { FILTER_LABELS } from './filter.js';
+import { PLOT_CONFIG, Plotly, fitToBox, line, themedLayout } from './plot.js';
 
 const STEM_DX = 0.18; // how far right of its bar each φₙ stem sits (in n)
 const CURVE_SAMPLES = 241;
-const TYPE_LABELS = { lowpass: 'RC low-pass', highpass: 'RC high-pass' };
 
 /** One Display box with a plot, its hide-only Control and its v1 Display. */
 function plotBox(id, label, theme) {
-  const plotDiv = h('div', { style: 'width:100%;height:100%' });
-  const el = h('div', { class: 'fw-display', 'data-display': id, style: 'position:relative' }, plotDiv);
+  const plotDiv = h('div', { class: 'fo-plot' });
+  const el = h('div', { class: 'fw-display fo-display-plot', 'data-display': id }, plotDiv);
   const control = createControl({ id, label, el, get: () => !control.isHidden() });
   const { toScreen } = plotlyMapping(plotDiv);
   const display = {
@@ -92,7 +95,7 @@ export function spectrumDisplay(theme) {
         hoverinfo: 'skip' },
     ];
     const note = source !== 'output' ? 'Input'
-      : `Filtered output (${TYPE_LABELS[filter?.type] ?? 'the filter is off'})`;
+      : `Filtered output (${filter?.type && filter.type !== 'off' ? FILTER_LABELS[filter.type] : 'the filter is off'})`;
     box.draw(data, twinLayout(theme, {
       xTitle: 'Harmonic n', xRange: [-0.6, SPECTRUM_N + 0.6], dtick: 1, note,
       y1: { title: 'Aₙ (V)', range: [0, top], color: STYLE.bar },
@@ -106,15 +109,12 @@ export function spectrumDisplay(theme) {
 export function filterCurveDisplay(theme) {
   const box = plotBox('filter-curves', 'Filter curves', theme);
   const STYLE = { gain: theme.traces[0], phase: theme.traces[1], fc: theme.traces[2] };
-  const offNote = h('div', {
-    class: 'fw-hint',
-    style: 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;text-align:center;padding:12px',
-  }, 'The filter is off: choose RC low-pass or RC high-pass to see its gain and phase curves.');
+  const offNote = h('div', { class: 'fw-hint fo-off-note' }, 'The filter is off: choose RC low-pass or RC high-pass to see its gain and phase curves.');
   box.el.append(offNote);
 
   function update(input, filter) {
     const on = filterResponse(filter, 1) !== null;
-    offNote.style.display = on ? 'none' : 'flex';
+    offNote.hidden = on;
     box.plotDiv.style.visibility = on ? 'visible' : 'hidden';
     if (!on) { box.draw([], themedLayout(theme, { xTitle: 'Frequency f (Hz)', yTitle: '' })); return; }
 
@@ -124,7 +124,6 @@ export function filterCurveDisplay(theme) {
     const fs = Array.from({ length: CURVE_SAMPLES }, (_, i) => 10 ** (lo + ((hi - lo) * i) / (CURVE_SAMPLES - 1)));
     const curve = fs.map((f) => filterResponse(filter, f));
     const atH = harmonics.map((f) => filterResponse(filter, f));
-    const line = (name, x, y, style, extra = {}) => ({ name, x, y, mode: 'lines', line: style, hoverinfo: 'skip', ...extra });
     const dots = (name, y, color, extra = {}) => ({ name, x: harmonics, y, mode: 'markers', hoverinfo: 'skip',
       marker: { color, size: 7, line: { color: theme.background, width: 1 } }, ...extra });
     const data = [
@@ -136,7 +135,7 @@ export function filterCurveDisplay(theme) {
       dots('Harmonics on the phase', atH.map((r) => r.phase), STYLE.phase, { yaxis: 'y2' }),
     ];
     const applied = [filter.gain && 'gain', filter.phase && 'phase'].filter(Boolean);
-    const note = `${TYPE_LABELS[filter.type]}; dots at n f<sub>0</sub>${applied.length === 2 ? '' : applied.length
+    const note = `${FILTER_LABELS[filter.type]}; dots at n f<sub>0</sub>${applied.length === 2 ? '' : applied.length
       ? ` (only the ${applied[0]} is applied)` : ' (neither is applied)'}`;
     box.draw(data, twinLayout(theme, {
       xTitle: 'Frequency f (Hz)', xType: 'log', xRange: [lo, hi], note,
