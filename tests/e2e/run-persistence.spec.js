@@ -18,6 +18,12 @@ async function setNumber(scope, name, value) {
   await box.press('Enter');
 }
 
+/** Start over lives in the header's ⋯ menu. */
+async function startOver(page) {
+  await page.getByRole('button', { name: 'More actions' }).click();
+  await page.getByRole('menuitem', { name: 'Start over' }).click();
+}
+
 const part = (page, n) => page.getByRole('tabpanel', { name: new RegExp(`Part ${n}`) });
 const run = (page) => page.evaluate(() => window.activityHost.runner.run);
 
@@ -55,12 +61,12 @@ test('Start over, once confirmed, discards the Run and begins a new one', async 
 
   // Dismissing the confirmation keeps the Run.
   page.once('dialog', (d) => d.dismiss());
-  await page.getByRole('button', { name: 'Start over' }).click();
+  await startOver(page);
   await expect(p1.getByRole('region', { name: 'Task 1.1' })).toHaveAttribute('data-status', 'passed');
   expect(await run(page)).toEqual(first);
 
   page.once('dialog', (d) => d.accept());
-  await page.getByRole('button', { name: 'Start over' }).click();
+  await startOver(page);
   await page.waitForFunction(() => window.activityHost && !window.activityHost.runner.run);
   await expect(page.getByRole('textbox', { name: 'Your name' })).toBeVisible();
   await enterName(page, 'Ada Lovelace');

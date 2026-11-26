@@ -5,8 +5,10 @@
 //   Task cards and a progress indicator to each Part and a progress badge ("1/3") to each Part
 //   tab, and shows a name gate before Part 1. The Tool's panel layout (tool.js) places them.
 //   The Run autosaves to `storage` (default localStorage; null disables it), keyed by Activity
-//   id, and a saved Run is restored on load in place of the name gate. "Start over" (confirmed)
-//   discards the saved Run and reloads the page for a new one.
+//   id, and a saved Run is restored on load in place of the name gate.
+//   The header shows the Activity's title and course, the Part tabs, then the actions: the
+//   student's name, Download Report and the ⋯ menu, which holds Start over (confirmed; discards
+//   the saved Run and reloads the page for a new one) and Print.
 //   All judging, ordering and Control exposure come from the core; this layer only renders
 //   what runner.parts()/runner.task() report and forwards Start and Submit.
 //   Once the Run starts, a Download Report button saves runner.report() as a JSON file.
@@ -19,7 +21,7 @@
 import { browserStorage, runStore } from './persistence.js';
 import { createRunner } from './runner/index.js';
 import { reportFilename } from './report.js';
-import { createFrame, createTabs } from './tool-host.js';
+import { createFrame, createTabs, printItem } from './tool-host.js';
 import { defineTool } from './tool.js';
 import { h } from './ui-kit.js';
 import { typeset } from './vendor.js';
@@ -29,7 +31,7 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
   if (activity.tool !== tool.id) throw new Error(`Activity "${activity.id}" is for Tool "${activity.tool}", not "${tool.id}".`);
   if (!document.title) document.title = activity.title;
 
-  const frame = createFrame(root, { title: activity.title, subtitle: activity.course, layout: tool.layout,
+  const frame = createFrame(root, { title: activity.title, course: activity.course, layout: tool.layout,
     minDisplayWidth: tool.minDisplayWidth, tasks: true });
   const host = { tool, runner: null, instances: {}, activePart: null, select: null, render };
 
@@ -70,14 +72,16 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
 
   // ── Name gate: the Part tabs stay hidden until a name starts the Run ──
   const student = h('div', { class: 'fw-student', hidden: true });
-  const startOver = h('button', { type: 'button', class: 'fw-button fw-start-over', hidden: true }, 'Start over');
-  startOver.addEventListener('click', () => {
+  const download = reportButton(host);
+  frame.addAction(student);
+  frame.addAction(download);
+  const startOver = frame.menu.add({ id: 'start-over', label: 'Start over', onSelect: () => {
     if (!confirm('Start over? This discards your progress and begins a new Run; you will enter your name again.')) return;
     store.clear();
     location.reload();
-  });
-  const download = reportButton(host);
-  frame.header.append(student, download, startOver);
+  } });
+  startOver.hidden = true;
+  frame.menu.add(printItem());
   frame.tablist.hidden = true;
   frame.panels.hidden = true;
 
@@ -107,7 +111,7 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
     for (const view of Object.values(views)) for (const card of Object.values(view.cards)) card.restore();
     enterRun();
   } else {
-    frame.app.insertBefore(gate, frame.tablist);
+    frame.app.insertBefore(gate, frame.panels);
     nameInput.focus();
   }
 

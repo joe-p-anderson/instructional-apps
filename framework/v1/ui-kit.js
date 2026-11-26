@@ -168,3 +168,70 @@ export function section(title, ...children) {
 
 // The draggable handle (1-D and 2-D) and the rotary knob live in handle.js.
 export { handle, knob } from './handle.js';
+
+let menuCount = 0;
+
+/**
+ * Menu button (the WAI-ARIA menu button pattern): a button that opens a list of actions.
+ * menuButton({ label = '⋯', name = 'More actions', items = [] })
+ *   items: [{ id, label, onSelect }]. Add more later with add(item, { before }), where before is
+ *   the id of an item to insert ahead of (default: at the end).
+ *   Returns { el, button, menu, add(item, opts) -> menuitem element, item(id) -> element, open(), close() }.
+ *   Hide an item with item(id).hidden = true; the keyboard skips hidden items.
+ * Keys: Enter, Space or ArrowDown on the button open it on the first item, ArrowUp on the last;
+ * ArrowDown/ArrowUp (wrapping), Home and End move; Escape closes it and returns focus to the
+ * button; Tab closes it. Choosing an item closes the menu and returns focus to the button before
+ * onSelect runs, so a confirm() or print() it opens starts from the button. A click outside closes it.
+ */
+export function menuButton({ label = '⋯', name = 'More actions', items = [] } = {}) {
+  const menuId = `fw-menu-${++menuCount}`;
+  const button = h('button', { type: 'button', class: 'fw-button fw-menu-button', 'aria-label': name, title: name,
+    'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-controls': menuId }, label);
+  const menu = h('div', { class: 'fw-menu', role: 'menu', id: menuId, 'aria-label': name, hidden: true });
+  const el = h('div', { class: 'fw-menu-wrap' }, button, menu);
+  const byId = {};
+
+  const visible = () => [...menu.children].filter((i) => !i.hidden);
+  const focusAt = (i) => { const list = visible(); if (list.length) list[(i + list.length) % list.length].focus(); };
+  const isOpen = () => !menu.hidden;
+
+  function open(at = 0) {
+    menu.hidden = false;
+    button.setAttribute('aria-expanded', 'true');
+    document.addEventListener('pointerdown', outside, true);
+    focusAt(at);
+  }
+  function close(returnFocus = false) {
+    if (!isOpen()) return;
+    menu.hidden = true;
+    button.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', outside, true);
+    if (returnFocus) button.focus();
+  }
+  function outside(e) { if (!el.contains(e.target)) close(); }
+
+  button.addEventListener('click', () => (isOpen() ? close() : open(0)));
+  button.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    open(e.key === 'ArrowDown' ? 0 : -1);
+  });
+  menu.addEventListener('keydown', (e) => {
+    const i = visible().indexOf(document.activeElement);
+    const moves = { ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: -1 };
+    if (e.key in moves) { e.preventDefault(); focusAt(moves[e.key]); }
+    else if (e.key === 'Escape') { e.preventDefault(); close(true); }
+    else if (e.key === 'Tab') close();
+  });
+
+  function add({ id, label: text, onSelect = () => {} }, { before } = {}) {
+    const item = h('button', { type: 'button', class: 'fw-menu-item', role: 'menuitem', tabindex: '-1' }, text);
+    item.addEventListener('click', () => { close(true); onSelect(); });
+    menu.insertBefore(item, (before && byId[before]) || null);
+    byId[id] = item;
+    return item;
+  }
+  for (const item of items) add(item);
+
+  return { el, button, menu, add, item: (id) => byId[id], open, close: () => close(true) };
+}

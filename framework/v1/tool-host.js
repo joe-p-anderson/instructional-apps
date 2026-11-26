@@ -1,7 +1,8 @@
 // Tool host (framework v1): mounts a Tool into a page frame with one tab per Mode.
 //
-// mountStandalone(tool, root, { setups, subtitle })
+// mountStandalone(tool, root, { setups, storage })
 //   Standalone mode: no Activity. One tab per Mode, every Control shown and unlocked.
+//   The header shows the Tool's title only; its ⋯ menu holds Copy share link and Print.
 //   setups: optional { [modeId]: Setup } passed to each mount.
 //   storage: Storage-like object for autosave (default localStorage; null disables it).
 //   Each Mode's State autosaves on every change and restores on load (persistence.js).
@@ -13,12 +14,18 @@
 // look the same as Standalone Mode tabs.
 
 import { defineTool, DEFAULT_MIN_DISPLAY_WIDTH, LAYOUTS } from './tool.js';
-import { h } from './ui-kit.js';
+import { h, menuButton } from './ui-kit.js';
 import { browserStorage, standaloneStore, shareHash, readShareHash } from './persistence.js';
 
 /**
- * Header + tab strip + panel area, laid out by the Tool's panel layout (tool.js): .fw-app gets
- * the class fw-layout-<layout> and theme.css does the rest. Returns elements to fill.
+ * Single-row header + panel area, laid out by the Tool's panel layout (tool.js): .fw-app gets
+ * the class fw-layout-<layout> and theme.css does the rest.
+ * The header row holds, in order: the title, the course in dim text (optional), the tablist,
+ * and the actions cluster, which ends with the ⋯ menu (ui-kit menuButton). The tablist wraps
+ * onto more lines when its tabs don't fit; the title and actions never wrap.
+ * Returns { app, header, tablist, panels, actions, addAction(el), menu, updateForm(), onFormChange(fn) }:
+ *   addAction(el) puts el in the actions cluster, after earlier ones and before the ⋯ menu;
+ *   menu.add({ id, label, onSelect }) adds a ⋯ menu item.
  *
  * tasks: true when the panels hold Task columns (the Activity runner). In the `side` layout the
  * frame then decides which form the Tasks take and marks it on .fw-app as data-side-form:
@@ -27,19 +34,24 @@ import { browserStorage, standaloneStore, shareHash, readShareHash } from './per
  * when the panel area resizes and on updateForm() (call it after showing another panel), and
  * onFormChange(fn) hears fn(form) on each switch. Nothing is remounted: theme.css restyles.
  */
-export function createFrame(root, { title, subtitle, layout = LAYOUTS[0], minDisplayWidth = DEFAULT_MIN_DISPLAY_WIDTH, tasks = false }) {
+export function createFrame(root, { title, course, layout = LAYOUTS[0], minDisplayWidth = DEFAULT_MIN_DISPLAY_WIDTH, tasks = false }) {
   document.documentElement.classList.add('fw-root');
   const tablist = h('div', { class: 'fw-tabs', role: 'tablist' });
   const panels = h('div', { class: 'fw-tabpanel-area', style: 'flex:1;min-height:0;display:flex;flex-direction:column' });
+  const menu = menuButton();
+  const actions = h('div', { class: 'fw-header-actions' }, menu.el);
   const header = h('header', { class: 'fw-header' },
     h('div', { class: 'fw-header-titles' },
       h('h1', { class: 'fw-title' }, title),
-      subtitle ? h('div', { class: 'fw-subtitle' }, subtitle) : null));
-  const app = h('div', { class: `fw-app fw-layout-${layout}` }, header, tablist, panels);
+      course ? h('span', { class: 'fw-course' }, course) : null),
+    tablist,
+    actions);
+  const app = h('div', { class: `fw-app fw-layout-${layout}` }, header, panels);
   root.replaceChildren(app);
 
   const listeners = new Set();
-  const frame = { app, header, tablist, panels, updateForm() {}, onFormChange: (fn) => (listeners.add(fn), () => listeners.delete(fn)) };
+  const addAction = (el) => { actions.insertBefore(el, menu.el); return el; };
+  const frame = { app, header, tablist, panels, actions, addAction, menu, updateForm() {}, onFormChange: (fn) => (listeners.add(fn), () => listeners.delete(fn)) };
   if (layout !== 'side' || !tasks) return frame;
 
   app.dataset.sideForm = 'column';
@@ -58,6 +70,11 @@ export function createFrame(root, { title, subtitle, layout = LAYOUTS[0], minDis
   };
   if (typeof ResizeObserver === 'function') new ResizeObserver(() => frame.updateForm()).observe(panels);
   return frame;
+}
+
+/** The ⋯ menu's Print item, shared by Standalone mode and the Activity runner. */
+export function printItem() {
+  return { id: 'print', label: 'Print', onSelect: () => window.print() };
 }
 
 /**
@@ -90,10 +107,10 @@ export function createTabs(frame, tabs, onSelect = () => {}) {
   return { panels, buttons, select };
 }
 
-export function mountStandalone(definition, root, { setups = {}, subtitle = 'Standalone', storage = browserStorage() } = {}) {
+export function mountStandalone(definition, root, { setups = {}, storage = browserStorage() } = {}) {
   const tool = defineTool(definition);
   if (!document.title) document.title = tool.title;
-  const frame = createFrame(root, { title: tool.title, subtitle, layout: tool.layout });
+  const frame = createFrame(root, { title: tool.title, layout: tool.layout });
   const host = { tool, modes: tool.modes, instances: [], activeMode: null, select: null, shareLink };
 
   // A share link wins over autosave, once: the hash is then cleared so a reload shows
@@ -117,7 +134,8 @@ export function mountStandalone(definition, root, { setups = {}, subtitle = 'Sta
     instance.state.onChange(() => store.save(instance.serialize()));
     host.instances.push(instance);
   }
-  frame.header.append(shareBox(shareLink));
+  frame.menu.add(shareItem(frame, shareLink));
+  frame.menu.add(printItem());
   host.select = tabs.select;
   tabs.select(tool.modes.some((m) => m.id === shared?.mode) ? shared.mode : tool.modes[0].id);
   return host;
@@ -130,16 +148,24 @@ export function mountStandalone(definition, root, { setups = {}, subtitle = 'Sta
   }
 }
 
-/** "Copy share link" button plus a read-only box showing the link, so it can be copied by hand too. */
-function shareBox(shareLink) {
-  const field = h('input', { type: 'text', readonly: true, class: 'fw-share-link', 'aria-label': 'Share link',
-    placeholder: 'Share link', onfocus: (e) => e.target.select() });
-  const status = h('span', { class: 'fw-share-status', role: 'status' });
-  const copy = h('button', { type: 'button', class: 'fw-button', onclick: async () => {
-    field.value = shareLink();
-    field.select();
-    try { await navigator.clipboard.writeText(field.value); status.textContent = 'Copied'; }
-    catch { status.textContent = 'Copy the link'; }
-  } }, 'Copy share link');
-  return h('div', { class: 'fw-share' }, copy, field, status);
+/**
+ * The ⋯ menu's "Copy share link" item: copies the link and says "Link copied" in the header for a
+ * few seconds. Where the clipboard is refused (no permission, not a secure context) the link is
+ * offered in a prompt to copy by hand.
+ */
+function shareItem(frame, shareLink) {
+  const status = frame.addAction(h('span', { class: 'fw-share-status', role: 'status' }));
+  let timer;
+  return { id: 'share', label: 'Copy share link', onSelect: async () => {
+    const link = shareLink();
+    try {
+      await navigator.clipboard.writeText(link);
+    } catch {
+      window.prompt('Copy this share link:', link);
+      return;
+    }
+    status.textContent = 'Link copied';
+    clearTimeout(timer);
+    timer = setTimeout(() => { status.textContent = ''; }, 4000);
+  } };
 }
