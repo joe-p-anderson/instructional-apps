@@ -1,7 +1,7 @@
 // Fourier engine (pure maths, no DOM): the Fourier Tool's only source of signal maths.
 //
 // Input: { waveform, amp, f0, offset, shift }
-//   waveform  'square' (more arrive with ticket 03)
+//   waveform  'sine' | 'square' | 'triangle' | 'sawtooth' (WAVEFORMS)
 //   amp       V, the waveform's peak (a ±amp swing about the offset)
 //   f0        Hz, the fundamental frequency
 //   offset    V, the DC offset
@@ -11,9 +11,18 @@
 //   v(t) = dc + Σ amp·cos(2π n f0 t + phase)      (cos convention, phase in degrees, amp ≥ 0)
 // Tables are exact and unsmoothed, so partial sums show the Gibbs overshoot.
 //
-// Alignments (shift = 0):
-//   square  +amp for the first half period, −amp for the second: An = 4·amp/(πn) for odd n at
-//           φn = −90°, and An = 0 for even n.
+// Alignments (shift = 0): every waveform starts at its mean, rising, at t = 0 (as bench-scope's
+// generator does), so all of them are odd functions of t and every φn is ±90°.
+//   sine      amp·sin(2π f0 t): A1 = amp at φ1 = −90°, and An = 0 for n ≥ 2.
+//   square    +amp for the first half period, −amp for the second: An = 4·amp/(πn) for odd n at
+//             φn = −90°, and An = 0 for even n.
+//   triangle  rises from 0 to +amp at T/4, falls to −amp at 3T/4, back to 0 at T:
+//             An = 8·amp/(π²n²) for odd n, at φn = −90° for n = 1, 5, 9, … and +90° for
+//             n = 3, 7, 11, …; An = 0 for even n.
+//   sawtooth  ramps from 0 up to +amp just before T/2, jumps to −amp, ramps back to 0 at T:
+//             An = 2·amp/(πn) for every n, at φn = −90° for odd n and +90° for even n.
+// Square and sawtooth jump, so their terms fall as 1/n; the triangle only has corners, so its
+// terms fall as 1/n².
 // A shift of Δφ degrees adds −nΔφ to each φn; the DC offset is only the n = 0 term.
 //
 // Time t is in seconds throughout.
@@ -29,14 +38,24 @@ function wrapDeg(deg) {
 }
 
 // Each waveform's table at amp = 1, shift = 0: n -> { amp, phase (degrees) }.
+const ZERO = { amp: 0, phase: 0 };
 const UNIT_TERMS = {
-  square: (n) => (n % 2 ? { amp: 4 / (Math.PI * n), phase: -90 } : { amp: 0, phase: 0 }),
+  sine: (n) => (n === 1 ? { amp: 1, phase: -90 } : ZERO),
+  square: (n) => (n % 2 ? { amp: 4 / (Math.PI * n), phase: -90 } : ZERO),
+  triangle: (n) => (n % 2 ? { amp: 8 / (Math.PI * n) ** 2, phase: n % 4 === 1 ? -90 : 90 } : ZERO),
+  sawtooth: (n) => ({ amp: 2 / (Math.PI * n), phase: n % 2 ? -90 : 90 }),
 };
 
 // Each waveform over one period at amp = 1, shift = 0: p = t·f0 in [0, 1) -> value.
 const UNIT_SHAPES = {
+  sine: (p) => Math.sin(TAU * p),
   square: (p) => (p === 0 || p === 0.5 ? 0 : p < 0.5 ? 1 : -1),
+  triangle: (p) => (p < 0.25 ? 4 * p : p < 0.75 ? 2 - 4 * p : 4 * p - 4),
+  sawtooth: (p) => (p === 0.5 ? 0 : p < 0.5 ? 2 * p : 2 * p - 2),
 };
+
+/** The waveforms the engine knows, in the order the waveform select lists them. */
+export const WAVEFORMS = Object.keys(UNIT_TERMS);
 
 function check(waveform) {
   if (!UNIT_TERMS[waveform]) throw new Error(`fourier engine: unknown waveform '${waveform}'`);
