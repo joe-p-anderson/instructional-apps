@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<!--
+  Test fixture: an Activity on the oscilloscope with seven Parts whose long titles don't fit in
+  the header row at 1366 px, so the Part tabs collapse to their numbers (tests/e2e/part-tabs.spec.js).
+  Each Part has one Task whose Condition holds at the Setup, so each Submit passes.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Many Parts fixture</title>
+<link rel="stylesheet" href="../../../framework/v1/theme.css">
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+  import oscilloscope from '../../../tools/oscilloscope/oscilloscope.js';
+  import { mountActivity } from '../../../framework/v1/activity-ui.js';
+
+  const setup = { Va: 2, f: 0.5, Dt: 0.25 };
+  const TITLES = ['Phase Shift Between Traces', 'Period and Amplitude', 'Frequency From the Period',
+    'Peak-to-Peak Voltage', 'Reading the Time Base', 'Phase From a Time Delay', 'Lissajous Figures'];
+  const activity = {
+    id: 'many-parts-fixture', version: 1, title: 'Many Parts fixture', course: 'PHY 0000', tool: 'oscilloscope',
+    parts: TITLES.map((t, i) => ({ id: `p${i + 1}`, title: `Part ${i + 1}: ${t}`, mode: 'dual-trace', setup,
+      tasks: [{ id: `t${i + 1}`, title: 'Press Submit', prompt: 'Press Submit.', points: 1,
+        condition: { state: 'phi', target: Math.PI / 4, tol: 0.05 } }] })),
+  };
+  window.activityHost = mountActivity(oscilloscope, activity, document.getElementById('app'));
+</script>
+</body>
+</html>

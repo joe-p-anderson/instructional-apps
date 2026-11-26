@@ -106,6 +106,17 @@ The frame returns `addAction(el)`, which adds to the actions cluster before the 
 `add({ id, label, onSelect }, { before })` adds a menu item. The ⋯ menu opens with Enter, Space or the arrow
 keys, moves with the arrow keys, Home and End, and closes with Escape, returning focus to its button.
 
+**Collapsed Part tabs.** When an Activity's Part tabs, with their full titles, would wrap onto a second line or
+overflow the header row, they collapse: every inactive tab shows just its Part number ("1", "2", …) with its
+progress badge, and the active tab shows its full title. The fit is measured with the full titles and re-checked
+when the window (the header's width) changes, when the Part changes, and when anything in the tablist changes
+(progress badges, typeset math), so Activities whose tabs fit look exactly as before. A collapsed tab keeps its
+full title in the tab, visually hidden, so its accessible name is unchanged ("Part 2: … (0 of 3 Tasks done)"),
+and shows the title as a tooltip; the tabs stay ordinary buttons in the Tab order. If even the collapsed tabs
+don't fit, they wrap as before. The tablist carries `data-collapsed` while collapsed. It is
+`createTabs(frame, tabs, onSelect, { collapse: true })` in `tool-host.js`, used by the Activity runner only;
+Standalone Mode tabs never collapse. Header text, the badges included, is at least 13 px.
+
 The save status (`saveStatus(frame)` in `tool-host.js`) shows the autosave: "Saved hh:mm" in muted text after
 each successful write, or a warning in the miss colour when the browser refuses it (each store's `save()`
 returns `true` or `false`): "Not saved: download your Report" in an Activity, and "Not saved: copy the share

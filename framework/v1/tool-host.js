@@ -112,22 +112,32 @@ export function printItem() {
 
 /**
  * Build tabs. tabs: [{ id, title }]. onSelect(id, index) fires after the panel is shown.
- * Returns { panels: { [id]: HTMLElement }, buttons: { [id]: HTMLButtonElement }, select(id) }.
+ * Returns { panels: { [id]: HTMLElement }, buttons: { [id]: HTMLButtonElement }, select(id), fit() }.
+ *
+ * collapse: true (the Activity's Part tabs) collapses the tabs when their full titles don't fit
+ * on one line of the header row: the tablist gets data-collapsed and every inactive tab shows
+ * only its number (1, 2, …) while the active tab keeps its full title. The full title stays in
+ * the tab, visually hidden, so the accessible name doesn't change; it is also the tab's title
+ * tooltip while collapsed. The fit is measured with the full titles and re-checked on select,
+ * when the header's width changes, and when anything inside the tablist changes (progress
+ * badges, typeset math); call fit() after other changes. Tabs that fit look as before.
  */
-export function createTabs(frame, tabs, onSelect = () => {}) {
+export function createTabs(frame, tabs, onSelect = () => {}, { collapse = false } = {}) {
   const buttons = {};
   const panels = {};
-  for (const t of tabs) {
+  const { tablist } = frame;
+  tabs.forEach((t, i) => {
     const tabId = `fw-tab-${t.id}`;
     const panelId = `fw-panel-${t.id}`;
     buttons[t.id] = h('button', { type: 'button', class: 'fw-tab', role: 'tab', id: tabId,
       'aria-controls': panelId, 'aria-selected': 'false', onclick: () => select(t.id) },
-      h('span', { class: 'fw-tab-title' }, t.title));
+      h('span', { class: 'fw-tab-title' }, t.title),
+      collapse ? h('span', { class: 'fw-tab-number', 'aria-hidden': 'true' }, String(i + 1)) : null);
     panels[t.id] = h('section', { class: 'fw-tabpanel', role: 'tabpanel', id: panelId,
       'aria-labelledby': tabId, hidden: true });
-    frame.tablist.append(buttons[t.id]);
+    tablist.append(buttons[t.id]);
     frame.panels.append(panels[t.id]);
-  }
+  });
   function select(id) {
     if (!panels[id]) return;
     for (const t of tabs) {
@@ -135,9 +145,40 @@ export function createTabs(frame, tabs, onSelect = () => {}) {
       buttons[t.id].setAttribute('aria-selected', String(on));
       panels[t.id].hidden = !on;
     }
+    fit();
     onSelect(id, tabs.findIndex((t) => t.id === id));
   }
-  return { panels, buttons, select };
+
+  // Collapse when the full titles would wrap onto a second line or overflow the tablist.
+  function fit() {
+    if (!collapse || tabs.length < 2 || !tablist.offsetParent) return; // hidden: re-fit when shown
+    setCollapsed(false);
+    const bottoms = Object.values(buttons).map((b) => Math.round(b.getBoundingClientRect().bottom));
+    const fits = Math.max(...bottoms) - Math.min(...bottoms) <= 1 && tablist.scrollWidth <= tablist.clientWidth + 1;
+    setCollapsed(!fits);
+  }
+  function setCollapsed(on) {
+    if (on) tablist.dataset.collapsed = 'true';
+    else delete tablist.dataset.collapsed;
+    for (const t of tabs) {
+      if (on) buttons[t.id].title = buttons[t.id].querySelector('.fw-tab-title').textContent;
+      else buttons[t.id].removeAttribute('title');
+    }
+  }
+  if (collapse) {
+    // Only the header's width matters (collapsing changes the tablist's own size, so it isn't watched).
+    let width = 0;
+    if (typeof ResizeObserver === 'function') {
+      new ResizeObserver(([entry]) => {
+        if (entry.contentRect.width === width) return;
+        width = entry.contentRect.width;
+        fit();
+      }).observe(frame.header);
+    }
+    new MutationObserver(fit).observe(tablist, { childList: true, characterData: true, subtree: true });
+    document.fonts?.ready.then(fit);
+  }
+  return { panels, buttons, select, fit };
 }
 
 export function mountStandalone(definition, root, { setups = {}, storage } = {}) {

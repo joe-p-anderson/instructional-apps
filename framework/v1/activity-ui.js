@@ -46,7 +46,7 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
     host.activePart = id;
     frame.updateForm();
     host.instances[id]?.resize?.();
-  });
+  }, { collapse: true });
 
   const views = {}; // partId -> { progress, cards: { taskId: card }, drawer }
   activity.parts.forEach((part, p) => {
