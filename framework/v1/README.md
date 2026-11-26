@@ -55,7 +55,7 @@ A Task's `condition` is judged against the State only on Submit (`runner/conditi
 
 ```js
 // A Tool module default-exports:
-{ id, title, modes: [{ id, title }], layout?, minDisplayWidth?, mount(container, modeId, setup) }   // mount -> instance
+{ id, title, modes: [{ id, title }], layout?, minDisplayWidth?, maxDisplayWidth?, mount(container, modeId, setup) }   // mount -> instance
 
 // instance
 {
@@ -105,6 +105,13 @@ move the panels themselves, and anything every Tool would want belongs in `theme
 `minDisplayWidth` is optional: a positive number of CSS pixels, default 480, checked by `defineTool()`. It is the
 narrowest the Display may get in the `side` layout; the other layouts ignore it. Declare a larger value when the
 drawing becomes unreadable below it (least squares declares 760 for its Graph beside the Fit panel).
+
+The page frame fills the window (no maximum width), so a wide screen gives its extra width to the Display: the
+Controls and Tasks keep their fixed widths at the window edges and the Display takes the rest of its region.
+`maxDisplayWidth` is optional: a positive number of CSS pixels, at least `minDisplayWidth`, checked by
+`defineTool()`; unset means unlimited. It applies in every layout: once the region is wider, the Display stays at
+that width and centres in the region. Declare one, with a one-line reason beside it, when the drawing degrades
+when stretched (electrostatics declares 1200, as its square plot leaves the colour bar stranded at the right edge).
 
 | Layout | Arrangement |
 | --- | --- |

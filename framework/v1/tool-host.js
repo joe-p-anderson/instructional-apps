@@ -33,8 +33,11 @@ import { browserStorage, standaloneStore, shareHash, readShareHash } from './per
  * Tasks column would leave the shown Display narrower than minDisplayWidth. It is recomputed
  * when the panel area resizes and on updateForm() (call it after showing another panel), and
  * onFormChange(fn) hears fn(form) on each switch. Nothing is remounted: theme.css restyles.
+ *
+ * The frame fills the window. maxDisplayWidth (optional, CSS px) caps the Display's width in
+ * every layout, as --fw-display-max on .fw-app; past it theme.css centres the Display in its region.
  */
-export function createFrame(root, { title, course, layout = LAYOUTS[0], minDisplayWidth = DEFAULT_MIN_DISPLAY_WIDTH, tasks = false }) {
+export function createFrame(root, { title, course, layout = LAYOUTS[0], minDisplayWidth = DEFAULT_MIN_DISPLAY_WIDTH, maxDisplayWidth, tasks = false }) {
   document.documentElement.classList.add('fw-root');
   const tablist = h('div', { class: 'fw-tabs', role: 'tablist' });
   const panels = h('div', { class: 'fw-tabpanel-area', style: 'flex:1;min-height:0;display:flex;flex-direction:column' });
@@ -47,6 +50,7 @@ export function createFrame(root, { title, course, layout = LAYOUTS[0], minDispl
     tablist,
     actions);
   const app = h('div', { class: `fw-app fw-layout-${layout}` }, header, panels);
+  if (maxDisplayWidth !== undefined) app.style.setProperty('--fw-display-max', `${maxDisplayWidth}px`);
   root.replaceChildren(app);
 
   const listeners = new Set();
@@ -110,7 +114,7 @@ export function createTabs(frame, tabs, onSelect = () => {}) {
 export function mountStandalone(definition, root, { setups = {}, storage = browserStorage() } = {}) {
   const tool = defineTool(definition);
   if (!document.title) document.title = tool.title;
-  const frame = createFrame(root, { title: tool.title, layout: tool.layout });
+  const frame = createFrame(root, { title: tool.title, layout: tool.layout, maxDisplayWidth: tool.maxDisplayWidth });
   const host = { tool, modes: tool.modes, instances: [], activeMode: null, select: null, shareLink };
 
   // A share link wins over autosave, once: the hash is then cleared so a reload shows
