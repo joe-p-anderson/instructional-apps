@@ -141,6 +141,31 @@ export function filterSeries(s, filter) {
   };
 }
 
+/**
+ * The filter's response at frequency f (Hz): { gain: |H(f)|, phase: ∠H(f) in degrees }, whatever
+ * the gain and phase toggles say; null when the filter type is 'off'.
+ */
+export function filterResponse(filter, f) {
+  if (!filter || (filter.type !== 'lowpass' && filter.type !== 'highpass')) return null;
+  const h = filterGain({ type: filter.type, fc: filter.fc }, f);
+  return { gain: Math.hypot(h.re, h.im), phase: (Math.atan2(h.im, h.re) * 180) / Math.PI };
+}
+
+export const SPECTRUM_SOURCES = ['input', 'output'];
+export const SPECTRUM_N = 10; // the spectrum shows n = 0 … SPECTRUM_N
+
+/**
+ * The spectrum of the input, or of the filtered output (source 'output', with the toggles as
+ * they are): [{ n, amp, phase }] for n = 0 … nMax. The n = 0 entry is the DC term as an
+ * amplitude ≥ 0 at 0° (or at 180° when it is negative).
+ */
+export function spectrum(input, filter, source = 'input', nMax = SPECTRUM_N) {
+  const raw = series(input, nMax);
+  const s = source === 'output' ? filterSeries(raw, filter) : raw;
+  const dc = { n: 0, amp: Math.abs(s.dc), phase: s.dc < 0 ? 180 : 0 };
+  return [dc, ...s.terms.map((t) => ({ ...t }))];
+}
+
 // Each piecewise-linear waveform over one period at amp = 1, shift = 0, as segments
 // [p0, p1) on which v = a + b·(p − p0) (p = t·f0, so b is per period).
 const UNIT_SEGMENTS = {

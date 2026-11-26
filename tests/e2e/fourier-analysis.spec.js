@@ -28,11 +28,14 @@ test('the Standalone page has Synthesis and Analysis tabs', async ({ page }) => 
   await expect(page.getByRole('tab')).toHaveText(['Synthesis', 'Analysis']);
 });
 
-test('Analysis has the shared input Controls with the Synthesis ids, plus the test function and n', async ({ page }) => {
+test('Analysis has the shared input and filter Controls with the Synthesis ids, plus its own', async ({ page }) => {
   await openAnalysis(page);
   const ids = await page.evaluate(() => window.toolHost.instances.map((i) => i.controls.ids()));
-  expect(ids[1].sort()).toEqual(['amp', 'f0', 'n', 'offset', 'shift', 'testFunction', 'waveform']);
-  for (const id of ['waveform', 'amp', 'f0', 'offset', 'shift']) expect(ids[0], id).toContain(id);
+  expect(ids[1].sort()).toEqual(['amp', 'applyGain', 'applyPhase', 'f0', 'fc', 'filter', 'filter-curves', 'n',
+    'offset', 'shift', 'spectrum', 'spectrumSource', 'testFunction', 'waveform']);
+  for (const id of ['waveform', 'amp', 'f0', 'offset', 'shift', 'filter', 'fc', 'applyGain', 'applyPhase']) {
+    expect(ids[0], id).toContain(id);
+  }
   const options = await testSelect(page).locator('option').allTextContents();
   expect(options).toHaveLength(2);
   expect(options[0]).toMatch(/^cos/);
@@ -45,7 +48,9 @@ test('State publishes the Mode, the input, the test function and n, with descrip
     const i = window.toolHost.instances[1];
     return { s: i.state.snapshot(), info: i.state.describe() };
   });
-  expect(s).toEqual({ mode: 'analysis', waveform: 'square', amp: 1, f0: 1000, offset: 0, shift: 0, testFunction: 'sin', n: 1 });
+  expect(s).toEqual({ mode: 'analysis', waveform: 'square', amp: 1, f0: 1000, offset: 0, shift: 0,
+    filter: 'off', fc: 3000, applyGain: true, applyPhase: true, fcRatio: 3, tau: 1e3 / (2 * Math.PI * 3000),
+    testFunction: 'sin', n: 1, spectrumSource: 'input' });
   for (const k of Object.keys(s)) expect(info[k], k).toBeTruthy();
   expect(info.f0.unit).toBe('Hz');
 });
@@ -107,11 +112,14 @@ test('n is an integer from 0 to 10', async ({ page }) => {
   expect(n).toEqual([10, 0, 3]);
 });
 
+// The spectrum Display does show Aₙ and φₙ: an Activity hides it until the matching Task is done.
 test('no readout shows an integral or a coefficient', async ({ page }) => {
   await openAnalysis(page);
   const panel = page.locator('[data-mode="analysis"]');
-  await expect(panel.locator('.fw-metric')).toHaveCount(0);
-  const text = await panel.innerText();
+  // The only readouts are the filter's f_c/f₀ and τ.
+  await expect(panel.locator('.fw-metric')).toHaveCount(2);
+  const text = [await panel.locator('.fw-controls').innerText(),
+    await panel.locator('[data-display="product"]').innerText()].join('\n');
   expect(text).not.toMatch(/[ab]ₙ|Aₙ|φₙ|integral|=\s*-?\d+\.\d/i);
 });
 
@@ -128,7 +136,7 @@ test('State serializes and restores the test function, n and the input', async (
     i.restore({ testFunction: 'tan', n: 99 });
     return { afterGood, afterBad: i.state.snapshot() };
   });
-  expect(restored.afterGood).toEqual({ mode: 'analysis', waveform: 'sine', amp: 1, f0: 1000, offset: 0, shift: 30, testFunction: 'cos', n: 4 });
+  expect(restored.afterGood).toMatchObject({ mode: 'analysis', waveform: 'sine', amp: 1, f0: 1000, offset: 0, shift: 30, testFunction: 'cos', n: 4 });
   expect(restored.afterBad).toMatchObject({ testFunction: 'cos', n: 10 });
 });
 
