@@ -71,6 +71,48 @@ test('a Task passes only on a Submit at the target, and its Hint appears after 3
   await expect(p1.getByRole('region', { name: 'Task 1.2' })).toHaveAttribute('data-status', 'open');
 });
 
+// Shell revision 09: the Tasks that need the joystick, arc picker, P₁ and P₂ pass with the
+// keyboard alone (focus() stands in for Tab; every key is a keyboard press).
+test('the Electric Field and Potential Tasks pass using only the keyboard', async ({ page }) => {
+  await open(page);
+  await enterName(page);
+  const keys = async (loc, ...pressed) => { await loc.focus(); for (const k of pressed) await page.keyboard.press(k); };
+  const answer = async (card, text) => { await card.getByRole('textbox').focus(); await page.keyboard.type(text); };
+  const p1 = part(page, 1);
+
+  // Task 1.1: push the E₀ joystick off centre.
+  await keys(p1.getByRole('group', { name: 'E₀ joystick' }), 'Shift+ArrowRight', 'Shift+ArrowRight');
+  await answer(p1.getByRole('region', { name: 'Task 1.1' }), 'E = 0 in the bulk, else charges move.');
+  await keys(p1.getByRole('button', { name: 'Submit Task 1.1' }), 'Enter');
+  await expect(p1.getByRole('region', { name: 'Task 1.1' })).toHaveAttribute('data-status', 'passed');
+
+  // Task 1.2: Q above 0 (the slider) and θ above 0 (the arc picker).
+  await keys(p1.getByRole('slider', { name: /^Q\b/ }), 'ArrowRight', 'ArrowRight');
+  await keys(p1.getByRole('slider', { name: 'θ arc picker' }), 'Shift+ArrowRight');
+  await answer(p1.getByRole('region', { name: 'Task 1.2' }), 'The surface field is normal to the surface.');
+  await keys(p1.getByRole('button', { name: 'Submit Task 1.2' }), 'Enter');
+  await expect(p1.getByRole('region', { name: 'Task 1.2' })).toHaveAttribute('data-status', 'passed');
+
+  await keys(page.getByRole('tab', { name: /Part 2/ }), 'Enter');
+  await expect(page.getByRole('tab', { name: /Part 2/ })).toHaveAttribute('aria-selected', 'true');
+  const p2 = part(page, 2);
+
+  // Task 2.1: P₁ (at (−6, −6)) into the conductor, P₂ (at (7, 7)) into it as well.
+  await keys(p2.getByRole('group', { name: 'P₁' }), ...Array(5).fill('Shift+ArrowRight'), ...Array(5).fill('Shift+ArrowUp'));
+  await keys(p2.getByRole('group', { name: 'P₂' }), ...Array(6).fill('Shift+ArrowLeft'), ...Array(6).fill('Shift+ArrowDown'));
+  await expect(p2.getByRole('status', { name: 'P1 position' })).toContainText('(-1.0, -1.0) cm');
+  await expect(p2.getByRole('status', { name: 'P2 position' })).toContainText('(1.0, 1.0) cm');
+  await answer(p2.getByRole('region', { name: 'Task 2.1' }), 'V is constant inside.');
+  await keys(p2.getByRole('button', { name: 'Submit Task 2.1' }), 'Enter');
+  await expect(p2.getByRole('region', { name: 'Task 2.1' })).toHaveAttribute('data-status', 'passed');
+
+  // Task 2.2: lock to surface.
+  await keys(p2.getByRole('checkbox', { name: 'Lock to surface' }), 'Space');
+  await answer(p2.getByRole('region', { name: 'Task 2.2' }), 'The surface is at the same potential as the inside.');
+  await keys(p2.getByRole('button', { name: 'Submit Task 2.2' }), 'Enter');
+  await expect(p2.getByRole('region', { name: 'Task 2.2' })).toHaveAttribute('data-status', 'passed');
+});
+
 test('a reload restores progress and answers, and the Report opens in the Report Viewer', async ({ page }) => {
   await open(page);
   await enterName(page);

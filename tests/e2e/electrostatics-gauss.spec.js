@@ -103,3 +103,13 @@ test('a reload restores the setup, and the Display gives a PNG snapshot', async 
   const png = await page.evaluate(inGauss('(i) => i.displays[0].snapshot()'));
   expect(png).toMatch(/^data:image\/png;base64,/);
 });
+
+test('the E₀ joystick moves with the arrow keys here too', async ({ page }) => {
+  await open(page);
+  const stick = panel(page).getByRole('group', { name: 'E₀ joystick' });
+  await stick.focus();
+  await page.keyboard.press('Shift+ArrowUp');
+  await page.keyboard.press('Shift+ArrowUp');
+  expect(await snapshot(page)).toMatchObject({ E0x: 0, E0y: 200 });
+  await expect(panel(page).getByRole('spinbutton', { name: 'E₀y', exact: true })).toHaveValue('200');
+});
