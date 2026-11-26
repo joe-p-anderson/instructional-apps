@@ -162,7 +162,7 @@ test('a Part 1 drawing just outside the tolerances misses', () => {
   t.draw([param(3, 1, 0)]); // only one light ray
   const one = runner.submit('building', 'flash');
   assert.equal(one.passed, false);
-  assert.match(one.results.find((r) => r.pass === false).feedback, /u = -1/);
+  assert.match(one.results.find((r) => r.pass === false).feedback, /No light ray going left/);
 });
 
 test('Task 1.6 needs both events and all four rocket coordinates', () => {
