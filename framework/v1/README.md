@@ -55,7 +55,7 @@ A Task's `condition` is judged against the State only on Submit (`runner/conditi
 
 ```js
 // A Tool module default-exports:
-{ id, title, modes: [{ id, title }], layout?, mount(container, modeId, setup) }   // mount -> instance
+{ id, title, modes: [{ id, title }], layout?, minDisplayWidth?, mount(container, modeId, setup) }   // mount -> instance
 
 // instance
 {
@@ -85,9 +85,13 @@ refine a layout for its own Controls or Display (sizes, spacing, how a section's
 own CSS, scoped under its root class, such as bench-scope's compact Controls strip under `.bs-tool`; it does not
 move the panels themselves, and anything every Tool would want belongs in `theme.css`.
 
+`minDisplayWidth` is optional: a positive number of CSS pixels, default 480, checked by `defineTool()`. It is the
+narrowest the Display may get in the `side` layout; the other layouts ignore it. Declare a larger value when the
+drawing becomes unreadable below it (least squares declares 760 for its Graph beside the Fit panel).
+
 | Layout | Arrangement |
 | --- | --- |
-| `side` | Controls \| Display \| Tasks. Tasks stack in a 330 px column on the right; the current Task is outlined, finished Tasks show their title and result, locked Tasks one line saying why. |
+| `side` | Controls \| Display \| Tasks. Tasks stack in a 330 px column on the right; the current Task is outlined, finished Tasks show their title and result, locked Tasks one line saying why.<br>**Task drawer:** in an Activity, when the Tasks column would leave the Display narrower than `minDisplayWidth`, the frame sets `data-side-form="drawer"` on `.fw-app` (otherwise `"column"`) and the Tasks move into a bar above the Display: the current Task's number and title as an expand toggle (`aria-expanded`), its latest feedback and its Submit ("Open to answer" for a Task with Questions not yet opened). Opened, the drawer lies over the Display's right part (the Display never resizes) and shows only the current Task; Escape, the toggle or a click on the Display closes it. The switch is recomputed on resize, restyling the same DOM, so Tools are not remounted and typed answers stay. Standalone mode has no Tasks and always shows Controls \| Display. |
 | `strip` | Controls \| Display, with the Tasks in a row across the bottom (the original v1 layout). |
 | `banner` | The current Task is a banner above a full-width Display, the other Tasks compact steps beside it (a locked step says why it is locked); the Controls' sections sit side by side in a strip below the Display. In Standalone mode only the banner is absent. For wide Tools. |
 
