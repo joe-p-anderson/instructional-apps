@@ -80,6 +80,24 @@ test('Submit from the closed bar passes a Condition-only Task, and the bar moves
   await expect(page.getByRole('tab', { name: /Part 1/ })).toHaveAccessibleName(/1 of 3 Tasks done/);
 });
 
+test('a refused identical Submit shows its text and flash on the drawer bar', async ({ page }) => {
+  await page.setViewportSize(PORTRAIT);
+  await openActivity(page, OSCILLOSCOPE);
+  const p1 = part(page, 1);
+  const submit = bar(p1).getByRole('button', { name: 'Submit Task 1.1' });
+  const feedback = bar(p1).getByRole('status', { name: 'Task 1.1 feedback' });
+
+  await submit.click(); // a miss
+  await expect(feedback).toContainText('✗');
+  await expect(feedback).toHaveAttribute('aria-live', 'polite');
+  await page.waitForTimeout(700); // let the first emphasis end
+  await expect(feedback).not.toHaveClass(/fw-emphasis/);
+  await submit.click(); // the same again: refused
+  await expect(feedback).toHaveText('Nothing changed since your last try');
+  await expect(feedback).toHaveClass(/fw-refused/);
+  await expect(feedback).toHaveClass(/fw-emphasis/);
+});
+
 test('a Task with Questions opens, is answered and submitted; opening leaves the Display box unchanged', async ({ page }) => {
   await page.setViewportSize(PORTRAIT);
   await openActivity(page, OSCILLOSCOPE);
