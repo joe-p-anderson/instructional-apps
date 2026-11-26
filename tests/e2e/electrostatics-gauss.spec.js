@@ -36,11 +36,11 @@ test('the Tool shows a third tab, Gauss’s law, with every Control shown and un
   await expect(tabs.last()).toHaveText('Gauss’s law');
   await expect(page.getByRole('tab', { name: 'Gauss’s law' })).toHaveAttribute('aria-selected', 'true');
 
-  const lambda = panel(page).getByRole('slider', { name: 'λ', exact: true });
+  const lambda = panel(page).getByRole('slider', { name: 'λ (nC/m)', exact: true });
   await expect(lambda).toHaveAttribute('min', '-1');
   await expect(lambda).toHaveAttribute('max', '1');
   await expect(lambda).toHaveAttribute('step', '0.05');
-  await expect(panel(page).getByRole('spinbutton', { name: 'λ', exact: true })).toHaveValue('1.00');
+  await expect(panel(page).getByRole('spinbutton', { name: 'λ (nC/m)', exact: true })).toHaveValue('1.00');
   await expect(panel(page).getByLabel('E₀ joystick')).toBeVisible();
   for (const name of ['E₀x', 'E₀y']) await expect(panel(page).getByRole('spinbutton', { name, exact: true })).toBeEnabled();
 

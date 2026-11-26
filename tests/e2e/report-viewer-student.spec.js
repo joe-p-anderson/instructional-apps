@@ -10,7 +10,7 @@ async function downloadReport(page) {
   await page.getByRole('button', { name: 'Start' }).click();
   const p1 = page.getByRole('tabpanel', { name: /Part 1/ });
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click(); // a miss
-  const box = p1.getByRole('spinbutton', { name: 'Δt', exact: true });
+  const box = p1.getByRole('spinbutton', { name: 'Δt (s)', exact: true });
   await box.fill('0.5');
   await box.press('Enter');
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click(); // a pass

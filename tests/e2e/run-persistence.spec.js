@@ -32,9 +32,9 @@ test('a reload restores progress', async ({ page }) => {
   await enterName(page);
   const before = await run(page);
   const p1 = part(page, 1);
-  await setNumber(p1, 'Δt', 0.5);
+  await setNumber(p1, 'Δt (s)', 0.5);
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click();
-  await setNumber(p1, 'f', 0.3);
+  await setNumber(p1, 'f (Hz)', 0.3);
 
   await page.reload();
   await page.waitForFunction(() => window.activityHost);
@@ -47,8 +47,8 @@ test('a reload restores progress', async ({ page }) => {
   await expect(again.getByRole('region', { name: 'Task 1.1' })).toHaveAttribute('data-status', 'passed');
   await expect(again.getByRole('region', { name: 'Task 1.2' })).toHaveAttribute('data-status', 'open');
   await expect(again.getByText('1 of 3 Tasks done')).toBeVisible();
-  await expect(again.getByRole('spinbutton', { name: 'Δt', exact: true })).toBeDisabled();
-  await expect(again.getByRole('spinbutton', { name: 'f', exact: true })).toHaveValue(/^0\.3/);
+  await expect(again.getByRole('spinbutton', { name: 'Δt (s)', exact: true })).toBeDisabled();
+  await expect(again.getByRole('spinbutton', { name: 'f (Hz)', exact: true })).toHaveValue(/^0\.3/);
 });
 
 test('Start over, once confirmed, discards the Run and begins a new one', async ({ page }) => {
@@ -56,7 +56,7 @@ test('Start over, once confirmed, discards the Run and begins a new one', async 
   await enterName(page, 'Ada Lovleace');
   const first = await run(page);
   const p1 = part(page, 1);
-  await setNumber(p1, 'Δt', 0.5);
+  await setNumber(p1, 'Δt (s)', 0.5);
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click();
 
   // Dismissing the confirmation keeps the Run.
@@ -75,7 +75,7 @@ test('Start over, once confirmed, discards the Run and begins a new one', async 
   expect(second.fingerprint).not.toBe(first.fingerprint);
   const fresh = part(page, 1);
   await expect(fresh.getByRole('region', { name: 'Task 1.1' })).toHaveAttribute('data-status', 'open');
-  await expect(fresh.getByRole('spinbutton', { name: 'Δt', exact: true })).toHaveValue(/^0\.25/);
+  await expect(fresh.getByRole('spinbutton', { name: 'Δt (s)', exact: true })).toHaveValue(/^0\.25/);
 
   // The discarded Run does not come back on reload.
   await page.reload();
@@ -87,9 +87,9 @@ test('a reload restores Question answers, unsubmitted drafts and the last miss f
   await open(page);
   await enterName(page);
   const p1 = part(page, 1);
-  await setNumber(p1, 'Δt', 0.5);
+  await setNumber(p1, 'Δt (s)', 0.5);
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click();
-  await setNumber(p1, 'f', 0.3);
+  await setNumber(p1, 'f (Hz)', 0.3);
   await p1.getByRole('button', { name: 'Submit Task 1.2' }).click();
   const missFeedback = await p1.getByRole('status', { name: 'Task 1.2 feedback' }).textContent();
   expect(missFeedback).toMatch(/^✗/);
@@ -99,7 +99,7 @@ test('a reload restores Question answers, unsubmitted drafts and the last miss f
   const again = part(page, 1);
   await expect(again.getByRole('status', { name: 'Task 1.2 feedback' })).toHaveText(missFeedback);
 
-  await setNumber(again, 'f', 0.25);
+  await setNumber(again, 'f (Hz)', 0.25);
   await again.getByRole('button', { name: 'Submit Task 1.2' }).click();
   const why = again.getByRole('textbox', { name: /difficult to measure/ });
   await why.fill('The traces are hard to line up.');

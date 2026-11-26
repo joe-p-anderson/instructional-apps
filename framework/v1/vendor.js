@@ -45,11 +45,20 @@ export async function loadMathJax() {
 
 let typesetting = Promise.resolve();
 
-/** Typeset math inside the given elements. Calls are queued, as MathJax requires. */
+/**
+ * Typeset math inside the given elements. Calls are queued, as MathJax requires. The rendered
+ * maths is taken out of the Tab order (MathJax's menu makes each container focusable); its
+ * assistive MathML stays for screen readers.
+ */
 export function typeset(elements) {
   typesetting = typesetting
     .then(loadMathJax)
     .then((MathJax) => MathJax.typesetPromise(elements))
+    .then(() => {
+      for (const root of elements) {
+        for (const el of root.querySelectorAll('mjx-container[tabindex]')) el.setAttribute('tabindex', '-1');
+      }
+    })
     .catch((err) => console.warn('MathJax typesetting failed:', err));
   return typesetting;
 }

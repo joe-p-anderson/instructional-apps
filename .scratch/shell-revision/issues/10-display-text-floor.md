@@ -14,6 +14,6 @@ Bench-scope's front-panel artwork is exempt and marked as exempt.
 
 **Status:** ready-for-agent
 
-- [ ] e2e: for every Tool and Mode at 1366×768, no visible text inside the Display area is under 12 px, except elements marked as exempt artwork.
-- [ ] e2e: the same check on the three Activities.
-- [ ] The framework README documents the floor and the exemption marker.
+- [x] e2e: for every Tool and Mode at 1366×768, no visible text inside the Display area is under 12 px, except elements marked as exempt artwork.
+- [x] e2e: the same check on the three Activities.
+- [x] The framework README documents the floor and the exemption marker.

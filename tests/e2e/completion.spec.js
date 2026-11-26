@@ -50,7 +50,7 @@ test('passing the last Task opens the completion dialog, which takes focus and c
   await expect(dialog(page)).toBeHidden();
 
   // The Tool stays usable after the dialog closes.
-  const f = part(page, 2).getByRole('slider', { name: 'f', exact: true });
+  const f = part(page, 2).getByRole('slider', { name: 'f (Hz)', exact: true });
   const before = await f.inputValue();
   await f.focus();
   await page.keyboard.press('ArrowRight');
