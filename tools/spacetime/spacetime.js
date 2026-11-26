@@ -57,7 +57,8 @@ const CSS = `
 .st-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
 .st-tools .fw-button { font-size: 15px; padding: 3px 6px; text-align: left; }
 .st-tools .fw-button[aria-pressed="true"] { background: var(--fw-blue); color: #fff; }
-.st-tools kbd { font: 12px ui-monospace, monospace; opacity: .7; margin-left: 4px; }
+.st-tools kbd { font: 12px ui-monospace, monospace; color: var(--fw-text-dim); margin-left: 4px; }
+.st-tools .fw-button[aria-pressed="true"] kbd { color: inherit; }
 .st-tool .fw-slider { margin-bottom: 6px; }
 .st-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .st-actions { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -92,7 +93,7 @@ const CSS = `
 .st-toast.st-on { opacity: .95; }
 .st-side { border-left: 2px solid var(--fw-border-dk); background: var(--fw-surface); overflow-y: auto;
   padding: 0 10px 10px; font-size: 14px; min-height: 0; }
-.st-side h2 { font-size: 13px; font-variant: small-caps; letter-spacing: .2em; color: var(--fw-text-muted);
+.st-side h2 { font-size: 11px; letter-spacing: .16em; color: var(--fw-text-muted);
   text-transform: uppercase; font-weight: normal; margin: 10px 0 6px; }
 .st-side button { font-family: var(--fw-font); font-size: 14px; border: 1px solid var(--fw-border-dk);
   background: none; color: var(--fw-blue); cursor: pointer; padding: 1px 6px; }
