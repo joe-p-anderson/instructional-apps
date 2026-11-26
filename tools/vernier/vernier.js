@@ -409,5 +409,8 @@ export default defineTool({
   id: 'vernier',
   title: 'Vernier Caliper',
   modes: [{ id: 'caliper', title: 'Vernier caliper' }],
+  // The scale numerals are part of the caliper drawing, which scales with the Display: they reach
+  // 13 px at a Display about 1000 px wide (about 7 px at the default 480).
+  minDisplayWidth: 1000,
   mount,
 });
