@@ -51,7 +51,7 @@ for (const layout of LAYOUTS) {
     const p1 = part(page, 1);
     const submit11 = p1.getByRole('button', { name: 'Submit Task 1.1' });
     // Three different misses (an identical repeat would be refused, and not count).
-    for (const dt of [0.1, 0.2, 0.3]) { await setNumber(p1, 'Δt', dt); await submit11.click(); }
+    for (const dt of [0.1, 0.2, 0.3]) { await setNumber(p1, 'Δt (s)', dt); await submit11.click(); }
     await expect(p1.getByText(/Hint:/)).toBeVisible();
     expect(await noPageScroll()).toBe(true);
     await expect(submit11).toBeInViewport({ ratio: 1 });

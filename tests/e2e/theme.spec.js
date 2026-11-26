@@ -98,7 +98,7 @@ test('no visible framework text is below 4.5:1 contrast on the Activity page', a
   const submit = p1.getByRole('button', { name: 'Submit Task 1.1' });
   // Three different misses (an identical repeat would be refused, and not count).
   for (const dt of [0.1, 0.2, 0.3]) {
-    const field = p1.getByRole('spinbutton', { name: 'Δt', exact: true });
+    const field = p1.getByRole('spinbutton', { name: 'Δt (s)', exact: true });
     await field.fill(String(dt));
     await field.press('Enter');
     await submit.click();
@@ -140,7 +140,7 @@ test('Question prompts read as text with a blue rule, and the Hint sits in a tin
   const submit = p1.getByRole('button', { name: 'Submit Task 1.1' });
   // Three different misses (an identical repeat would be refused, and not count).
   for (const dt of [0.1, 0.2, 0.3]) {
-    const field = p1.getByRole('spinbutton', { name: 'Δt', exact: true });
+    const field = p1.getByRole('spinbutton', { name: 'Δt (s)', exact: true });
     await field.fill(String(dt));
     await field.press('Enter');
     await submit.click();
