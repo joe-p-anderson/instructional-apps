@@ -40,11 +40,11 @@ A new Tool, `fourier` ("Fourier Series"), built on framework v1, with two Modes.
 
 ### Synthesis Mode
 
-- **Time plot:** the input waveform, the partial sum through harmonic N, and an "N = ∞" curve.
+- **Time plot:** the input waveform and the partial sum through harmonic N; at the N slider's ∞ position the sum is the "N = ∞" curve.
   - With no filter, or with both toggles on, the N = ∞ curve is the analytic answer: the ideal waveform, or the piecewise-exponential RC steady-state response (V_C for low-pass, V_R for high-pass).
   - It is labelled as the infinite series, not as a separate comparison.
 - **Highest harmonic:** only the highest included harmonic (term N) is drawn on its own, faintly.
-- **N:** the highest harmonic number, from 0 to 100. The square wave's even terms are visibly zero.
+- **N:** the highest harmonic number, from 0 to 100, plus one top position, ∞ (published as N = 101 with `infinite: true`). The square wave's even terms are visibly zero.
 - **Play/pause:** a play/pause button steps N upward.
 
 ### Analysis Mode
@@ -177,8 +177,8 @@ A new pure module inside the Tool, with no DOM, so it can be tested in Node. It 
 - **Shared Controls:** waveform, amplitude, f₀, DC offset, shift, and the filter Controls (type, f_c, gain toggle, phase toggle).
   - Both Modes offer these Controls with the same ids, so an Activity Setup reads the same way in either Mode.
   - Each Part keeps its own State; the values are not live-shared across mounted Parts.
-- **Synthesis Controls:** N (0 to 100, integer) and play/pause.
-  - Play steps N at a fixed interval. It stops at 100, and it is cancelled on destroy, following bench-scope.
+- **Synthesis Controls:** N (0 to 100, integer, then ∞) and play/pause.
+  - Play steps N at a fixed interval. It stops at ∞ (pressing it there starts over from 0), and it is cancelled on destroy, following bench-scope.
 - **Analysis Controls:** test function (cos/sin select), n (integer, 0 to 10), and spectrum source (input/output).
 - **Displays:**
   - Synthesis has one time plot.
