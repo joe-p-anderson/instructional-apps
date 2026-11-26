@@ -2,7 +2,9 @@
 //
 //   { id, kind: 'numeric', prompt, answer, tol }      |answer - given| <= tol
 //   { id, kind: 'numeric', prompt, answer, relTol }   |answer - given| <= relTol * |answer|
-//   { id, kind: 'choice',  prompt, choices: [{ id, text }], correct }   given === correct choice id
+//   either numeric form may add modulus (> 0): the difference is first wrapped into
+//   (-modulus/2, modulus/2], so a phase with modulus 360 accepts -90 and 270 alike
+//   { id, kind: 'choice', prompt, choices: [{ id, text }], correct }   given === correct choice id
 //   { id, kind: 'text',    prompt }                   recorded, never judged
 //
 // Any Question may carry its own points (see scoring.js).
@@ -16,12 +18,15 @@ export const questionKinds = {
     validate(q, fail) {
       if (typeof q.answer !== 'number') fail('needs a numeric answer');
       if (typeof q.tol !== 'number' && typeof q.relTol !== 'number') fail('needs tol or relTol');
+      if (q.modulus !== undefined && !(Number.isFinite(q.modulus) && q.modulus > 0)) {
+        fail('modulus must be a positive number');
+      }
     },
     judge(q, given) {
       const value = typeof given === 'string' && given.trim() !== '' ? Number(given) : given;
       if (typeof value !== 'number' || !Number.isFinite(value)) return false;
       const tol = q.relTol !== undefined ? q.relTol * Math.abs(q.answer) : q.tol;
-      return Math.abs(value - q.answer) <= tol;
+      return Math.abs(wrap(value - q.answer, q.modulus)) <= tol;
     },
   },
   choice: {
@@ -37,6 +42,13 @@ export const questionKinds = {
     validate() {},
   },
 };
+
+// Wrap a difference into (-modulus/2, modulus/2]; unchanged when there is no modulus.
+function wrap(diff, modulus) {
+  if (modulus === undefined) return diff;
+  const r = diff - modulus * Math.floor(diff / modulus); // [0, modulus)
+  return r > modulus / 2 ? r - modulus : r;
+}
 
 export const isGraded = (q) => typeof questionKinds[q.kind]?.judge === 'function';
 

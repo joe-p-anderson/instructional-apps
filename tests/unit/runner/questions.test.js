@@ -30,6 +30,29 @@ test('a numeric Question passes within a relative tolerance', () => {
   assert.equal(r.submit('p1', 't', { R: '196.5' }).passed, true);
 });
 
+function judgePhase(question, given) {
+  const { r } = setup([{ id: 't', title: 'T', prompt: '', points: 1, questions: [
+    { id: 'phi', kind: 'numeric', prompt: 'Phase?', ...question },
+  ] }]);
+  return r.submit('p1', 't', { phi: given }).passed;
+}
+
+test('a periodic numeric Question is judged modulo its modulus', () => {
+  const q = { answer: -90, tol: 2, modulus: 360 };
+  for (const given of [270, -450, -91.5]) assert.equal(judgePhase(q, given), true, `${given}`);
+  for (const given of [90, -95]) assert.equal(judgePhase(q, given), false, `${given}`);
+});
+
+test('a periodic numeric Question passes across the ±180° wrap', () => {
+  assert.equal(judgePhase({ answer: 179, tol: 2, modulus: 360 }, -179.5), true);
+});
+
+test('a periodic numeric Question with a relative tolerance measures it against the answer', () => {
+  const q = { answer: -90, relTol: 0.02, modulus: 360 }; // ±1.8°
+  assert.equal(judgePhase(q, 271.5), true);
+  assert.equal(judgePhase(q, 272), false);
+});
+
 test('a multiple-choice Question passes only on the correct choice', () => {
   const { r } = setup([{ id: 't', title: 'T', prompt: '', points: 1, questions: [
     { id: 'c', kind: 'choice', prompt: 'Which leads?', correct: 'b',
@@ -83,6 +106,9 @@ test('an Activity with a malformed Question is rejected', () => {
   const bad = (q) => () => setup([{ id: 't', title: 'T', prompt: '', points: 1, questions: [q] }]);
   assert.throws(bad({ id: 'a', kind: 'essay' }), /kind/);
   assert.throws(bad({ id: 'a', kind: 'numeric', answer: 3 }), /tol/);
+  for (const modulus of [0, -360, '360', NaN, Infinity]) {
+    assert.throws(bad({ id: 'a', kind: 'numeric', answer: 3, tol: 1, modulus }), /modulus/, `${modulus}`);
+  }
   assert.throws(bad({ id: 'a', kind: 'choice', choices: [{ id: 'x' }, { id: 'z' }], correct: 'y' }), /correct/);
   assert.throws(bad({ kind: 'text' }), /id/);
 });
