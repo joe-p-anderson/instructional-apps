@@ -5,7 +5,9 @@
 //
 // Setup: { Va, f, Dt } (any subset; defaults below).
 // State (state.snapshot()): Va (V), f (Hz), Dt (s), phi (rad), T (s), pkpk (V), ratio (Δt/T).
-// Controls: sliders 'Va', 'f', 'Dt'; draggable plot markers 'Va-marker', 'f-marker', 'Dt-marker'.
+// Controls: sliders 'Va', 'f', 'Dt'; draggable plot markers 'Va-marker', 'f-marker', 'Dt-marker';
+//   'phi-readout' and 'ratio-readout', the Live Metrics lines that print φ (read-only: they exist
+//   to be hidden, so a Task can ask for φ without printing it).
 // Displays: 'scope' (with toScreen(t, V): the client position of a plot point).
 
 import { controlRegistry, createControl } from '../../framework/v1/control.js';
@@ -118,7 +120,14 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
     });
   }
 
-  const controls = { ...sliders, ...markers };
+  // The readouts that print φ (φ itself, and Δt / T = φ / 2π) are registered as Controls too,
+  // only so an Activity can hide them while a Task asks the student to set φ.
+  const phiReadouts = {
+    'phi-readout': createControl({ id: 'phi-readout', label: 'φ readout', el: readouts.phi.el, get: () => getState().phi }),
+    'ratio-readout': createControl({ id: 'ratio-readout', label: 'Δt / T readout', el: readouts.ratio.el, get: () => getState().ratio }),
+  };
+
+  const controls = { ...sliders, ...markers, ...phiReadouts };
 
   // ── Plot ──
   function markerTrace(id) {

@@ -8,7 +8,7 @@ Spec: .scratch/shell-revision/spec.md (Content tickets; stories 76–78).
 
 **Status:** ready-for-agent
 
-- [ ] The page title and header read "Sinusoidal Signals", and the Activity id is unchanged.
-- [ ] e2e: on the φ Tasks, no visible readout shows φ's value, and the readouts reappear when a later Task no longer hides them.
-- [ ] No Hint text contains the target value (the oscilloscope Activity e2e or the runner fixtures check it).
-- [ ] The existing oscilloscope Activity e2e spec passes.
+- [x] The page title and header read "Sinusoidal Signals", and the Activity id is unchanged.
+- [x] e2e: on the φ Tasks, no visible readout shows φ's value, and the readouts reappear when a later Task no longer hides them.
+- [x] No Hint text contains the target value (the oscilloscope Activity e2e or the runner fixtures check it).
+- [x] The existing oscilloscope Activity e2e spec passes.
