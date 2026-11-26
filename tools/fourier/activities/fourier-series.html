@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frequency Domain: Fourier Series</title>
+<link rel="stylesheet" href="../../../framework/v1/theme.css">
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+  import fourier from '../fourier.js';
+  import activity from './fourier-series.js';
+  import { mountActivity } from '../../../framework/v1/activity-ui.js';
+
+  window.activityHost = mountActivity(fourier, activity, document.getElementById('app'));
+</script>
+</body>
+</html>

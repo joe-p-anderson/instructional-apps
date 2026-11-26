@@ -1,7 +1,10 @@
 // Fourier Tool, Synthesis Mode: build a waveform from its harmonics.
 //
-// Setup: { waveform, amp, f0, offset, shift, filter, fc, applyGain, applyPhase, N } (any subset;
-//   defaults in ../inputs.js, ../filter.js and below).
+// Setup: { waveform, amp, f0, offset, shift, filter, fc, applyGain, applyPhase, N, coefficientTable }
+//   (any subset; defaults in ../inputs.js, ../filter.js and below). coefficientTable: true adds the
+//   input's coefficient table (n, Aₙ, φₙ for n = 1 … 10, ../coefficient-table.js) to the sidebar,
+//   following the input; it is off by default, so Standalone mode never shows it. It is neither
+//   State nor serialized.
 // State (state.snapshot()): mode ('synthesis'), waveform, amp (V), f0 (Hz), offset (V),
 //   shift (°, of the fundamental), filter, fc (Hz), applyGain, applyPhase, fcRatio (f_c/f₀),
 //   tau (ms), N (the highest harmonic number in the partial sum).
@@ -16,7 +19,7 @@
 // serialize() is { waveform, amp, f0, offset, shift, filter, fc, applyGain, applyPhase, N };
 //   restore() validates and clamps each.
 //
-// No readout shows an, bn, An or φn.
+// No readout shows an, bn, An or φn, except the coefficient table when the Setup asks for it.
 
 import { controlRegistry, createControl } from '../../../framework/v1/control.js';
 import { createEmitter } from '../../../framework/v1/tool.js';
@@ -26,6 +29,7 @@ import { plotlyMapping } from '../../../framework/v1/plot-map.js';
 import { MAX_N, filterSeries, harmonic, ideal, limitCurve, partialSum, series } from '../engine.js';
 import { FILTER_DEFAULTS, FILTER_STATE_INFO, filterControls } from '../filter.js';
 import { INPUT_DEFAULTS, INPUT_STATE_INFO, inputControls } from '../inputs.js';
+import { coefficientTable } from '../coefficient-table.js';
 import { PLOT_CONFIG, Plotly, fitToBox, themedLayout } from '../plot.js';
 
 export const id = 'synthesis';
@@ -54,6 +58,7 @@ export function mount(container, setup = {}) {
   const changes = createEmitter();
   const theme = plotTheme(); // read per mount, so the plot follows the page's theme
   let N = Number.isFinite(Number(start.N)) ? toN(start.N) : DEFAULTS.N;
+  const table = setup.coefficientTable === true ? coefficientTable() : null;
   let timer = null; // play's interval id, per instance
   let destroyed = false;
 
@@ -78,6 +83,7 @@ export function mount(container, setup = {}) {
     const pad = 0.2 * (hi - lo) || 1;
     yRange = [lo - pad, hi + pad];
     filters.update(input.f0);
+    table?.update(series(input));
   }
   redraw();
 
@@ -130,6 +136,7 @@ export function mount(container, setup = {}) {
   const root = h('div', { class: 'fw-tool', 'data-tool': 'fourier', 'data-mode': id },
     h('aside', { class: 'fw-controls' },
       inputs.el,
+      table?.el,
       filters.el,
       section('Partial sum', nSlider.el, playBtn,
         h('div', { class: 'fw-hint' }, 'N counts harmonic numbers, so an even N of a square or triangle wave adds a zero term.')),

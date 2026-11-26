@@ -16,6 +16,7 @@ const TEXT_FLOOR = 12;
 
 const ACTIVITIES = [
   '/tools/electrostatics/activities/conductor-properties.html',
+  '/tools/fourier/activities/fourier-series.html',
   '/tools/oscilloscope/activities/phase-period-amplitude.html',
   '/tools/spacetime/activities/lab10.html',
 ];
