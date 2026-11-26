@@ -184,3 +184,6 @@ export function themeVars(el, names) {
 export function section(title, ...children) {
   return h('div', { class: 'fw-section' }, h('div', { class: 'fw-section-label' }, title), ...children);
 }
+
+// The draggable handle (1-D and 2-D) and the rotary knob live in handle.js.
+export { handle, knob } from './handle.js';

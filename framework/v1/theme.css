@@ -279,6 +279,26 @@ html.fw-root, html.fw-root body {
 .fw-legend-row { display: flex; align-items: center; gap: 7px; font-size: 14px; margin-bottom: 6px; }
 .fw-legend-line { display: inline-block; width: 22px; height: 2.5px; flex-shrink: 0; }
 
+/* ── Handles and knobs (handle.js) ── */
+/* A layer over a Display to hold handles: it passes the pointer through except on a handle. */
+.fw-handle-layer { position: absolute; inset: 0; pointer-events: none; }
+.fw-handle-layer > * { pointer-events: auto; }
+/* A handle the kit makes is a round grab target centred on its toScreen() point inside a
+   positioned parent; the Tool usually draws the marker itself beneath it. */
+.fw-handle { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;
+  cursor: grab; touch-action: none; }
+.fw-handle:active { cursor: grabbing; }
+.fw-handle:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: 1px; }
+.fw-handle.fw-locked { cursor: not-allowed; }
+.fw-knob { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; cursor: ns-resize;
+  touch-action: none; font-size: 14px; }
+.fw-knob-dial { position: relative; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--fw-border-dk);
+  background: var(--fw-surface); }
+.fw-knob-dial::after { content: ''; position: absolute; left: 50%; top: 4px; width: 2px; height: 12px; margin-left: -1px;
+  background: var(--fw-text); }
+.fw-knob:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: 2px; }
+.fw-knob.fw-locked { cursor: not-allowed; opacity: 0.55; }
+
 /* Read by screen readers, not shown. */
 .fw-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
@@ -382,7 +402,9 @@ html.fw-root, html.fw-root body {
 /* side */
 .fw-layout-side .fw-tabpanel { flex-direction: row; }
 .fw-layout-side .fw-tabpanel > .fw-tool { flex: 1; min-width: 0; }
-.fw-layout-side .fw-part-tasks { width: 330px; max-height: none; border-top: none; border-left: 2px solid var(--fw-border-dk); }
+/* The Tasks column's width; createFrame (tool-host.js) reads it to decide the side form. */
+.fw-layout-side { --fw-tasks-column: 330px; }
+.fw-layout-side .fw-part-tasks { width: var(--fw-tasks-column); max-height: none; border-top: none; border-left: 2px solid var(--fw-border-dk); }
 .fw-layout-side .fw-progress-bar { flex: 1; width: auto; }
 .fw-layout-side .fw-tasks { flex-direction: column; overflow-y: auto; padding: 10px; gap: 10px; }
 .fw-layout-side .fw-task-card { flex: none; min-width: 0; border: 1px solid var(--fw-border); background: var(--fw-bg); }
@@ -392,6 +414,53 @@ html.fw-root, html.fw-root body {
 .fw-layout-side .fw-task-card[data-status="locked"] :is(.fw-task-prompt, .fw-question, .fw-task-submit, .fw-task-hint),
 .fw-layout-side .fw-task-card[data-status="passed"] :is(.fw-task-prompt, .fw-question, .fw-task-hint) { display: none; }
 .fw-layout-side .fw-task-card[data-status="passed"] .fw-task-submit { margin-bottom: 0; }
+.fw-task-card:focus { outline: none; }
+.fw-task-card:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: -2px; }
+
+/* side, Task drawer form: data-side-form="drawer" on .fw-app (createFrame, tool-host.js), set
+   when the Tasks column would leave the Display narrower than the Tool's minDisplayWidth. A bar
+   above the Display holds the current Task; opened, the drawer lies over the Display's right
+   part, so the Display never resizes, and shows only the current Task's card. */
+.fw-drawer-bar { display: none; }
+.fw-layout-side[data-side-form="drawer"] {
+  --fw-drawer-bar: 46px;
+}
+.fw-layout-side[data-side-form="drawer"] .fw-tabpanel { flex-direction: column; position: relative; }
+.fw-layout-side[data-side-form="drawer"] .fw-part-tasks {
+  order: -1; width: auto; border-left: none; border-bottom: 2px solid var(--fw-border-dk);
+}
+.fw-layout-side[data-side-form="drawer"] .fw-progress { display: none; }  /* the Part tab's badge shows progress */
+.fw-layout-side[data-side-form="drawer"] .fw-drawer-bar {
+  display: flex; align-items: center; gap: 10px; height: var(--fw-drawer-bar); padding: 0 14px; min-width: 0;
+}
+.fw-drawer-toggle {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 4px 6px;
+  border: none; background: none; color: var(--fw-text); font: bold 16px var(--fw-font); text-align: left; cursor: pointer;
+}
+.fw-drawer-toggle:hover:not(:disabled) { color: var(--fw-blue); }
+.fw-drawer-toggle:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: 1px; }
+.fw-drawer-toggle:disabled { cursor: default; color: var(--fw-green); }
+.fw-drawer-chevron { flex: none; color: var(--fw-blue); }
+.fw-drawer-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fw-drawer-feedback { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fw-drawer-note { flex: none; font-size: 15px; font-style: italic; color: var(--fw-text-dim); }
+.fw-drawer-note[hidden], .fw-drawer-submit[hidden] { display: none; }
+.fw-drawer-submit { flex: none; }
+/* The drawer itself: the Tasks row, over the Display, below the bar. */
+.fw-layout-side[data-side-form="drawer"] .fw-tasks {
+  position: absolute; z-index: 5; top: calc(var(--fw-drawer-bar) + 2px); right: 0; bottom: 0;
+  width: min(380px, 100%); overflow-y: auto;
+  background: var(--fw-surface); border-left: 2px solid var(--fw-border-dk);
+  box-shadow: -4px 0 12px rgba(26, 16, 8, 0.18);
+}
+.fw-layout-side[data-side-form="drawer"] .fw-part-tasks[data-drawer="closed"] .fw-tasks { display: none; }
+.fw-layout-side[data-side-form="drawer"] .fw-task-card:not([data-current]) { display: none; }
+/* The bar carries the current Task's Submit and feedback. */
+.fw-layout-side[data-side-form="drawer"] .fw-task-card .fw-task-submit { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .fw-layout-side[data-side-form="drawer"] .fw-part-tasks[data-drawer="open"] .fw-tasks { animation: fw-drawer-in 0.15s ease-out; }
+}
+@keyframes fw-drawer-in { from { transform: translateX(24px); opacity: 0; } }
 
 /* banner */
 .fw-layout-banner .fw-part-tasks { order: -1; max-height: none; border-top: none; border-bottom: 2px solid var(--fw-border-dk); }

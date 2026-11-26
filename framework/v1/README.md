@@ -7,6 +7,7 @@ Static ES modules and CSS, served as-is (no build, no install). Breaking changes
 | `tool.js` | **The Tool contract** (documented in its header comment), `defineTool()` validator, `createEmitter()`. No DOM, so it can be imported from Node. |
 | `control.js` | `createControl()`: base implementation of the Control interface (lock/unlock, show/hide). Lock disables every input, button, select and textarea in the Control's `el`, and `el` itself when it is one (so a bare `<button>` can be the `el`). Use it for custom Controls such as draggable markers. |
 | `ui-kit.js` | Standard Controls: `slider` (with number box and reset; `log: true` for a logarithmic scale), `toggle`, `select`, `button` (optional `title`; a locked button is disabled and neither a click nor `set()` presses it); `toggle` and `button` also take `onLock`/`onHide` for extra work. Plus `metric` readout, `section`, `h()` element helper, `escapeHtml(s)`, and `themeVars(el, { key: '--fw-var' })`: theme variables as computed at `el` (the v1 palette while `el` is not in a page), the one way to read drawing colours for canvas, SVG rendered to PNG and Plotly. |
+| `handle.js` | Two more kit Controls, re-exported by `ui-kit.js` (full options in its header comment). `handle`: a draggable handle, 1-D (`role="slider"`, `min`/`max`/`step`/`coarse`, `reversed` for a value that grows leftwards or downwards) or 2-D (`x: {...}, y: {...}`, value `{ x, y }`; a focusable group described by both coordinates). Arrow keys nudge it, Shift+arrow moves `coarse`, Home/End go to the bounds (1-D); pointer drags use `touch-action: none`. The Tool supplies the mapping: `toScreen(value) -> { x, y }` client position (the kit then places its `.fw-handle` over that point; call `place()` after a resize) and `fromScreen(clientX, clientY) -> value` for drags; or pass its own `el` (e.g. an SVG shape) and draw it. `update(value)` shows a value without `onChange`. Put kit handles in a `.fw-handle-layer` over the Display. `knob`: bench-scope's rotary pattern (`role="slider"`; arrows turn, Enter/Space push, wheel, vertical drag, click pushes) with `onTurn(detents)`/`onPush()`, on its own `.fw-knob` or a given `el`; `refresh()` redraws its value. Both lock, hide, get and set like any Control. |
 | `theme.css` | The v1 Refined Cream theme (cream and serif, WCAG AA text contrast) and layout classes (`.fw-*`). Self-hosts Libre Baskerville from `vendor/libre-baskerville/` (SIL OFL, `OFL.txt` there). Its `:root` variables (`--fw-blue`, `--fw-surface`, `--fw-paper` for a white drawing ground, ...) are also the drawing colours; keep `themeVars`' fallback palette in `ui-kit.js` in step. Exposes plot tokens `--fw-plot-*` (background, grid, axis, text, ink, muted, trace-1..3, font, font-size), also in that fallback palette. |
 | `plot-theme.js` | `plotTheme(el?)`: the `--fw-plot-*` tokens as computed at `el` (default: the root element), as `{ background, grid, axis, text, ink, muted, traces, font: { family, size } }`: the plot-shaped view of the theme for a Tool's plots. Built on `themeVars`, so it shares its fallback (the v1 plot palette). Call it at mount. |
 | `tool-host.js` | `mountStandalone(tool, root)`: Standalone mode, one tab per Mode, every Control unlocked, State autosaved per Tool and Mode, `#s=` share link. Also exports `createFrame`/`createTabs` for the Activity runner UI. |
@@ -54,7 +55,7 @@ A Task's `condition` is judged against the State only on Submit (`runner/conditi
 
 ```js
 // A Tool module default-exports:
-{ id, title, modes: [{ id, title }], layout?, mount(container, modeId, setup) }   // mount -> instance
+{ id, title, modes: [{ id, title }], layout?, minDisplayWidth?, mount(container, modeId, setup) }   // mount -> instance
 
 // instance
 {
@@ -84,9 +85,13 @@ refine a layout for its own Controls or Display (sizes, spacing, how a section's
 own CSS, scoped under its root class, such as bench-scope's compact Controls strip under `.bs-tool`; it does not
 move the panels themselves, and anything every Tool would want belongs in `theme.css`.
 
+`minDisplayWidth` is optional: a positive number of CSS pixels, default 480, checked by `defineTool()`. It is the
+narrowest the Display may get in the `side` layout; the other layouts ignore it. Declare a larger value when the
+drawing becomes unreadable below it (least squares declares 760 for its Graph beside the Fit panel).
+
 | Layout | Arrangement |
 | --- | --- |
-| `side` | Controls \| Display \| Tasks. Tasks stack in a 330 px column on the right; the current Task is outlined, finished Tasks show their title and result, locked Tasks one line saying why. |
+| `side` | Controls \| Display \| Tasks. Tasks stack in a 330 px column on the right; the current Task is outlined, finished Tasks show their title and result, locked Tasks one line saying why.<br>**Task drawer:** in an Activity, when the Tasks column would leave the Display narrower than `minDisplayWidth`, the frame sets `data-side-form="drawer"` on `.fw-app` (otherwise `"column"`) and the Tasks move into a bar above the Display: the current Task's number and title as an expand toggle (`aria-expanded`), its latest feedback and its Submit ("Open to answer" for a Task with Questions not yet opened). Opened, the drawer lies over the Display's right part (the Display never resizes) and shows only the current Task; Escape, the toggle or a click on the Display closes it. The switch is recomputed on resize, restyling the same DOM, so Tools are not remounted and typed answers stay. Standalone mode has no Tasks and always shows Controls \| Display. |
 | `strip` | Controls \| Display, with the Tasks in a row across the bottom (the original v1 layout). |
 | `banner` | The current Task is a banner above a full-width Display, the other Tasks compact steps beside it (a locked step says why it is locked); the Controls' sections sit side by side in a strip below the Display. In Standalone mode only the banner is absent. For wide Tools. |
 
