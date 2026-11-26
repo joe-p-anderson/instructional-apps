@@ -96,7 +96,13 @@ test('no visible framework text is below 4.5:1 contrast on the Activity page', a
   const p1 = part(page, 1);
   // Reveal miss feedback and the Hint on Task 1.1; Tasks 1.2 and 1.3 are locked.
   const submit = p1.getByRole('button', { name: 'Submit Task 1.1' });
-  for (let i = 0; i < 3; i++) await submit.click();
+  // Three different misses (an identical repeat would be refused, and not count).
+  for (const dt of [0.1, 0.2, 0.3]) {
+    const field = p1.getByRole('spinbutton', { name: 'Δt', exact: true });
+    await field.fill(String(dt));
+    await field.press('Enter');
+    await submit.click();
+  }
   await expect(p1.getByText(/Hint:/)).toBeVisible();
   expect(await contrastFailures(page, 2), 'Part 1').toEqual([]);
 
@@ -132,7 +138,13 @@ test('Question prompts read as text with a blue rule, and the Hint sits in a tin
   await enterName(page);
   const p1 = part(page, 1);
   const submit = p1.getByRole('button', { name: 'Submit Task 1.1' });
-  for (let i = 0; i < 3; i++) await submit.click();
+  // Three different misses (an identical repeat would be refused, and not count).
+  for (const dt of [0.1, 0.2, 0.3]) {
+    const field = p1.getByRole('spinbutton', { name: 'Δt', exact: true });
+    await field.fill(String(dt));
+    await field.press('Enter');
+    await submit.click();
+  }
   const style = (el) => el.evaluate((e) => {
     const s = getComputedStyle(e);
     return { color: s.color, fontStyle: s.fontStyle, rule: `${s.borderLeftStyle} ${s.borderLeftColor}`, bg: s.backgroundColor };
@@ -290,9 +302,13 @@ test('buttons, tabs and reset buttons show a focus-visible outline', async ({ pa
   await open(page);
   await enterName(page);
   const p1 = part(page, 1);
+  // Move Va off its default so its reset is enabled (and so focusable).
+  const va = p1.getByRole('spinbutton', { name: 'Va (V)', exact: true });
+  await va.fill('2.5');
+  await va.press('Enter');
   const targets = [
     page.getByRole('tab', { name: /Part 1/ }),
-    p1.getByRole('button', { name: 'Reset Va' }),
+    p1.getByRole('button', { name: /^Reset to [\d.]+ V$/ }),
     p1.getByRole('button', { name: 'Submit Task 1.1' }),
   ];
   for (const target of targets) {

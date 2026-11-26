@@ -70,6 +70,7 @@ test('a Hint becomes available once the miss count reaches its threshold', () =>
   r.submit('p1', 't1');
   assert.equal(r.task('p1', 't1').misses, 1);
   assert.equal(r.task('p1', 't1').hint, null);
+  tool.setState({ phi: 0.5 }); // a different try (an identical repeat would be refused)
   const second = r.submit('p1', 't1');
   assert.equal(second.hint, 'Drag the Δt marker.');
   assert.equal(r.task('p1', 't1').hint, 'Drag the Δt marker.');

@@ -58,8 +58,12 @@ test('a Task passes only on a Submit at the target, and its Hint appears after 3
   await submit.click();
   await expect(p1.getByRole('status', { name: 'Task 1.1 feedback' })).toContainText('need > 0');
   await expect(card).toHaveAttribute('data-status', 'open');
+  // Each further miss is a different try (an identical repeat would be refused, and not count).
+  const why = card.getByRole('textbox', { name: /electric field in the bulk/ });
+  await why.fill('first idea');
   await submit.click();
   await expect(p1.getByText(/Hint:/)).toBeHidden();
+  await why.fill('second idea');
   await submit.click();
   await expect(p1.getByText(/Hint:/)).toBeVisible();
   await expect(card).toContainText('Drag the E₀ joystick away from its centre');

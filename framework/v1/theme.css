@@ -311,8 +311,9 @@ html.fw-root, html.fw-root body {
 }
 .fw-button { border: 1.5px solid var(--fw-blue); color: var(--fw-blue); font-size: 16px; letter-spacing: 0.08em; padding: 3px 10px; }
 .fw-button:hover:not(:disabled) { background: var(--fw-blue); color: #fff; }
-.fw-reset { min-width: 48px; }
+.fw-reset { min-width: 32px; }
 .fw-reset:hover:not(:disabled) { border-color: var(--fw-blue); color: var(--fw-blue); }
+.fw-reset:disabled { opacity: 0.4; cursor: default; }
 
 .fw-toggle, .fw-select { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 16px; }
 .fw-select select {
@@ -443,6 +444,17 @@ html.fw-root, html.fw-root body {
 .fw-task-feedback { font-size: 15px; font-style: italic; }
 .fw-task-feedback.fw-ok { color: var(--fw-green); }
 .fw-task-feedback.fw-fail { color: var(--fw-red); }
+.fw-task-feedback.fw-refused { color: var(--fw-text-muted); }
+/* Every Submit result re-triggers a short emphasis, so a Submit always visibly registers.
+   The UI re-adds the class on each Submit and drops it after the 600ms the flash lasts. */
+.fw-task-feedback.fw-emphasis { animation: fw-feedback-flash 600ms ease-out; border-radius: 3px; }
+@keyframes fw-feedback-flash {
+  from { background: var(--fw-hint-bg); box-shadow: 0 0 0 4px var(--fw-hint-bg); }
+  to   { background: transparent; box-shadow: 0 0 0 4px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fw-task-feedback.fw-emphasis { animation: none; background: var(--fw-hint-bg); box-shadow: 0 0 0 4px var(--fw-hint-bg); }
+}
 .fw-task-hint { font-size: 14px; color: var(--fw-yellow); line-height: 1.4; background: var(--fw-hint-bg); border-left: 3px solid var(--fw-yellow); padding: 4px 8px; }
 .fw-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
