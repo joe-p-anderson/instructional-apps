@@ -1,5 +1,6 @@
 // Seam 2 (Spec 0002): the real bench-scope Standalone page.
 import { test, expect } from '@playwright/test';
+import { copyShareLink } from './helpers/share-link.js';
 import { openSourceDrawer } from './helpers/bench-drawer.js';
 import { installScreenReader } from './helpers/bench-screen.js';
 
@@ -97,8 +98,7 @@ test('a reload keeps the setup, and a share link reproduces it elsewhere', async
   await openSourceDrawer(page);
   await expect(page.getByRole('spinbutton', { name: 'CH1 amplitude', exact: true })).toHaveValue(/^6\.5/);
 
-  await page.getByRole('button', { name: 'Copy share link' }).click();
-  const url = await page.getByRole('textbox', { name: 'Share link' }).inputValue();
+  const url = await copyShareLink(page);
   expect(url).toMatch(/#s=/);
   const other = await browser.newContext();
   const theirs = await other.newPage();

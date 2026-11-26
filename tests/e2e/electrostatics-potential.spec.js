@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { copyShareLink } from './helpers/share-link.js';
 
 // Standalone smoke test of the electrostatics Tool's potential Mode (the second tab).
 const PAGE = '/tools/electrostatics/';
@@ -138,8 +139,7 @@ test('a reload and a share link restore the same setup', async ({ page, browser 
   expect(await snapshot(page)).toEqual(want);
 
   await page.getByRole('tab', { name: 'Potential' }).click();
-  await page.getByRole('button', { name: 'Copy share link' }).click();
-  const url = await page.getByRole('textbox', { name: 'Share link' }).inputValue();
+  const url = await copyShareLink(page);
   expect(url).toMatch(/#s=/);
   const other = await browser.newContext();
   const theirs = await other.newPage();

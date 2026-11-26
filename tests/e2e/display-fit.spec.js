@@ -8,9 +8,8 @@ import { installCanvasTextRecorder, displayTexts } from './helpers/display-text.
 
 const TOOLS = ['bench-scope', 'electrostatics', 'least-squares', 'oscilloscope', 'spacetime', 'vernier'];
 
-// TODO(shell-revision 03): read each Tool's declared minDisplayWidth once defineTool() has it;
-// 480 px is the framework default.
-const MIN_DISPLAY_WIDTH = 480;
+/** The Tool's declared minimum Display width (defineTool() defaults it to 480 px). */
+const minDisplayWidth = (page) => page.evaluate(() => window.toolHost.tool.minDisplayWidth);
 
 const TEXT_FLOOR = 12;
 
@@ -61,8 +60,9 @@ for (const tool of TOOLS) {
       expect(await overflow(page), `${mode} at 1366×768`).toBeLessThanOrEqual(0);
       expect(await smallText(page), `${mode}: Display text under ${TEXT_FLOOR} px`).toEqual([]);
 
-      await setDisplayWidth(page, MIN_DISPLAY_WIDTH);
-      expect(await overflow(page), `${mode} at a ${MIN_DISPLAY_WIDTH} px Display`).toBeLessThanOrEqual(0);
+      const min = await minDisplayWidth(page);
+      await setDisplayWidth(page, min);
+      expect(await overflow(page), `${mode} at a ${min} px Display`).toBeLessThanOrEqual(0);
     }
     // Bench-scope's other skin draws its screen readouts at its own native size.
     if (tool === 'bench-scope') {

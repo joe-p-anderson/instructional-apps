@@ -36,7 +36,7 @@ test('Standalone mode shows every Control, unlocked', async ({ page }) => {
     }));
   });
   expect(controls.map((c) => c.id).sort()).toEqual(
-    ['Dt', 'Dt-marker', 'Va', 'Va-marker', 'f', 'f-marker'].sort(),
+    ['Dt', 'Dt-marker', 'Va', 'Va-marker', 'f', 'f-marker', 'phi-readout', 'ratio-readout'].sort(),
   );
   for (const c of controls) expect(c, c.id).toMatchObject({ locked: false, hidden: false });
 });
@@ -132,4 +132,53 @@ test('the Δt marker is a Control that can be locked like a slider', async ({ pa
   const before = await dt();
   await dragLeftOneSecond();
   expect(await dt()).toBe(before);
+});
+
+test('each plot marker can be focused and moved with the arrow keys, like a drag', async ({ page }) => {
+  await open(page);
+  await page.waitForFunction(() => window.toolHost.instances[0].displays[0].toScreen(0, 0));
+  const state = () => page.evaluate(() => window.toolHost.instances[0].state.snapshot());
+
+  // Va marker: a vertical handle at (0, Va). Up raises Va; Shift steps 0.1 V.
+  const va = page.getByRole('slider', { name: 'Va marker' });
+  await va.focus();
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Shift+ArrowUp');
+  expect((await state()).Va).toBeCloseTo(2.11, 9);
+  await expect(va).toHaveAttribute('aria-valuetext', '2.11 V');
+  await expect(page.getByRole('spinbutton', { name: 'Va', exact: true })).toHaveValue('2.11');
+
+  // Δt marker at (T − Δt, Va): Right moves it right on the plot, so Δt shrinks.
+  const dt = page.getByRole('slider', { name: 'Δt marker' });
+  await dt.focus();
+  await page.keyboard.press('ArrowRight');
+  expect((await state()).Dt).toBeCloseTo(0.24, 9);
+  await page.keyboard.press('Shift+ArrowLeft');
+  const s = await state();
+  expect(s.Dt).toBeCloseTo(0.34, 9);
+  expect(s.ratio).toBeCloseTo(0.34 / 2, 9); // the derived State follows, as on a drag
+
+  // f marker at (T, 0): Right moves it right, a longer period, so f falls.
+  const f = page.getByRole('slider', { name: 'f marker' });
+  await f.focus();
+  await page.keyboard.press('ArrowRight');
+  expect((await state()).f).toBeCloseTo(0.49, 9);
+  await page.keyboard.press('Shift+ArrowLeft');
+  expect((await state()).f).toBeCloseTo(0.59, 9);
+
+  // The marker sits where its State puts it.
+  const at = await page.evaluate(() => {
+    const i = window.toolHost.instances[0];
+    const { f, Dt, Va } = i.state.snapshot();
+    return i.displays[0].toScreen(1 / f - Dt, Va);
+  });
+  const box = await dt.boundingBox();
+  expect(box.x + box.width / 2).toBeCloseTo(at.x, 0);
+  expect(box.y + box.height / 2).toBeCloseTo(at.y, 0);
+
+  // A locked marker ignores the keys.
+  await page.evaluate(() => window.toolHost.instances[0].controls.get('Va-marker').lock());
+  await va.focus();
+  await page.keyboard.press('ArrowUp');
+  expect((await state()).Va).toBeCloseTo(2.11, 9);
 });

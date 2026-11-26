@@ -1,5 +1,6 @@
 // Seam 3 (Spec 0003): the real spacetime Standalone page.
 import { test, expect } from '@playwright/test';
+import { copyShareLink } from './helpers/share-link.js';
 import { readFile } from 'node:fs/promises';
 
 const PAGE = '/tools/spacetime/';
@@ -164,8 +165,7 @@ test('a reload keeps the diagram, and a share link reproduces it elsewhere', asy
   // A restore starts a fresh history.
   await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeDisabled();
 
-  await page.getByRole('button', { name: 'Copy share link' }).click();
-  const url = await page.getByRole('textbox', { name: 'Share link' }).inputValue();
+  const url = await copyShareLink(page);
   expect(url).toMatch(/#s=/);
   const other = await browser.newContext();
   const theirs = await other.newPage();

@@ -11,9 +11,10 @@
 //   values    { value(control), detent(control), disabled(control), mpFunction() }: the engine (see engine.js,
 //             "Control values")
 //
-// Input. Knobs: the wheel turns one detent per notch (small trackpad deltas add up to one), a
-// vertical drag turns continuously (up = clockwise, DRAG_PX per detent), the arrow keys turn a
-// focused knob (Up/Right clockwise), and a click without a drag, or Enter/Space, pushes it.
+// Input. Knobs are the UI kit's knob (framework ui-kit.js): the wheel turns one detent per notch
+// (small trackpad deltas add up to one), a vertical drag turns continuously (up = clockwise), the
+// arrow keys turn a focused knob (Up/Right clockwise), and a click without a drag, or Enter/Space,
+// pushes it.
 // Buttons and softkeys: click or Enter/Space presses, shown pressed while held. Buttons also send
 // hold on pointerdown / keydown and release on pointerup (anywhere) / keyup.
 // Knob rotation is drawn from values.detent() on sync(), never accumulated here; call sync()
@@ -35,14 +36,11 @@
 // get() is an LED's lit state or null, and set() does nothing. The screen is the Display, not a Control.
 
 import { createControl } from '../../framework/v1/control.js';
+import { knob } from '../../framework/v1/ui-kit.js';
 
 const PRESS_MS = 120;
-const DRAG_PX = 8; // CSS pixels of vertical drag per detent
-const DRAG_SLOP = 3; // a pointer that moves less than this is a click (push)
-const WHEEL_NOTCH = 40; // |deltaY| (pixels) worth one detent; a mouse notch is ~100
 const CONTROL_KINDS = new Set(['knob', 'button', 'softkey']);
 
-const KEY_TURNS = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 };
 const isActivateKey = (key) => key === 'Enter' || key === ' ';
 
 export function createPanel({ svgText, model, onEvent, values }) {
@@ -114,24 +112,39 @@ export function createPanel({ svgText, model, onEvent, values }) {
     const label = entry.label || (entry.kind === 'softkey' ? `Softkey ${name.replace('softkey-', '')}` : name);
     const title = node.querySelector(':scope > title');
     const tooltip = title?.textContent ?? label;
+    const hasValue = () => values.value(name) !== undefined;
+    if (entry.kind === 'knob') {
+      const ctl = knob({
+        id: name,
+        name: label,
+        el: node,
+        get: () => (hasValue() ? values.value(name) : values.detent(name)),
+        set: (v) => {
+          if (hasValue()) onEvent({ type: 'set', control: name, value: v });
+          else {
+            const detents = Math.trunc(Number(v) - values.detent(name));
+            if (detents) onEvent({ type: 'turn', control: name, detents });
+          }
+        },
+        onTurn: (detents) => onEvent({ type: 'turn', control: name, detents }),
+        onPush: () => { if (node.dataset.push) onEvent({ type: 'push', control: name }); },
+        onLock: lockedTitle(node, tooltip),
+        onHide: (hidden) => { node.style.visibility = hidden ? 'hidden' : ''; },
+      });
+      byName.set(name, { ctl, node, kind: entry.kind });
+      continue;
+    }
     node.setAttribute('tabindex', '0');
-    node.setAttribute('role', entry.kind === 'knob' ? 'slider' : 'button');
+    node.setAttribute('role', 'button');
     node.setAttribute('aria-label', label);
 
-    const hasValue = () => values.value(name) !== undefined;
     const ctl = createControl({
       id: name,
       label,
-      get: () => {
-        if (hasValue()) return values.value(name);
-        return entry.kind === 'knob' ? values.detent(name) : (presses.get(name) ?? 0);
-      },
+      get: () => (hasValue() ? values.value(name) : (presses.get(name) ?? 0)),
       set: (v) => {
         if (hasValue()) onEvent({ type: 'set', control: name, value: v });
-        else if (entry.kind === 'knob') {
-          const detents = Math.trunc(Number(v) - values.detent(name));
-          if (detents) onEvent({ type: 'turn', control: name, detents });
-        } else press(node);
+        else press(node);
       },
       onLock: lockedTitle(node, tooltip),
       onHide: (hidden) => {
@@ -182,82 +195,28 @@ export function createPanel({ svgText, model, onEvent, values }) {
     onEvent({ type: 'release', control });
   }
 
-  // ---- Input ------------------------------------------------------------------------------
-  const turn = (c, detents) => onEvent({ type: 'turn', control: c.node.dataset.control, detents });
-  const push = (c) => { if (c.node.dataset.push) onEvent({ type: 'push', control: c.node.dataset.control }); };
-
-  let wheelAcc = 0;
-  function onWheel(e) {
-    const node = e.target.closest?.('.osc-control[data-kind="knob"]');
-    if (!node) return;
-    e.preventDefault();
-    const c = operable(node, 'knob');
-    if (!c) return;
-    const dy = e.deltaMode === 1 ? e.deltaY * WHEEL_NOTCH : e.deltaY; // lines -> pixels
-    if (Math.abs(dy) >= WHEEL_NOTCH) {
-      wheelAcc = 0;
-      turn(c, dy < 0 ? 1 : -1);
-      return;
-    }
-    wheelAcc += dy;
-    if (Math.abs(wheelAcc) >= WHEEL_NOTCH) {
-      turn(c, wheelAcc < 0 ? 1 : -1);
-      wheelAcc = 0;
-    }
-  }
-
-  let drag = null; // { c, pointerId, x0, y0, sent, moved }
+  // ---- Input (buttons and softkeys; each knob handles its own) ------------------------------
   function onPointerDown(e) {
     if (e.button !== 0) return;
     const c = operable(e.target);
-    if (!c) return;
-    if (c.kind === 'knob') {
-      e.preventDefault(); // no text selection or native drag
-      c.node.focus({ preventScroll: true });
-      drag = { c, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY, sent: 0, moved: false };
-      svg.setPointerCapture?.(e.pointerId);
-    } else {
-      c.node.classList.add('bs-pressed');
-      hold(c);
-    }
+    if (!c || c.kind === 'knob') return;
+    c.node.classList.add('bs-pressed');
+    hold(c);
   }
-  function onPointerMove(e) {
-    if (!drag || e.pointerId !== drag.pointerId) return;
-    const dy = drag.y0 - e.clientY;
-    if (Math.abs(dy) > DRAG_SLOP || Math.abs(e.clientX - drag.x0) > DRAG_SLOP) drag.moved = true;
-    const detents = Math.trunc(dy / DRAG_PX);
-    if (detents !== drag.sent && !drag.c.ctl.isLocked()) turn(drag.c, detents - drag.sent);
-    drag.sent = detents;
-  }
-  function onPointerUp(e) {
-    if (drag && e.pointerId === drag.pointerId) {
-      const { c, moved } = drag;
-      drag = null;
-      svg.releasePointerCapture?.(e.pointerId);
-      if (!moved && e.type === 'pointerup' && operable(c.node)) push(c);
-      return;
-    }
+  function onPointerUp() {
     for (const { node } of byName.values()) if (node.classList.contains('bs-pressed')) releaseLater(node);
   }
 
   function onClick(e) {
     const c = operable(e.target);
-    if (!c || c.kind === 'knob') return; // knobs push on pointerup (a click without a drag)
+    if (!c || c.kind === 'knob') return; // a knob pushes itself (a click without a drag)
     press(c.node);
   }
 
   function onKeyDown(e) {
     const c = operable(e.target);
-    if (!c) return;
-    if (c.kind === 'knob') {
-      if (e.key in KEY_TURNS) {
-        e.preventDefault();
-        turn(c, KEY_TURNS[e.key]);
-      } else if (isActivateKey(e.key)) {
-        e.preventDefault();
-        push(c);
-      }
-    } else if (isActivateKey(e.key)) {
+    if (!c || c.kind === 'knob') return;
+    if (isActivateKey(e.key)) {
       e.preventDefault();
       flashPressed(c.node);
       if (!e.repeat) hold(c);
@@ -268,9 +227,7 @@ export function createPanel({ svgText, model, onEvent, values }) {
     if (isActivateKey(e.key) && held) release();
   }
 
-  svg.addEventListener('wheel', onWheel, { passive: false });
   svg.addEventListener('pointerdown', onPointerDown);
-  svg.addEventListener('pointermove', onPointerMove);
   svg.addEventListener('pointerup', onPointerUp);
   svg.addEventListener('pointercancel', onPointerUp);
   svg.addEventListener('click', onClick);
@@ -300,7 +257,7 @@ export function createPanel({ svgText, model, onEvent, values }) {
         rot.dataset.angle = String(angle);
         rot.setAttribute('transform', `rotate(${angle} ${node.dataset.cx} ${node.dataset.cy})`);
       }
-      node.setAttribute('aria-valuetext', String(ctl.get()));
+      ctl.refresh();
     }
   }
   sync();
@@ -314,9 +271,8 @@ export function createPanel({ svgText, model, onEvent, values }) {
     sync,
     destroy() {
       for (const t of timers) clearTimeout(t);
-      svg.removeEventListener('wheel', onWheel);
       svg.removeEventListener('pointerdown', onPointerDown);
-      svg.removeEventListener('pointermove', onPointerMove);
+      for (const { ctl, kind } of byName.values()) if (kind === 'knob') ctl.destroy();
       svg.removeEventListener('pointerup', onPointerUp);
       svg.removeEventListener('pointercancel', onPointerUp);
       svg.removeEventListener('click', onClick);

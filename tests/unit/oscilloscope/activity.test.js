@@ -5,7 +5,7 @@ import activity from '../../../tools/oscilloscope/activities/phase-period-amplit
 import { metrics } from '../../../tools/oscilloscope/signal.js';
 import { stubTool } from '../runner/stub-tool.js';
 
-const CONTROLS = ['Va', 'f', 'Dt', 'Va-marker', 'f-marker', 'Dt-marker'];
+const CONTROLS = ['Va', 'f', 'Dt', 'Va-marker', 'f-marker', 'Dt-marker', 'phi-readout', 'ratio-readout'];
 
 // A stub oscilloscope: settable signal values with the real derived metrics.
 function scope() {
@@ -43,6 +43,11 @@ test('the Activity names the oscilloscope Tool, with two Parts on the same Mode 
   assert.notDeepEqual(part1.setup, part2.setup);
 });
 
+test('the Activity is titled Sinusoidal Signals and keeps its id, so saved Runs and Reports still match', () => {
+  assert.equal(activity.title, 'Sinusoidal Signals');
+  assert.equal(activity.id, 'oscilloscope-phase-period-amplitude');
+});
+
 test('Task 1.1 passes at φ = π/2 within 0.05 and gives specific miss feedback', () => {
   const { runner, tools } = start();
   const t11 = part1.tasks[0].id;
@@ -62,6 +67,20 @@ test('Δt (slider and marker) is locked once Task 1.1 passes', () => {
   runner.submit(part1.id, part1.tasks[0].id);
   assert.equal(t.controls.get('Dt').isLocked, true);
   assert.equal(t.controls.get('Dt-marker').isLocked, true);
+});
+
+test('the φ readouts are hidden through Tasks 1.1 and 1.2, shown again for the Question, and left alone in Part 2', () => {
+  const { runner, tools } = start();
+  const t = tools[part1.id];
+  const hidden = () => ['phi-readout', 'ratio-readout'].map((id) => !t.controls.get(id).isVisible);
+  assert.deepEqual(hidden(), [true, true]);
+  t.setSignal({ Dt: 0.5 });
+  runner.submit(part1.id, part1.tasks[0].id);
+  assert.deepEqual(hidden(), [true, true]);
+  t.setSignal({ f: 0.25 });
+  runner.submit(part1.id, part1.tasks[1].id);
+  assert.deepEqual(hidden(), [false, false]);
+  assert.equal(tools[part2.id].controls.get('phi-readout').isVisible, true);
 });
 
 test('Task 1.2 targets φ = π/4 and is followed by the free-text Question', () => {
@@ -102,6 +121,23 @@ test('the Activity source keeps its Condition targets and target-revealing Hints
   }
   for (const task of activity.parts.flatMap((p) => p.tasks).filter((t) => t.condition)) {
     assert.match(task.condition, /^enc1:/, `Task "${task.id}" Condition is encoded`);
+  }
+});
+
+test('no Hint states the value that passes its Task', async () => {
+  const { decodeKey } = await import('../../../framework/v1/runner/keys.js');
+  // The settings that pass each Task, and the Condition target to two places.
+  const answers = {
+    'phase-pi-2': [/0\.5\b/, /1\.57/],          // Δt = 0.5 s at f = 0.5 Hz; π/2 ≈ 1.571
+    'phase-pi-4': [/0\.25/, /0\.78/, /0\.79/], // f = 0.25 Hz at Δt = 0.5 s; π/4 ≈ 0.785
+    'period-3': [/0\.33/, /1\s*\/\s*3\b/, /3\.00/], // f = 1/3 Hz
+    'pkpk-4': [/V_a\s*=\s*2/, /\b2(\.0+)?\s*(\\\))?\s*V\b/, /4\.00/], // Va = 2 V
+  };
+  const hinted = activity.parts.flatMap((p) => p.tasks).filter((t) => t.hint);
+  assert.deepEqual(hinted.map((t) => t.id).sort(), Object.keys(answers).sort());
+  for (const task of hinted) {
+    const text = task.hint.text.startsWith('enc1:') ? decodeKey(task.hint.text) : task.hint.text;
+    for (const leak of answers[task.id]) assert.doesNotMatch(text, leak, `Task "${task.id}" Hint: ${text}`);
   }
 });
 

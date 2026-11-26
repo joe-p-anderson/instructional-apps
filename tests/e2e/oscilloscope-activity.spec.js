@@ -12,6 +12,12 @@ async function enterName(page, name = 'Ada Lovelace') {
   await page.getByRole('button', { name: 'Start' }).click();
 }
 
+test('the page title and header read "Sinusoidal Signals"', async ({ page }) => {
+  await open(page);
+  await expect(page).toHaveTitle('Sinusoidal Signals');
+  await expect(page.getByRole('heading', { name: 'Sinusoidal Signals', level: 1 })).toBeVisible();
+});
+
 test('the name gate blocks Part 1 until a name is entered', async ({ page }) => {
   await open(page);
   await expect(page.getByRole('textbox', { name: 'Your name' })).toBeVisible();
@@ -52,14 +58,16 @@ test('exposure rules show, lock and hide the expected Controls, including the Δ
   await open(page);
   await enterName(page);
 
-  // Part 1, Task 1.1: everything open.
+  // Part 1, Task 1.1: every input open; the φ readouts hidden.
   expect(await exposure(page, 'phase')).toEqual({
     Va: 'open', f: 'open', Dt: 'open', 'Va-marker': 'open', 'f-marker': 'open', 'Dt-marker': 'open',
+    'phi-readout': 'hidden', 'ratio-readout': 'hidden',
   });
 
   // Part 2, Task 2.1: f only; Va locked; Δt hidden (slider and marker).
   expect(await exposure(page, 'period-amplitude')).toEqual({
     Va: 'locked', f: 'open', Dt: 'hidden', 'Va-marker': 'locked', 'f-marker': 'open', 'Dt-marker': 'hidden',
+    'phi-readout': 'open', 'ratio-readout': 'open',
   });
   await page.getByRole('tab', { name: /Part 2/ }).click();
   const p2 = part(page, 2);
@@ -75,6 +83,40 @@ test('exposure rules show, lock and hide the expected Controls, including the Δ
   await expect(p1.getByRole('slider', { name: 'Δt', exact: true })).toBeDisabled();
   await expect(p1.getByRole('spinbutton', { name: 'Δt', exact: true })).toBeDisabled();
   expect(await exposure(page, 'phase')).toMatchObject({ Dt: 'locked', 'Dt-marker': 'locked', f: 'open' });
+});
+
+test('the φ Tasks hide the readouts that print φ; they reappear once a later Task no longer hides them', async ({ page }) => {
+  await open(page);
+  await enterName(page);
+  const p1 = part(page, 1);
+  const phi = p1.getByRole('status', { name: 'φ', exact: true, includeHidden: true });
+  const ratio = p1.getByRole('status', { name: 'Δt / T', exact: true, includeHidden: true });
+  // φ = 2π f Δt at the Setup (f = 0.5 Hz, Δt = 0.25 s), as the readout would print it.
+  const startPhi = '0.7854';
+
+  // Task 1.1 asks for φ: neither readout is shown, and φ's value is nowhere on the Part.
+  await expect(p1.getByRole('button', { name: 'Submit Task 1.1' })).toBeVisible();
+  await expect(phi).toBeHidden();
+  await expect(ratio).toBeHidden();
+  expect(await p1.evaluate((el) => el.innerText)).not.toContain(startPhi); // rendered text only
+  // Part 2 doesn't ask for φ, so its readouts stay.
+  await page.getByRole('tab', { name: /Part 2/ }).click();
+  await expect(part(page, 2).getByRole('status', { name: 'φ', exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: /Part 1/ }).click();
+
+  // Task 1.2 also asks for φ.
+  await setNumber(page, p1, 'Δt', 0.5);
+  await p1.getByRole('button', { name: 'Submit Task 1.1' }).click();
+  await expect(p1.getByRole('button', { name: 'Submit Task 1.2' })).toBeVisible();
+  await expect(phi).toBeHidden();
+  await expect(ratio).toBeHidden();
+
+  // Task 1.3 (the Question) no longer hides them.
+  await setNumber(page, p1, 'f', 0.25);
+  await p1.getByRole('button', { name: 'Submit Task 1.2' }).click();
+  await expect(phi).toBeVisible();
+  await expect(phi).toContainText('0.7854 rad');
+  await expect(ratio).toBeVisible();
 });
 
 test('dragging through the target without Submitting does not pass; a Submit at the target passes and unlocks the next Task', async ({ page }) => {
