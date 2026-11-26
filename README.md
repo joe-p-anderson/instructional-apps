@@ -14,3 +14,4 @@ Static instructional apps, served as-is (no build). Tools are built on [framewor
 
 - [Conductor Properties](tools/electrostatics/activities/conductor-properties.html) (PHY 4300, electrostatics): the field, potential and charge of a conductor in electrostatic equilibrium, explained as modus tollens proofs.
 - [Spacetime Diagrams](tools/spacetime/activities/lab10.html) (PHY 1200, spacetime): Lab 10's building the diagram and relativity of simultaneity, read by counting the rocket's tilted grid lines.
+- [Frequency Domain: Fourier Series](tools/fourier/activities/fourier-series.html) (PHY/EGR 3120, fourier): build the square and triangle waves from their harmonics, then compute a shifted sine's and the square wave's coefficients by hand.
