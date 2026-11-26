@@ -12,7 +12,7 @@
 //   printing it).
 // Displays: 'scope' (with toScreen(t, V): the client position of a plot point).
 
-import { controlRegistry } from '../../framework/v1/control.js';
+import { controlRegistry, createControl } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
 import { h, handle, metric, section, slider } from '../../framework/v1/ui-kit.js';
 import { plotTheme } from '../../framework/v1/plot-theme.js';
