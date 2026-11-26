@@ -39,7 +39,7 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
   if (!document.title) document.title = activity.title;
 
   const frame = createFrame(root, { title: activity.title, course: activity.course, layout: tool.layout,
-    minDisplayWidth: tool.minDisplayWidth, tasks: true });
+    minDisplayWidth: tool.minDisplayWidth, maxDisplayWidth: tool.maxDisplayWidth, tasks: true });
   const host = { tool, runner: null, instances: {}, activePart: null, select: null, render };
 
   const tabs = createTabs(frame, activity.parts, (id) => {

@@ -24,5 +24,7 @@ export default defineTool({
   id: 'electrostatics',
   title: 'Electrostatics',
   modes: MODES.map(({ id, title }) => ({ id, title })),
+  // The plot is square: on a wider Display the colour bar drifts far from it at the right edge.
+  maxDisplayWidth: 1200,
   mount,
 });

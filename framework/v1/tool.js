@@ -8,6 +8,7 @@
 //     modes: [{ id: 'dual-trace', title: 'Dual-trace scope' }],
 //     layout: 'side',                           // optional panel layout, see below
 //     minDisplayWidth: 480,                     // optional, CSS px, see below
+//     maxDisplayWidth: 1100,                    // optional, CSS px, see below
 //     mount(container, modeId, setup) -> ToolInstance
 //   }
 //
@@ -16,6 +17,9 @@
 // minDisplayWidth (optional, a positive number of CSS pixels, default 480) is the narrowest the
 // Display may get in the `side` layout: in an Activity, when the Tasks column would leave the
 // Display narrower, the Tasks move into the Task drawer. The other layouts ignore it.
+// maxDisplayWidth (optional, a positive number of CSS pixels, at least minDisplayWidth; unset
+// means unlimited) is the widest the Display gets, in every layout: past it the Display centres
+// in its region. Declare one where a drawing degrades when stretched.
 //
 // mount() takes a DOM container, a Mode id and a Setup (plain object of starting values,
 // Tool-specific; may be partial or omitted) and returns an instance. A Tool keeps no global
@@ -67,6 +71,10 @@ export function defineTool(tool) {
   if (!LAYOUTS.includes(layout)) problems.push(`layout (one of ${LAYOUTS.join(', ')})`);
   const minDisplayWidth = tool.minDisplayWidth === undefined ? DEFAULT_MIN_DISPLAY_WIDTH : tool.minDisplayWidth;
   if (!isPositiveNumber(minDisplayWidth)) problems.push('minDisplayWidth (a positive number of CSS pixels)');
+  const { maxDisplayWidth } = tool;
+  if (maxDisplayWidth !== undefined && !(isPositiveNumber(maxDisplayWidth) && maxDisplayWidth >= minDisplayWidth)) {
+    problems.push('maxDisplayWidth (a positive number of CSS pixels, at least minDisplayWidth)');
+  }
   if (problems.length) throw new TypeError(`Invalid Tool definition: bad ${problems.join(', ')}`);
   return { ...tool, layout, minDisplayWidth };
 }

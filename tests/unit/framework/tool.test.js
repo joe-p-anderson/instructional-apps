@@ -43,3 +43,24 @@ test('a minDisplayWidth that is not a positive number is rejected', () => {
     assert.throws(() => defineTool(tool({ minDisplayWidth })), /minDisplayWidth/);
   }
 });
+
+test('a Tool without a maxDisplayWidth has none (unlimited)', () => {
+  assert.equal(defineTool(tool()).maxDisplayWidth, undefined);
+});
+
+test('a Tool may declare a positive maxDisplayWidth no smaller than its minDisplayWidth', () => {
+  assert.equal(defineTool(tool({ maxDisplayWidth: 1100 })).maxDisplayWidth, 1100);
+  assert.equal(defineTool(tool({ minDisplayWidth: 600, maxDisplayWidth: 600 })).maxDisplayWidth, 600);
+});
+
+test('a maxDisplayWidth that is not a positive number is rejected', () => {
+  for (const maxDisplayWidth of [0, -10, '900', null, NaN, Infinity]) {
+    assert.throws(() => defineTool(tool({ maxDisplayWidth })), /maxDisplayWidth/);
+  }
+});
+
+test('a maxDisplayWidth smaller than the minDisplayWidth is rejected', () => {
+  assert.throws(() => defineTool(tool({ minDisplayWidth: 600, maxDisplayWidth: 599 })), /maxDisplayWidth/);
+  // ... including the default minimum of 480 px.
+  assert.throws(() => defineTool(tool({ maxDisplayWidth: 400 })), /maxDisplayWidth/);
+});

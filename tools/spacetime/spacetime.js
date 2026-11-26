@@ -131,7 +131,8 @@ const CSS = `
 .st-side .mitem .x { position: absolute; top: 2px; right: 3px; }
 .st-side .foot { color: var(--fw-text-muted); font-size: 12px; margin-top: 12px; border-top: 1px solid var(--fw-border); padding-top: 6px; }
 .st-side .fw-control[hidden] { display: none; }
-@media (max-width: 1000px) {
+/* Narrower than 1000 px, Controls + objects panel (520 px) would leave the Display under 480 px. */
+@media (max-width: 999.98px) {
   .st-tool { grid-template-columns: minmax(0, 1fr); overflow-y: auto; }
   .st-tool .fw-controls, .st-side { border: none; overflow: visible; }
   .st-panels { grid-template-columns: minmax(0, 1fr); }

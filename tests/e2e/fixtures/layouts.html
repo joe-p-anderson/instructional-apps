@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   Test fixture: the oscilloscope and its phase-period-amplitude Activity under any panel layout.
-  ?layout=side|strip|banner  &page=activity|standalone (default activity).
+  ?layout=side|strip|banner  &page=activity|standalone (default activity)  &max=<maxDisplayWidth px>.
   The layout is fixed per Tool, so this page makes a copy of the Tool that declares the asked one.
 -->
 <html lang="en">
@@ -21,6 +21,7 @@
 
   const params = new URLSearchParams(location.search);
   const tool = { ...oscilloscope, layout: params.get('layout') ?? 'side' };
+  if (params.has('max')) tool.maxDisplayWidth = Number(params.get('max'));
   const app = document.getElementById('app');
   if (params.get('page') === 'standalone') window.toolHost = mountStandalone(tool, app, { storage: null });
   else window.activityHost = mountActivity(tool, activity, app, { storage: null });
