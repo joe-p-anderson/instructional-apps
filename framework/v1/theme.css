@@ -203,6 +203,15 @@ html.fw-root, html.fw-root body {
   background: var(--fw-bg);
   font-weight: bold;
 }
+/* Collapsed Part tabs (createTabs collapse): when the full titles don't fit on one line, inactive
+   tabs show their number; the full title stays as the accessible name, visually hidden. */
+.fw-tab-number { display: none; }
+.fw-tabs[data-collapsed] .fw-tab:not([aria-selected="true"]) { padding-left: 9px; padding-right: 9px; }
+.fw-tabs[data-collapsed] .fw-tab:not([aria-selected="true"]) .fw-tab-number { display: inline; }
+.fw-tabs[data-collapsed] .fw-tab:not([aria-selected="true"]) .fw-tab-badge { margin-left: 5px; padding: 0 4px; }
+.fw-tabs[data-collapsed] .fw-tab:not([aria-selected="true"]) .fw-tab-title {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
 .fw-tabpanel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .fw-tabpanel[hidden] { display: none; }
 
@@ -487,7 +496,7 @@ html.fw-root, html.fw-root body {
 .fw-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Part progress badge on each Part tab ("1/3"), filled once the Part is complete. */
-.fw-tab-badge { margin-left: 8px; padding: 0 6px; border: 1px solid var(--fw-border-dk); font-size: 12px; font-weight: normal; letter-spacing: 0; color: var(--fw-text-dim); }
+.fw-tab-badge { margin-left: 8px; padding: 0 6px; border: 1px solid var(--fw-border-dk); font-size: 13px; font-weight: normal; letter-spacing: 0; color: var(--fw-text-dim); }
 .fw-tab-badge:empty { display: none; }
 .fw-tab-badge[data-done="true"] { background: var(--fw-green); border-color: var(--fw-green); color: #fff; }
 

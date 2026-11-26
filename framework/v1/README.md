@@ -6,7 +6,7 @@ Static ES modules and CSS, served as-is (no build, no install). Breaking changes
 | --- | --- |
 | `tool.js` | **The Tool contract** (documented in its header comment), `defineTool()` validator, `createEmitter()`. No DOM, so it can be imported from Node. |
 | `control.js` | `createControl()`: base implementation of the Control interface (lock/unlock, show/hide). Lock disables every input, button, select and textarea in the Control's `el`, and `el` itself when it is one (so a bare `<button>` can be the `el`). Use it for custom Controls such as draggable markers. |
-| `ui-kit.js` | Standard Controls: `slider` (with number box and reset; `log: true` for a logarithmic scale; a `role="group"` named like its inputs, e.g. "Va (V)", so its reset can be found by role), `toggle`, `select`, `button` (optional `title`; a locked button is disabled and neither a click nor `set()` presses it); `toggle` and `button` also take `onLock`/`onHide` for extra work. Plus `menuButton({ items })` (the header's ⋯ menu: a keyboard-operable WAI-ARIA menu button; `add(item, { before })` adds items later), `metric` readout, `section`, the slider's parts for a Tool's own composite Controls (`resetButton({ text, onReset, atDefault, isLocked }) -> { el, sync() }`: the icon-only ↻ named and titled "Reset to <text>", disabled while at the default or locked, so call `sync()` after each change and from the Control's `onLock`; `numberBox({ name, min, max, step, width, onCommit }) -> { el, show(text) }`: commits a typed number on Enter or change, never its own shown rounding, and marks a non-number `aria-invalid`), `h()` element helper, `escapeHtml(s)`, and `themeVars(el, { key: '--fw-var' })`: theme variables as computed at `el` (the v1 palette while `el` is not in a page), the one way to read drawing colours for canvas, SVG rendered to PNG and Plotly. |
+| `ui-kit.js` | Standard Controls: `slider` (with number box and reset; `log: true` for a logarithmic scale; `valueText(v)` names a position a number cannot show, such as `∞`, as the range's `aria-valuetext` and the empty box's placeholder; a `role="group"` named like its inputs, e.g. "Va (V)", so its reset can be found by role), `toggle`, `select`, `button` (optional `title`; a locked button is disabled and neither a click nor `set()` presses it); `toggle` and `button` also take `onLock`/`onHide` for extra work. Plus `menuButton({ items })` (the header's ⋯ menu: a keyboard-operable WAI-ARIA menu button; `add(item, { before })` adds items later), `metric` readout, `section`, the slider's parts for a Tool's own composite Controls (`resetButton({ text, onReset, atDefault, isLocked }) -> { el, sync() }`: the icon-only ↻ named and titled "Reset to <text>", disabled while at the default or locked, so call `sync()` after each change and from the Control's `onLock`; `numberBox({ name, min, max, step, width, onCommit }) -> { el, show(text) }`: commits a typed number on Enter or change, never its own shown rounding, and marks a non-number `aria-invalid`), `h()` element helper, `escapeHtml(s)`, and `themeVars(el, { key: '--fw-var' })`: theme variables as computed at `el` (the v1 palette while `el` is not in a page), the one way to read drawing colours for canvas, SVG rendered to PNG and Plotly. |
 | `handle.js` | Two more kit Controls, re-exported by `ui-kit.js` (full options in its header comment). `handle`: a draggable handle, 1-D (`role="slider"`, `min`/`max`/`step`/`coarse`, `reversed` for a value that grows leftwards or downwards) or 2-D (`x: {...}, y: {...}`, value `{ x, y }`; a focusable group described by both coordinates). Arrow keys nudge it, Shift+arrow moves `coarse`, Home/End go to the bounds (1-D); pointer drags use `touch-action: none`. The Tool supplies the mapping: `toScreen(value) -> { x, y }` client position (the kit then places its `.fw-handle` over that point; call `place()` after a resize) and `fromScreen(clientX, clientY) -> value` for drags; or pass its own `el` (e.g. an SVG shape) and draw it. `update(value)` shows a value without `onChange`. Put kit handles in a `.fw-handle-layer` over the Display. `knob`: bench-scope's rotary pattern (`role="slider"`; arrows turn, Enter/Space push, wheel, vertical drag, click pushes) with `onTurn(detents)`/`onPush()`, on its own `.fw-knob` or a given `el`; `refresh()` redraws its value. Both lock, hide, get and set like any Control. |
 | `theme.css` | The v1 Refined Cream theme (cream and serif, WCAG AA text contrast) and layout classes (`.fw-*`). Self-hosts Libre Baskerville from `vendor/libre-baskerville/` (SIL OFL, `OFL.txt` there). Its `:root` variables (`--fw-blue`, `--fw-surface`, `--fw-paper` for a white drawing ground, ...) are also the drawing colours; keep `themeVars`' fallback palette in `ui-kit.js` in step. Exposes plot tokens `--fw-plot-*` (background, grid, axis, text, ink, muted, trace-1..3, font, font-size), also in that fallback palette. |
 | `plot-theme.js` | `plotTheme(source?)`: the `--fw-plot-*` tokens as computed at `source`, an element (default: the root element) or a computed style (`CSSStyleDeclaration`, as in v1), as `{ background, grid, axis, text, ink, muted, traces, font: { family, size } }`: the plot-shaped view of the theme for a Tool's plots. Built on `themeVars`, so it shares its fallback (the v1 plot palette). Call it at mount. |
@@ -52,6 +52,19 @@ A Task's `condition` is judged against the State only on Submit (`runner/conditi
 
 `targetLabel` replaces the generated "need …" text. A registered evaluator is `(condition, state, info, { evaluate }) => { pass, feedback? }`; `evaluate(inner)` judges a nested Condition.
 
+## Questions
+
+A Task's `questions` are judged only on Submit (`runner/questions.js`).
+
+| Question | Passes when |
+| --- | --- |
+| `{ id, kind: 'numeric', prompt, answer, tol, modulus? }` | the given value is within `tol` of `answer` |
+| `{ id, kind: 'numeric', prompt, answer, relTol, modulus? }` | the given value is within `relTol × \|answer\|` of `answer` |
+| `{ id, kind: 'choice', prompt, choices: [{ id, text }], correct }` | the chosen id is `correct` |
+| `{ id, kind: 'text', prompt }` | never judged; the answer is recorded |
+
+`modulus` (a positive number) makes a numeric Question periodic: the difference between the given value and `answer` is wrapped into (−`modulus`/2, `modulus`/2] before `tol` or `relTol` is applied. A phase in degrees with `answer: -90, tol: 2, modulus: 360` accepts −90, 270 and −450. Without `modulus`, the difference is used as is.
+
 ## Tool contract in brief
 
 ```js
@@ -92,6 +105,17 @@ actions never wrap.
 The frame returns `addAction(el)`, which adds to the actions cluster before the ⋯ menu, and `menu`, whose
 `add({ id, label, onSelect }, { before })` adds a menu item. The ⋯ menu opens with Enter, Space or the arrow
 keys, moves with the arrow keys, Home and End, and closes with Escape, returning focus to its button.
+
+**Collapsed Part tabs.** When an Activity's Part tabs, with their full titles, would wrap onto a second line or
+overflow the header row, they collapse: every inactive tab shows just its Part number ("1", "2", …) with its
+progress badge, and the active tab shows its full title. The fit is measured with the full titles and re-checked
+when the window (the header's width) changes, when the Part changes, and when anything in the tablist changes
+(progress badges, typeset math), so Activities whose tabs fit look exactly as before. A collapsed tab keeps its
+full title in the tab, visually hidden, so its accessible name is unchanged ("Part 2: … (0 of 3 Tasks done)"),
+and shows the title as a tooltip; the tabs stay ordinary buttons in the Tab order. If even the collapsed tabs
+don't fit, they wrap as before. The tablist carries `data-collapsed` while collapsed. It is
+`createTabs(frame, tabs, onSelect, { collapse: true })` in `tool-host.js`, used by the Activity runner only;
+Standalone Mode tabs never collapse. Header text, the badges included, is at least 13 px.
 
 The save status (`saveStatus(frame)` in `tool-host.js`) shows the autosave: "Saved hh:mm" in muted text after
 each successful write, or a warning in the miss colour when the browser refuses it (each store's `save()`
