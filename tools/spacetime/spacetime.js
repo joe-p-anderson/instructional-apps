@@ -27,10 +27,12 @@
 //
 // Keyboard: V E W R J pick tools, Delete removes the selection, arrows nudge an event, Ctrl+Z /
 // Ctrl+Y undo and redo. Keys act only on the instance that has focus or is under the pointer.
+// Every draggable point (events, rod ends, a rod's time, a drawn worldline) is also a kit handle
+// in each diagram, reached with Tab and moved with the arrows (see "Point handles" below).
 
 import { controlRegistry, createControl } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
-import { button, escapeHtml as esc, h, section, slider, themeVars, toggle } from '../../framework/v1/ui-kit.js';
+import { button, escapeHtml as esc, h, handle, section, slider, themeVars, toggle } from '../../framework/v1/ui-kit.js';
 import {
   DEFAULT_VIEW, PALETTE, VMAX, blankDiagram, byId, convert, eventK, eventsOf, exportDiagram, gamma,
   interval, isSpacelike, normalize, properTime, rodEnd, rodInfo, segmentProperTime, toFrame,
@@ -82,6 +84,10 @@ const CSS = `
 .st-svgwrap { position: relative; flex: 1; min-height: 0; }
 .st-svgwrap svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none;
   user-select: none; -webkit-user-select: none; }
+/* Keyboard handles over each diagram: the pointer passes through them to the diagram, which
+   handles drags itself (tools, snapping, pinch). */
+.st-svgwrap .fw-handle-layer { overflow: hidden; }
+.st-svgwrap .fw-handle-layer > .fw-handle { pointer-events: none; }
 .st-tool[data-draw=select] .st-svgwrap svg { cursor: grab; }
 .st-tool[data-draw=event] .st-svgwrap svg, .st-tool[data-draw=wl] .st-svgwrap svg,
 .st-tool[data-draw=rod] .st-svgwrap svg { cursor: crosshair; }
@@ -197,8 +203,9 @@ function mount(container, modeId = 'diagram', setup = {}) {
   const v = () => S.v;
 
   // ── Layout ──
-  const svgs = {}, hints = {}, figs = {}, caps = {};
+  const svgs = {}, hints = {}, figs = {}, caps = {}, handleLayers = {};
   for (const P of FRAMES) {
+    handleLayers[P] = h('div', { class: 'fw-handle-layer' });
     svgs[P] = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svgs[P].setAttribute('role', 'img');
     svgs[P].setAttribute('aria-label', `Spacetime diagram in frame ${SYM[P].tag}`);
@@ -209,7 +216,7 @@ function mount(container, modeId = 'diagram', setup = {}) {
       h('figcaption', {},
         h('b', { style: `color:var(${COLOR_VARS[P]})` }, SYM[P].tag), caps[P],
         h('span', { class: 'st-ax' }, `(${SYM[P].x}, ${SYM[P].t})`)),
-      h('div', { class: 'st-svgwrap' }, svgs[P], hints[P]));
+      h('div', { class: 'st-svgwrap' }, svgs[P], handleLayers[P], hints[P]));
   }
   const panelsEl = h('div', { class: 'st-panels' }, figs.K, figs.Kp);
   const statusEl = h('div', { class: 'st-status', role: 'status' });
@@ -962,6 +969,7 @@ function mount(container, modeId = 'diagram', setup = {}) {
   root.addEventListener('pointerenter', onEnter);
   root.addEventListener('pointerleave', onLeave);
   function onKeyDown(ev) {
+    if (ev.defaultPrevented) return; // a focused point handle already took the key
     const inside = root.contains(ev.target);
     const unfocused = ev.target === doc.body || ev.target === doc.documentElement;
     if (!inside && !(hovered && unfocused)) return;
@@ -1031,6 +1039,91 @@ function mount(container, modeId = 'diagram', setup = {}) {
 
   let raf = 0;
   let destroyed = false;
+  // ── Point handles: every draggable point is also a kit handle in each shown diagram ──
+  // An event (2-D, in that diagram's coordinates), each rod end (its x in the rod's frame), a
+  // rod's time and a drawn worldline's position (x at t = 0 in its frame). Focusing one selects
+  // its object; each arrow key is one undoable step of 0.1 (Shift: 1). The pointer passes
+  // through them to the diagram, which handles drags (CSS above).
+  const pointHandles = new Map(); // `${P}:${kind}:${id}:${i}` -> handle
+  const BIG = { min: -1e4, max: 1e4, step: 0.1, coarse: 1, decimals: 1 };
+  const round6 = (x) => +x.toFixed(6);
+  function handleSpecs(P) {
+    const specs = [];
+    for (const o of S.objs) {
+      if (o.kind === 'event') {
+        specs.push({ key: `${P}:event:${o.id}:${o.label}`, id: o.id, at: () => toF(P, evK(o)),
+          opts: { name: `Event ${o.label}`, x: { ...BIG, name: SYM[P].x }, y: { ...BIG, name: SYM[P].t } },
+          value: () => { const q = toF(P, evK(o)); return { x: q[0], y: q[1] }; },
+          apply: ({ x, y }) => { const q = conv(P, o.home, [x, y]); o.x = round6(q[0]); o.t = round6(q[1]); } });
+      } else if (o.kind === 'rod') {
+        const F = SYM[o.frame];
+        [0, 1].forEach((i) => specs.push({ key: `${P}:rodend:${o.id}:${i}:${o.label}`, id: o.id,
+          at: () => toF(P, rodEnd(o, i, S).pt),
+          opts: { name: `Rod ${o.label} end ${i + 1}`, ...BIG, format: (x) => `${F.x} = ${x.toFixed(1)}` },
+          value: () => toF(o.frame, rodEnd(o, i, S).pt)[0],
+          apply: (x) => {
+            const end = o.ends[i];
+            if (end.wl != null) { end.wl = null; toast('Rod end detached from its worldline.'); }
+            end.x = round6(x);
+          } }));
+        specs.push({ key: `${P}:rodT:${o.id}:${o.label}`, id: o.id,
+          at: () => { const a = toF(P, rodEnd(o, 0, S).pt), b = toF(P, rodEnd(o, 1, S).pt); return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; },
+          opts: { name: `Rod ${o.label} time`, ...BIG, format: (t) => `${F.t} = ${t.toFixed(1)}` },
+          value: () => o.T, apply: (t) => { o.T = round6(t); } });
+      } else if (o.kind === 'wl' && o.mode === 'param') {
+        const F = SYM[o.frame];
+        specs.push({ key: `${P}:wl:${o.id}:${o.label}`, id: o.id,
+          // The point of the worldline at the diagram centre's time in its own frame.
+          at: () => {
+            const tc = conv(P, o.frame, [S.view.cx, S.view.ct])[1];
+            return conv(o.frame, P, [o.x0 + o.u * tc, tc]);
+          },
+          opts: { name: `Worldline ${o.label}`, ...BIG, format: (x) => `${F.x} = ${x.toFixed(1)} at ${F.t} = 0` },
+          value: () => o.x0, apply: (x) => { o.x0 = round6(x); } });
+      }
+    }
+    return specs;
+  }
+  function syncHandles() {
+    const live = new Set();
+    for (const P of visibleFrames()) {
+      if (!geom[P]) continue;
+      for (const spec of handleSpecs(P)) {
+        live.add(spec.key);
+        let ph = pointHandles.get(spec.key);
+        if (!ph) {
+          ph = handle({ id: spec.key, ...spec.opts, value: spec.value(),
+            toScreen: () => {
+              const g = geom[P], cur = pointHandles.get(spec.key)?.spec;
+              if (!g || !cur) return null;
+              const [px, py] = toPx(P, cur.at());
+              if (!(px >= 0 && px <= g.w && py >= 0 && py <= g.h)) return null;
+              const r = svgs[P].getBoundingClientRect();
+              return { x: r.left + px, y: r.top + py };
+            },
+            onChange: (val) => {
+              const cur = pointHandles.get(spec.key)?.spec;
+              if (!cur || !find(cur.id)) return;
+              checkpoint();
+              cur.apply(val);
+              render();
+            } });
+          ph.el.addEventListener('focus', () => { const cur = ph.spec; if (cur && sel !== cur.id) { sel = cur.id; render(); } });
+          pointHandles.set(spec.key, ph);
+          handleLayers[P].append(ph.el);
+        }
+        ph.spec = spec; // the object may have been replaced (undo, import)
+        ph.update(spec.value());
+      }
+    }
+    for (const [key, ph] of pointHandles) {
+      if (live.has(key)) continue;
+      ph.destroy();
+      ph.el.remove();
+      pointHandles.delete(key);
+    }
+  }
+
   function render() {
     notify();
     if (!raf && !destroyed) raf = requestAnimationFrame(() => { raf = 0; if (!destroyed) doRender(); });
@@ -1056,6 +1149,7 @@ function mount(container, modeId = 'diagram', setup = {}) {
     figs.Kp.hidden = single;
     panelsEl.classList.toggle('st-single', single);
     visibleFrames().forEach(drawSvg);
+    syncHandles();
     renderSidebar();
     renderStatus();
     const setIf = (el, val) => { if (doc.activeElement !== el) el.value = val; };
@@ -1119,6 +1213,7 @@ function mount(container, modeId = 'diagram', setup = {}) {
       resizeObserver.disconnect();
       doc.removeEventListener('keydown', onKeyDown);
       for (const [el, type, fn, opts] of svgListeners) el.removeEventListener(type, fn, opts);
+      for (const ph of pointHandles.values()) ph.destroy();
       changes.clear();
       root.remove();
     },
