@@ -2,9 +2,10 @@
 // Two frames, K and K′ (K′ moving at v along +x; units have c = 1), drawn side by side.
 //
 // Mode: 'diagram'.
-// Setup: { v, names: { K, Kp }, grid: { K, Kp }, showKp, objs } (any subset; objs in the saved
-//   diagram format, see physics.js). Defaults: v = 0, Earth/Ship, both grids, K′ panel shown,
-//   no objects.
+// Setup: { v, names: { K, Kp }, grid: { K, Kp }, showKp, objs, tool } (any subset; objs in the saved
+//   diagram format, see physics.js; tool is the drawing tool selected at the start: 'select',
+//   'event', 'worldline', 'rod' or 'join'). Defaults: v = 0, Earth/Ship, both grids, K′ panel
+//   shown, no objects, Move tool.
 // State (state.snapshot()): v (c), gamma, events, worldlines, rods (counts), diagram (the
 //   normalized object list as one JSON string; see conditions.js).
 // Condition types (export conditionTypes): st-event, st-worldline, st-rod (see conditions.js).
@@ -1064,6 +1065,13 @@ function mount(container, modeId = 'diagram', setup = {}) {
   }
   const resizeObserver = new ResizeObserver(() => render());
   resizeObserver.observe(panelsEl);
+  // The Setup's starting drawing tool, named as its Control id without 'tool-'.
+  if (setup?.tool != null) {
+    const t = TOOLS.find((x) => x.id === `tool-${setup.tool}`);
+    if (!t) throw new Error(`Unknown spacetime Setup tool "${setup.tool}" (use ${TOOLS.map((x) => x.id.slice(5)).join(', ')}).`);
+    tool = t.key;
+    root.dataset.draw = t.key;
+  }
   render();
 
   return {

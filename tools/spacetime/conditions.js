@@ -10,9 +10,11 @@
 //   { type: 'st-rod', ends: [[x1, t1], [x2, t2]], tol }
 //       some rod (in either frame, ends on worldlines included) with its two ends within tol of
 //       the two points, in either order
-// Every type also takes targetLabel, which replaces the "need ..." text of its feedback.
+// Every type also takes targetLabel, which names what is missing in its feedback ("No <targetLabel> yet").
 // All fields but targetLabel are required. Distances are Euclidean in the (x, t) plane of K.
-// Miss feedback names the closest match, e.g. "nearest event is at (2.9, 4.6); need (3, 5) ± 0.1".
+// Miss feedback says what is missing in the Task's terms, with no internal symbols such as u, and
+// names the closest match: "No vertical worldline at x = 2 yet (the nearest one is at x = 3)",
+// "No light ray going left through (0, 0) yet", "No event at (3, 5) yet (the nearest one is at (2.9, 4.6))".
 // Register them with createRunner/mountActivity({ conditionTypes }) or the Activity's own
 // conditionTypes; spacetime.js re-exports them.
 
@@ -36,49 +38,67 @@ function num(value, tol) {
 }
 const pt = (p, tol) => `(${num(p[0], tol)}, ${num(p[1], tol)})`;
 
+// "No <what> yet", plus what is closest when there is something to point at.
+const missing = (what, nearest) => `No ${what} yet${nearest ? ` (${nearest})` : ''}`;
+
 function stEvent(c, state) {
   const D = diagramOf(state);
   const target = [c.x, c.t];
-  const need = c.targetLabel ?? `${pt(target, c.tol)} ± ${c.tol}`;
+  const what = c.targetLabel ?? `event at ${pt(target, c.tol)}`;
   let best = null;
   for (const e of eventsOf(D)) {
     const k = eventK(e, D.v);
     const d = dist(k, target);
     if (!best || d < best.d) best = { k, d };
   }
-  if (!best) return { pass: false, feedback: `no event found; need ${need}` };
-  return { pass: best.d <= c.tol, feedback: `nearest event is at ${pt(best.k, c.tol)}; need ${need}` };
+  if (!best) return { pass: false, feedback: missing(what) };
+  return { pass: best.d <= c.tol, feedback: missing(what, `the nearest one is at ${pt(best.k, c.tol)}`) };
 }
 
-/** Distance from point q to the K segment p + s d, s in [s0, s1] (either end may be infinite). */
-function segmentDistance(sg, q) {
+/** Closest point to q on the K segment p + s d, s in [s0, s1] (either end may be infinite). */
+function closestOn(sg, q) {
   const dd = sg.d[0] * sg.d[0] + sg.d[1] * sg.d[1];
   const s = ((q[0] - sg.p[0]) * sg.d[0] + (q[1] - sg.p[1]) * sg.d[1]) / dd;
   const c = Math.max(sg.s0, Math.min(sg.s1, s));
-  return dist([sg.p[0] + c * sg.d[0], sg.p[1] + c * sg.d[1]], q);
+  return [sg.p[0] + c * sg.d[0], sg.p[1] + c * sg.d[1]];
+}
+
+/** A worldline of velocity u and where it must be, as a Task would put it. */
+function describeWorldline(c) {
+  const at = [c.x, c.t];
+  if (Math.abs(c.u) <= 1e-9) return `vertical worldline at x = ${num(c.x, c.tol)}`;
+  const dir = c.u > 0 ? 'right' : 'left';
+  const through = `through ${pt(at, c.tol)}`;
+  if (Math.abs(Math.abs(c.u) - 1) <= 1e-9) return `light ray going ${dir} ${through}`;
+  return `worldline moving ${dir} at ${num(Math.abs(c.u), c.uTol)}c ${through}`;
 }
 
 function stWorldline(c, state) {
   const D = diagramOf(state);
   const target = [c.x, c.t];
-  const uText = `u = ${c.u.toFixed(Math.max(2, Math.ceil(-Math.log10(c.uTol))))}`;
-  let best = Infinity;
+  const what = c.targetLabel ?? describeWorldline(c);
+  let best = null, passesThere = false;
   for (const w of worldlinesOf(D)) {
     for (const sg of worldlineSegments(w, D)) {
-      if (Math.abs(sg.d[1]) < 1e-12 || Math.abs(sg.d[0] / sg.d[1] - c.u) > c.uTol) continue;
-      best = Math.min(best, segmentDistance(sg, target));
+      const q = closestOn(sg, target);
+      const d = dist(q, target);
+      const matches = Math.abs(sg.d[1]) >= 1e-12 && Math.abs(sg.d[0] / sg.d[1] - c.u) <= c.uTol;
+      if (!matches) { passesThere ||= d <= c.tol; continue; }
+      if (!best || d < best.d) best = { q, d };
     }
   }
-  if (best === Infinity) return { pass: false, feedback: `no worldline with ${uText} found` };
-  const need = c.targetLabel ?? `within ${c.tol}`;
-  return { pass: best <= c.tol,
-    feedback: `nearest worldline with ${uText} passes ${num(best, c.tol)} from ${pt(target, c.tol)}; need ${need}` };
+  if (!best) return { pass: false, feedback: missing(what, passesThere ? 'one passes there, tilted differently' : '') };
+  // A vertical worldline level with the point is named by its x; anything else by its distance.
+  const nearest = Math.abs(c.u) <= 1e-9 && Math.abs(best.q[1] - c.t) <= 1e-9
+    ? `the nearest one is at x = ${num(best.q[0], c.tol)}`
+    : `the nearest one passes ${num(best.d, c.tol)} from it`;
+  return { pass: best.d <= c.tol, feedback: missing(what, nearest) };
 }
 
 function stRod(c, state) {
   const D = diagramOf(state);
   const [a, b] = c.ends;
-  const need = c.targetLabel ?? `${pt(a, c.tol)} and ${pt(b, c.tol)} ± ${c.tol}`;
+  const what = c.targetLabel ?? `rod from ${pt(a, c.tol)} to ${pt(b, c.tol)}`;
   let best = null;
   for (const r of D.objs.filter((o) => o.kind === 'rod')) {
     const A = rodEnd(r, 0, D).pt, B = rodEnd(r, 1, D).pt;
@@ -88,9 +108,9 @@ function stRod(c, state) {
       if (!best || miss < best.miss) best = { p, q, miss };
     }
   }
-  if (!best) return { pass: false, feedback: `no rod found; need ${need}` };
+  if (!best) return { pass: false, feedback: missing(what) };
   return { pass: best.miss <= c.tol,
-    feedback: `nearest rod has ends at ${pt(best.p, c.tol)} and ${pt(best.q, c.tol)}; need ${need}` };
+    feedback: missing(what, `the nearest one has ends at ${pt(best.p, c.tol)} and ${pt(best.q, c.tol)}`) };
 }
 
 export const conditionTypes = Object.freeze({
