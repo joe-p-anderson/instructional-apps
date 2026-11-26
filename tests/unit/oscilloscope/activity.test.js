@@ -124,6 +124,23 @@ test('the Activity source keeps its Condition targets and target-revealing Hints
   }
 });
 
+test('no Hint states the value that passes its Task', async () => {
+  const { decodeKey } = await import('../../../framework/v1/runner/keys.js');
+  // The settings that pass each Task, and the Condition target to two places.
+  const answers = {
+    'phase-pi-2': [/0\.5\b/, /1\.57/],          // Δt = 0.5 s at f = 0.5 Hz; π/2 ≈ 1.571
+    'phase-pi-4': [/0\.25/, /0\.78/, /0\.79/], // f = 0.25 Hz at Δt = 0.5 s; π/4 ≈ 0.785
+    'period-3': [/0\.33/, /1\s*\/\s*3\b/, /3\.00/], // f = 1/3 Hz
+    'pkpk-4': [/V_a\s*=\s*2/, /\b2(\.0+)?\s*(\\\))?\s*V\b/, /4\.00/], // Va = 2 V
+  };
+  const hinted = activity.parts.flatMap((p) => p.tasks).filter((t) => t.hint);
+  assert.deepEqual(hinted.map((t) => t.id).sort(), Object.keys(answers).sort());
+  for (const task of hinted) {
+    const text = task.hint.text.startsWith('enc1:') ? decodeKey(task.hint.text) : task.hint.text;
+    for (const leak of answers[task.id]) assert.doesNotMatch(text, leak, `Task "${task.id}" Hint: ${text}`);
+  }
+});
+
 test('Part 2 starts with Δt hidden and Va locked, then unlocks Va and locks f for Task 2.2', () => {
   const { runner, tools } = start();
   const c = (id) => tools[part2.id].controls.get(id);

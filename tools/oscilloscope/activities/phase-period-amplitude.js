@@ -1,4 +1,6 @@
-// Activity: phase shift / period and amplitude, on the oscilloscope Tool.
+// Activity "Sinusoidal Signals": phase shift / period and amplitude, on the oscilloscope Tool.
+// (The id still says phase-period-amplitude, so saved Runs and Reports keep matching.)
+// Hints guide the measurement and never state the passing value.
 // Ported from the Tasks in Finished/oscilloscope_lab.html. Pure data (no DOM): the
 // runner core and Node tests import it directly. Prompts and Questions may use \( \) math.
 // Conditions, and Hints that would give an answer away, are encoded answer keys
@@ -30,7 +32,7 @@ export default {
           hide: PHI_READOUTS,
           condition: 'enc1:HVVeAlBUBkNJVxEEREZJVhETAAILAAJRVFcOF0NSXBZydmQXCQQICFBBAVRFTw9DSUVPXBhIRwAEABUAGjhBCQAVGRpRquUPc2SwqbgQAR9TQBxWQ0EHQw4',
           points: 1,
-          hint: { after: 3, text: 'enc1:RCBEAlkAPz1bE0FRDVRLQTkuW0UmDgxLBFlKVRIXEUUzZCJFQllfVUYeXlZtfEs9LzEEAFkFRQBFT1JVQEF8N0xZSA5R' },
+          hint: { after: 3, text: 'A full period is a phase of \\(2\\pi\\), so \\(\\pi/2\\) is a quarter of a period. Read the period off the time axis, then shift the red trace until its peaks sit that far from the blue trace\'s peaks.' },
         },
         {
           id: 'phase-pi-4',
@@ -39,7 +41,7 @@ export default {
           lock: ['Dt', 'Dt-marker'],
           condition: 'enc1:HVVeAlBUBkNJVxEEREZJVhETAAILAAJRVVcMGEZWXBhwcmETCQcEBV5EAVRFTw9DSUVPXBhIRwAEABUAGjhBCQAVGRpRquUPdWSwqbgQAB9RTxhWQ0EHQw4',
           points: 1,
-          hint: { after: 3, text: 'Halving \\(f\\) halves \\(\\phi\\) when \\(\\Delta t\\) stays the same.' },
+          hint: { after: 3, text: 'With \\(\\Delta t\\) fixed, only \\(f\\) changes \\(\\phi = 2\\pi f \\Delta t\\). Compare the phase you need with the one you set in Task 1.1, and scale \\(f\\) by the same factor.' },
         },
         {
           id: 'phase-question',
@@ -71,7 +73,7 @@ export default {
           hide: ['Dt', 'Dt-marker'],
           condition: 'enc1:HVVeAlBUBkNJVzVOAUYRFRcVFxFMThNHRw1UTFFfVQ5xcX4CRFFCVgMDYRdTRQ9DSVdSQh1URQdHDw',
           points: 1,
-          hint: { after: 3, text: 'enc1:RCNUBlQAPz1bE0FRDVRLR1YuLkxOPFpLDBdPT1MRDUVhKidNUlVCEQQYVUwRVAsEUxNBAUwWDhEXUgELDwRTSxEWG1QWCxFIMmpw' },
+          hint: { after: 3, text: 'The period is the time from one peak of a trace to the next. Count the 1 s grid squares between neighbouring peaks as you adjust \\(f\\); the f marker snaps to tenths, so finish in the number box.' },
         },
         {
           id: 'pkpk-4',
@@ -81,7 +83,7 @@ export default {
           lock: ['f', 'f-marker'],
           condition: 'enc1:HVVeAlBUBkNJVxEHXQ9HWEcGExcJEVRJX00XAgcKCQJ7dHwQBRwSRQcFShNFbAIDFhlDVg9QS0RVUiRHEw',
           points: 1,
-          hint: { after: 3, text: 'enc1:RCdIF1oNFw5eBQQNRkQMB0UGBQwNEQAfDRwbQR4VCUk1MTZFChBsbU4hchcRHUNTLylITHtKRw' },
+          hint: { after: 3, text: 'Peak-to-peak is the height from a trough of the trace up to a peak, which is twice the amplitude \\(V_a\\). Read both ends off the voltage axis.' },
         },
       ],
     },
