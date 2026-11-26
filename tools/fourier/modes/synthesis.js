@@ -1,16 +1,20 @@
 // Fourier Tool, Synthesis Mode: build a waveform from its harmonics.
 //
-// Setup: { waveform, amp, f0, offset, shift, N } (any subset; defaults in ../inputs.js and below).
+// Setup: { waveform, amp, f0, offset, shift, filter, fc, applyGain, applyPhase, N } (any subset;
+//   defaults in ../inputs.js, ../filter.js and below).
 // State (state.snapshot()): mode ('synthesis'), waveform, amp (V), f0 (Hz), offset (V),
-//   shift (°, of the fundamental), N (the highest harmonic number in the partial sum).
+//   shift (°, of the fundamental), filter, fc (Hz), applyGain, applyPhase, fcRatio (f_c/f₀),
+//   tau (ms), N (the highest harmonic number in the partial sum).
 // Controls: the shared input Controls 'waveform', 'amp', 'f0', 'offset', 'shift' (../inputs.js);
+//   the shared filter Controls 'filter', 'fc', 'applyGain', 'applyPhase' (../filter.js);
 //   slider 'N' (integer 0 to 100); 'play' (play/pause button: get() is whether it is
 //   playing, set(true|false) plays or pauses). Play steps N up by one every PLAY_MS and stops
 //   at 100; pressing it at 100 starts over from 0. Lock, restore and destroy all stop it.
-// Displays: 'time' (the time plot over two periods of f₀: the input, the N = ∞ curve, the
-//   highest included harmonic drawn faintly, and the partial sum through N; time in ms, voltage
-//   in V).
-// serialize() is { waveform, amp, f0, offset, shift, N }; restore() validates and clamps each.
+// Displays: 'time' (the time plot over two periods of f₀: the input, the N = ∞ curve of the
+//   filtered series, its highest included harmonic drawn faintly, and its partial sum through N;
+//   time in ms, voltage in V).
+// serialize() is { waveform, amp, f0, offset, shift, filter, fc, applyGain, applyPhase, N };
+//   restore() validates and clamps each.
 //
 // No readout shows an, bn, An or φn.
 
@@ -19,7 +23,8 @@ import { createEmitter } from '../../../framework/v1/tool.js';
 import { h, section, slider } from '../../../framework/v1/ui-kit.js';
 import { plotTheme } from '../../../framework/v1/plot-theme.js';
 import { plotlyMapping } from '../../../framework/v1/plot-map.js';
-import { MAX_N, harmonic, limit, partialSum, series } from '../engine.js';
+import { MAX_N, filterSeries, harmonic, ideal, limitCurve, partialSum, series } from '../engine.js';
+import { FILTER_DEFAULTS, FILTER_STATE_INFO, filterControls } from '../filter.js';
 import { INPUT_DEFAULTS, INPUT_STATE_INFO, inputControls } from '../inputs.js';
 import { PLOT_CONFIG, Plotly, fitToBox, themedLayout } from '../plot.js';
 
@@ -30,11 +35,12 @@ export const PLAY_MS = 250; // how often play steps N up
 const PERIODS = 2; // periods of f0 shown on the time axis
 const SAMPLES = 2401; // time samples across the plot (about 12 per cycle of the 100th harmonic)
 
-const DEFAULTS = { ...INPUT_DEFAULTS, N: 1 };
+const DEFAULTS = { ...INPUT_DEFAULTS, ...FILTER_DEFAULTS, N: 1 };
 
 const STATE_INFO = {
   mode: { label: 'Mode', unit: '' },
   ...INPUT_STATE_INFO,
+  ...FILTER_STATE_INFO,
   N: { label: 'Highest harmonic N', unit: '' },
 };
 
@@ -43,6 +49,7 @@ const toN = (v) => Math.min(MAX_N, Math.max(0, Math.round(Number(v))));
 export function mount(container, setup = {}) {
   const start = { ...DEFAULTS, ...setup };
   const inputs = inputControls(start, () => { redraw(); update(); });
+  const filters = filterControls(start, () => { redraw(); update(); });
   let input = inputs.value();
   const changes = createEmitter();
   const theme = plotTheme(); // read per mount, so the plot follows the page's theme
@@ -50,20 +57,27 @@ export function mount(container, setup = {}) {
   let timer = null; // play's interval id, per instance
   let destroyed = false;
 
-  const getState = () => ({ mode: id, ...input, N });
+  const getState = () => ({ mode: id, ...input, ...filters.state(input.f0), N });
 
   // ── Time axis (ms on the plot, s in the engine) and the curves that do not depend on N ──
   // redraw() recomputes them from the input; update() redraws the plot for N.
-  let coeffs; let T; let ts; let tMs; let inputY; let limitY; let span;
+  let coeffs; let T; let ts; let tMs; let inputY; let limitY; let yRange;
   function redraw() {
     input = inputs.value();
-    coeffs = series(input); // the input's exact table through MAX_N
+    const filter = filters.value();
+    coeffs = filterSeries(series(input), filter); // the filtered exact table through MAX_N
     T = 1 / input.f0;
     ts = Array.from({ length: SAMPLES }, (_, i) => (i / (SAMPLES - 1)) * PERIODS * T);
     tMs = ts.map((t) => t * 1e3);
-    inputY = ts.map((t) => limit(input, t)); // no filter yet: the input is its own N = ∞
-    limitY = inputY;
-    span = Math.abs(input.amp) * 1.4 || 1;
+    inputY = ts.map((t) => ideal(input, t));
+    limitY = ts.map(limitCurve(input, filter));
+    // The y range holds the input and the N = ∞ curve (a high-pass spike reaches 2·amp), with
+    // room for the Gibbs overshoot.
+    let lo = Infinity; let hi = -Infinity;
+    for (const v of [...inputY, ...limitY]) { if (v < lo) lo = v; if (v > hi) hi = v; }
+    const pad = 0.2 * (hi - lo) || 1;
+    yRange = [lo - pad, hi + pad];
+    filters.update(input.f0);
   }
   redraw();
 
@@ -97,7 +111,7 @@ export function mount(container, setup = {}) {
     onLock: (locked) => { if (locked) stop(); } });
   renderPlay();
 
-  const controls = { ...inputs.controls, N: nSlider, play: playCtl };
+  const controls = { ...inputs.controls, ...filters.controls, N: nSlider, play: playCtl };
 
   // ── Layout ──
   const TRACE_STYLE = {
@@ -116,6 +130,7 @@ export function mount(container, setup = {}) {
   const root = h('div', { class: 'fw-tool', 'data-tool': 'fourier', 'data-mode': id },
     h('aside', { class: 'fw-controls' },
       inputs.el,
+      filters.el,
       section('Partial sum', nSlider.el, playBtn,
         h('div', { class: 'fw-hint' }, 'N counts harmonic numbers, so an even N of a square or triangle wave adds a zero term.')),
       section('Legend',
@@ -138,7 +153,7 @@ export function mount(container, setup = {}) {
   }
   const layout = () => themedLayout(theme, {
     xTitle: 'Time (ms)', yTitle: 'Voltage (V)',
-    xRange: [0, PERIODS * T * 1e3], yRange: [input.offset - span, input.offset + span],
+    xRange: [0, PERIODS * T * 1e3], yRange,
   });
 
   function update() {
@@ -165,10 +180,14 @@ export function mount(container, setup = {}) {
       snapshot: () => Plotly.toImage(plotDiv, { format: 'png', width: 720, height: 360 }),
       toScreen,
     }],
-    serialize: () => ({ ...input, N }),
+    serialize: () => {
+      const { fcRatio, tau, ...settings } = filters.state(input.f0);
+      return { ...input, ...settings, N };
+    },
     restore(saved = {}) {
       stop();
       inputs.restore(saved);
+      filters.restore(saved);
       nSlider.set(Number.isFinite(Number(saved.N)) ? toN(saved.N) : N);
     },
     resize: box.fit,

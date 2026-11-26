@@ -27,7 +27,7 @@ test('the Standalone page opens on the Synthesis Mode with every Control shown a
     const i = window.toolHost.instances[0];
     return i.controls.ids().map((id) => ({ id, locked: i.controls.get(id).isLocked(), hidden: i.controls.get(id).isHidden() }));
   });
-  expect(controls.map((c) => c.id).sort()).toEqual(['N', 'amp', 'f0', 'offset', 'play', 'shift', 'waveform']);
+  expect(controls.map((c) => c.id).sort()).toEqual(['N', 'amp', 'applyGain', 'applyPhase', 'f0', 'fc', 'filter', 'offset', 'play', 'shift', 'waveform']);
   for (const c of controls) expect(c, c.id).toMatchObject({ locked: false, hidden: false });
 });
 
@@ -37,7 +37,8 @@ test('State publishes the Mode, the input and N with units', async ({ page }) =>
     const i = window.toolHost.instances[0];
     return { s: i.state.snapshot(), info: i.state.describe() };
   });
-  expect(s).toEqual({ mode: 'synthesis', waveform: 'square', amp: 1, f0: 1000, offset: 0, shift: 0, N: 1 });
+  expect(s).toEqual({ mode: 'synthesis', waveform: 'square', amp: 1, f0: 1000, offset: 0, shift: 0,
+    filter: 'off', fc: 3000, applyGain: true, applyPhase: true, fcRatio: 3, tau: 1e3 / (2 * Math.PI * 3000), N: 1 });
   expect(info.amp.unit).toBe('V');
   expect(info.f0.unit).toBe('Hz');
   expect(info.offset.unit).toBe('V');
@@ -129,7 +130,7 @@ test('State serializes and restores N and the input', async ({ page }) => {
     i.restore(saved);
     return i.state.snapshot();
   });
-  expect(restored).toEqual({ mode: 'synthesis', waveform: 'triangle', amp: 2, f0: 250, offset: 0.5, shift: 45, N: 12 });
+  expect(restored).toMatchObject({ mode: 'synthesis', waveform: 'triangle', amp: 2, f0: 250, offset: 0.5, shift: 45, N: 12 });
 });
 
 test('restore ignores bad values and clamps out-of-range ones', async ({ page }) => {
