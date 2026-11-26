@@ -90,5 +90,13 @@ move the panels themselves, and anything every Tool would want belongs in `theme
 | `strip` | Controls \| Display, with the Tasks in a row across the bottom (the original v1 layout). |
 | `banner` | The current Task is a banner above a full-width Display, the other Tasks compact steps beside it (a locked step says why it is locked); the Controls' sections sit side by side in a strip below the Display. In Standalone mode only the banner is absent. For wide Tools. |
 
+**A Display never scrolls inside itself.** Whatever the layout, `.fw-displays` must hold its content without
+overflow (its `scrollHeight` never exceeds its `clientHeight`), at 1366×768 and at the Tool's minimum Display
+width, so nothing important sits below the fold. Let the main plots take the height that is left (flex) rather
+than fixing tall heights, hide a plot's frame while it is switched off, and put secondary material (reading
+guides, caveats, legends for rare states) in a collapsed note (`<details>`) or in the Controls column.
+`tests/e2e/display-fit.spec.js` checks every Tool and Mode; add a new Tool to its list. Example:
+`tools/least-squares/`.
+
 In every layout a locked Task says which Task unlocks it, and each Part tab carries a progress badge ("1/3"),
 filled once the Part is complete; the tab's accessible name reads it as "(1 of 3 Tasks done)".
