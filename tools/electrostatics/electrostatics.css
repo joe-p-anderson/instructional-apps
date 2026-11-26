@@ -14,5 +14,5 @@
 .es-tool .es-wide { width: 100%; margin-top: 6px; }
 .es-tool .es-arc { margin-bottom: 12px; }
 .es-tool .es-arc-row { display: flex; align-items: flex-start; gap: 4px; }
-.es-tool .es-arc-caption { font-size: 11px; line-height: 1.6; text-align: left; }
+.es-tool .es-arc-caption { font-size: 13px; line-height: 1.6; text-align: left; }
 .es-tool .es-swatch { display: inline-block; width: 13px; height: 13px; border: 1.5px solid; border-radius: 50%; flex-shrink: 0; }

@@ -187,7 +187,7 @@ export function arcPicker({ id, name = 'θ', value = 0, reset = 0, onChange = ()
     const ctx = arc.context();
     ctx.beginPath(); ctx.arc(ARC_CX, ARC_CY, ARC_R, -Math.PI / 2, 0);
     ctx.strokeStyle = C.border; ctx.lineWidth = 3; ctx.stroke();
-    ctx.font = '10px serif'; ctx.fillStyle = C.muted; ctx.textAlign = 'center';
+    ctx.font = `${C.fontSize} ${C.font}`; ctx.fillStyle = C.muted; ctx.textAlign = 'center';
     ctx.fillText('⊥', ARC_CX, ARC_CY - ARC_R - 15);
     ctx.fillText('∥', ARC_CX + ARC_R + 15, ARC_CY + 3);
     ctx.beginPath();

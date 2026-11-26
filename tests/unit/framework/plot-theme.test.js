@@ -17,7 +17,7 @@ const V1 = {
   ink: '#1A1008',
   muted: '#C8BFA0',
   traces: ['#1B4F8A', '#B81C1C', '#E8720C'],
-  font: { family: `'Libre Baskerville', Georgia, serif`, size: 14 },
+  font: { family: `'Libre Baskerville', Georgia, serif`, size: 13 },
 };
 
 test('plotTheme reads the --fw-plot-* tokens at the element into a plot palette and font', () => {

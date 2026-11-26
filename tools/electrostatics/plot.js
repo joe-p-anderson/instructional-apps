@@ -47,7 +47,7 @@ export function conductorLayout(C, { cmax = 1e4, colorTitle = '|E| (V/m)' } = {}
     dragmode: false,
     coloraxis: {
       colorscale: [[0, '#FFFFFF'], [1, C.blue]], showscale: true, cmin: 0, cmax,
-      colorbar: { title: { text: colorTitle, font: { size: 12 } }, thickness: 10, len: 0.75, x: 1.01 },
+      colorbar: { title: { text: colorTitle, font: { size: parseFloat(C.fontSize) } }, thickness: 10, len: 0.75, x: 1.01 },
     },
   };
 }

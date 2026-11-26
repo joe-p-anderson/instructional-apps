@@ -90,8 +90,8 @@ export function drawPanel(P, D, w, h, ui = {}) {
           const p = [o[0] + n * ls * dir[0], o[1] + n * ls * dir[1]];
           const px = X(p[0]), py = Y(p[1]);
           if (!inView(px, py, 10)) continue;
-          if (isX) text(px, py + 14, fmt(n * ls), `text-anchor="middle" fill="${col}" font-size="11"`);
-          else text(px - 5, py + 4, fmt(n * ls), `text-anchor="end" fill="${col}" font-size="11"`);
+          if (isX) text(px, py + 14, fmt(n * ls), `text-anchor="middle" fill="${col}"`);
+          else text(px - 5, py + 4, fmt(n * ls), `text-anchor="end" fill="${col}"`);
         }
       }
       const end = [o[0] + c[1] * dir[0], o[1] + c[1] * dir[1]];
