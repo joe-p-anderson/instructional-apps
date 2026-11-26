@@ -52,7 +52,7 @@ const PROFILES = {
         menu: '#1c2a3a',
         menuText: '#ffffff',
       },
-      font: '16px monospace',
+      font: '17px monospace',
       // Slots line up with softkeys 1..7 (centres 73..427 px on this screen).
       menu: { x: 650, y: 43, w: 150, h: 413, items: 7, titleY: 15 },
       readouts: { y: 455, spareX: 620 },

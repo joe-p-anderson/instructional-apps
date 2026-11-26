@@ -38,7 +38,7 @@ const status = (page) => page.getByRole('banner').locator('.fw-save-status');
 for (const [where, open] of [['an Activity', openActivity], ['a Standalone page', openStandalone]]) {
   test(`changing a Control on ${where} shows "Saved" and the time in the header`, async ({ page }) => {
     await open(page);
-    await setNumber(page, 'f', 0.3);
+    await setNumber(page, 'f (Hz)', 0.3);
     await expect(status(page)).toHaveText(/^Saved \d{2}:\d{2}$/);
     await expect(status(page)).toBeVisible();
     // Successful saves are not announced: the status is no live region.
@@ -49,7 +49,7 @@ for (const [where, open] of [['an Activity', openActivity], ['a Standalone page'
   test(`a refused save on ${where} shows the warning, announced once`, async ({ page }) => {
     await refuseStorage(page);
     await open(page);
-    await setNumber(page, 'f', 0.3);
+    await setNumber(page, 'f (Hz)', 0.3);
     await expect(status(page)).toHaveText(WARNING);
     await expect(status(page)).toHaveAttribute('data-state', 'failed');
 
@@ -62,8 +62,8 @@ for (const [where, open] of [['an Activity', openActivity], ['a Standalone page'
       new MutationObserver((records) => { window.alertChanges += records.length; })
         .observe(el, { childList: true, characterData: true, subtree: true });
     });
-    await setNumber(page, 'f', 0.4);
-    await setNumber(page, 'f', 0.5);
+    await setNumber(page, 'f (Hz)', 0.4);
+    await setNumber(page, 'f (Hz)', 0.5);
     await expect(status(page)).toHaveText(WARNING);
     expect(await page.evaluate(() => window.alertChanges)).toBe(0);
   });

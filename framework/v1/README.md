@@ -11,11 +11,11 @@ Static ES modules and CSS, served as-is (no build, no install). Breaking changes
 | `theme.css` | The v1 Refined Cream theme (cream and serif, WCAG AA text contrast) and layout classes (`.fw-*`). Self-hosts Libre Baskerville from `vendor/libre-baskerville/` (SIL OFL, `OFL.txt` there). Its `:root` variables (`--fw-blue`, `--fw-surface`, `--fw-paper` for a white drawing ground, ...) are also the drawing colours; keep `themeVars`' fallback palette in `ui-kit.js` in step. Exposes plot tokens `--fw-plot-*` (background, grid, axis, text, ink, muted, trace-1..3, font, font-size), also in that fallback palette. |
 | `plot-theme.js` | `plotTheme(el?)`: the `--fw-plot-*` tokens as computed at `el` (default: the root element), as `{ background, grid, axis, text, ink, muted, traces, font: { family, size } }`: the plot-shaped view of the theme for a Tool's plots. Built on `themeVars`, so it shares its fallback (the v1 plot palette). Call it at mount. |
 | `tool-host.js` | `mountStandalone(tool, root)`: Standalone mode, one tab per Mode, every Control unlocked, State autosaved per Tool and Mode, `#s=` share link (Copy share link in the ⋯ menu). Also exports `createFrame`/`createTabs` for the Activity runner UI; see "Frame and header" below. |
-| `persistence.js` | Autosave (`standaloneStore(toolId, modeId)`, `runStore(activityId)`, `createStore(key, storage)`, `browserStorage()`) and `#s=` share links (`shareHash`/`readShareHash`). No DOM. |
+| `persistence.js` | Autosave (`standaloneStore(toolId, modeId)`, `runStore(activityId)`, the site-wide student name `nameStore()`, `createStore(key, storage)`, `browserStorage()`; `save()` returns whether the write reached storage) and `#s=` share links (`shareHash`/`readShareHash`). No DOM. |
 | `runner/` | Activity runner core (pure logic, no DOM). `await runner.report()` assembles the sealed Report so far, also in Node (fixtures); `runner.save()`/`restore()` carry the Run, including unsubmitted Question drafts (`runner.draft()`). `runner.submit()` refuses a Submit whose State and answers deep-equal the Task's last Attempt when that Attempt missed (canonical form, as the Report checksum): it returns `{ refused: true, reason: 'unchanged', feedback, hint }`, records no Attempt and doesn't bring the Hint closer, so refused Submits never reach the Report; the Task card shows "Nothing changed since your last try". Every Submit result briefly emphasises the Task's feedback line (a polite live region; static under `prefers-reduced-motion`). `runner/questions.js`: `questionKinds`, the one table of Question kinds (validation and judging). `runner/scoring.js`: the scoring rules (`scoreActivity`, `earnedFromResults`). `runner/keys.js`: encoded answer keys (`encodeKey`/`decodeKey`); the runner and scoring decode them, and an encoded Hint text is decoded only when the Hint is revealed. |
 | `report.js` | **The Report format**: schema (header comment), `sealReport`/`verifyReport`/`checksumOf` (keyed SHA-256 over canonical JSON), `readReport(text)`, `reportFilename`, `createFingerprint`, `REPORT_FORMAT_VERSION`, `FRAMEWORK_VERSION`. No DOM. |
 | `authoring/encode-keys.html` | Authoring helper: paste a Condition, Question key or Hint text (JS expression), copy the `enc1:` string into the Activity in its place. Also exposes `encodeKey()`/`decodeKey()` in the console. Deters casual cheating only (ADR 0001). |
-| `activity-ui.js` | Activity runner UI: `mountActivity(tool, activity, root)`, a thin DOM layer over the core (name gate, Part tabs each with its own Tool instance, Task cards with Submit/feedback/Hint, per-Part progress, Download Report, and Start over and Print in the ⋯ menu). A reload restores the Run, including Question answers and the last miss feedback. |
+| `activity-ui.js` | Activity runner UI: `mountActivity(tool, activity, root)`, a thin DOM layer over the core (name gate, Part tabs each with its own Tool instance, Task cards with Submit/feedback/Hint, per-Part progress, Download Report, and Start over, Print and "Not <name>? Sign out" in the ⋯ menu). A reload restores the Run under its sealed name, including Question answers and the last miss feedback. The name entered at the name gate is stored for the whole site: an Activity with no saved Run starts at once under the stored name, Start over begins a new Run under it, and sign-out (confirmed) forgets it and discards only this Activity's Run before showing the name gate. |
 | `report-viewer/` | **The Report Viewer** page, `report-viewer/index.html` (client-side only; no file leaves the browser). The core is DOM-free and tested in Node; every score is recomputed from the Attempts' recorded results with the runner's scoring rules (`earnedFromResults` in `runner/scoring.js`). See the table below. |
 | `vendor.js` | Loaders for the vendored, pinned libraries in `vendor/` (`loadPlotly()`, `loadMathJax()`, `typeset(elements)`). |
 
@@ -85,12 +85,18 @@ actions never wrap.
 
 | | Title | Course | Actions | ⋯ menu |
 | --- | --- | --- | --- | --- |
-| Activity | `activity.title` (never the Tool's name) | `activity.course` | student's name, Download Report | Start over, Print |
-| Standalone | the Tool's title | none | ("Link copied" note) | Copy share link, Print |
+| Activity | `activity.title` (never the Tool's name) | `activity.course` | student's name (the Run's), save status, Download Report | Start over, Print, Not <name>? Sign out |
+| Standalone | the Tool's title | none | save status ("Link copied" note) | Copy share link, Print |
 
 The frame returns `addAction(el)`, which adds to the actions cluster before the ⋯ menu, and `menu`, whose
 `add({ id, label, onSelect }, { before })` adds a menu item. The ⋯ menu opens with Enter, Space or the arrow
 keys, moves with the arrow keys, Home and End, and closes with Escape, returning focus to its button.
+
+The save status (`saveStatus(frame)` in `tool-host.js`) shows the autosave: "Saved hh:mm" in muted text after
+each successful write, or "Not saved: download your Report" in the miss colour when the browser refuses it
+(each store's `save()` returns `true` or `false`). Successes are silent; the first failure is announced once
+through an assertive live region. The short notes in the actions (the name, the save status, "Link copied")
+stack two to a column so they don't widen the row. Passing `storage: null` turns autosave and its status off.
 
 ### Panel layouts
 
@@ -119,6 +125,17 @@ than fixing tall heights, hide a plot's frame while it is switched off, and put 
 guides, caveats, legends for rare states) in a collapsed note (`<details>`) or in the Controls column.
 `tests/e2e/display-fit.spec.js` checks every Tool and Mode; add a new Tool to its list. Example:
 `tools/least-squares/`.
+
+**Display text is at least 13 px.** `--fw-plot-font-size` (13 px) is the floor for all text drawn in a Display,
+canvas, SVG and Plotly alike: tick labels, captions, legends, readouts. Read it with `plotTheme()` or
+`themeVars(el, { size: '--fw-plot-font-size' })` and draw at that size or larger; don't hard-code a smaller
+one. The floor is for the size as shown: SVG or canvas drawn in its own units and scaled to the Display (a
+`viewBox`, a native-resolution screen) must come out at 13 CSS px or more at 1366×768. **Exempt artwork:**
+a picture that scales with the Display and whose printed labels are not what the student reads, such as
+bench-scope's front panel, is marked with the `data-fw-artwork` attribute; text inside it is not held to the
+floor. `tests/e2e/display-fit.spec.js` checks every Tool and Mode, and the Activities, at 1366×768: no visible
+DOM or canvas text in `.fw-displays` under 12 px outside `[data-fw-artwork]`. Examples: `tools/least-squares/`
+(canvas), `tools/bench-scope/panel.js` (the exemption).
 
 In every layout a locked Task says which Task unlocks it, and each Part tab carries a progress badge ("1/3"),
 filled once the Part is complete; the tab's accessible name reads it as "(1 of 3 Tasks done)".
