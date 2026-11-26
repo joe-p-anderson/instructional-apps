@@ -12,7 +12,7 @@ The dialog is shown once per Run, and that fact is saved with the Run, not the R
 
 **Blocked by:** 01 (single-row header).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] e2e: passing the last Task of an Activity opens the dialog, focus is inside it, Escape or Close dismisses it, and focus returns to the page.
 - [x] e2e: Download Report from the dialog saves the Report.

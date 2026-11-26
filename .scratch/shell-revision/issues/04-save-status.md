@@ -6,7 +6,7 @@ Spec: .scratch/shell-revision/spec.md (Activity runner UI, save status; stories 
 
 **Blocked by:** 01 (single-row header).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] The persistence store reports the success or failure of each write to its caller, with unit tests on the store, including a storage stub that throws.
 - [x] e2e: after changing a Control, "Saved" with a time appears in the header, both on an Activity and on a Standalone page.

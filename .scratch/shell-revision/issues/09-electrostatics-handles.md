@@ -6,7 +6,7 @@ Spec: .scratch/shell-revision/spec.md (UI kit; story 69).
 
 **Blocked by:** 08 (kit handle and knob).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] e2e: the joystick, arc picker, P₁ and P₂ can each be focused and moved with the arrow keys in every Mode they appear in, and the Live Metrics update.
 - [x] e2e: the Conductor Properties Tasks that need these Controls pass using only the keyboard.

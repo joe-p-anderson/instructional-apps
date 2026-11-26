@@ -2,7 +2,7 @@
 
 Spec: .scratch/theme-refresh/spec.md (decision 1 and the plot-tokens resolved question). Follow-up found while merging main (app-ports) into theme-refresh.
 
-**Status:** needs-triage
+**Status:** resolved
 
 **Problem:** The Tools added by app-ports (docs/specs/0003-app-ports.md) were written against the old theme. Some of their own styling now contradicts ticket 01's rules:
 

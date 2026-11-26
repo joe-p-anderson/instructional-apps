@@ -9,7 +9,7 @@ Spec: .scratch/shell-revision/spec.md (Tool contract, frame width; stories 82–
 
 **Blocked by:** 03 (Task drawer and per-Tool minimum Display width). Both change the same Tool-contract validation and the frame's width logic, and this ticket validates against `minDisplayWidth`.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] `defineTool()` accepts a positive `maxDisplayWidth` no smaller than `minDisplayWidth`, leaves it unset by default, and rejects other values (framework unit tests). It is documented in the Tool contract and the README.
 - [x] e2e at 1920×1080: on every Activity and Standalone page the frame spans the viewport, and the header row spans the full width.

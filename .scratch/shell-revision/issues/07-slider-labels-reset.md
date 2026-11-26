@@ -11,7 +11,7 @@ Rendered maths (MathJax) no longer adds tab stops.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] e2e (ui-kit spec): a slider with a unit shows "(unit)", and its range and number inputs have accessible names from the label.
 - [x] e2e: the reset button's accessible name is "Reset to …", it is disabled at the default and enabled after a change, and clicking it restores the default.

@@ -6,7 +6,7 @@ Spec: .scratch/shell-revision/spec.md (Content tickets; stories 79–80).
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Spacetime Condition unit tests: miss feedback contains no internal symbols such as u, and names what is missing.
 - [x] e2e: Lab 10 Part 1 opens with Worldline selected, and each later Part opens on the tool its first Task names.

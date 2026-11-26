@@ -12,7 +12,7 @@ Spec: .scratch/shell-revision/spec.md (Header; stories 19–27).
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] At 1366×768 the title, tablist and actions share one row, checked by their top offsets, on every Activity and Standalone page.
 - [x] Activity pages show the Activity's title and course. Standalone pages show the Tool title and no "Standalone" text.

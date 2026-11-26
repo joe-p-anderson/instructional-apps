@@ -10,7 +10,7 @@ Spec: .scratch/shell-revision/spec.md (Name storage and sign-out; stories 47–5
 
 **Blocked by:** 01 (single-row header).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] The persistence layer has a site-wide name store, with unit tests.
 - [x] e2e: start Activity A with a name, then open Activity B: B starts with no Name gate and the header shows the name.

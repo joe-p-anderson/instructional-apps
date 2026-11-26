@@ -6,7 +6,7 @@ Spec: .scratch/shell-revision/spec.md (Runner core: refused identical Submit; st
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] `runner.submit` returns a distinguishable refusal when the State snapshot and the answers deep-equal the last Attempt and that Attempt failed. Comparison uses canonical form, so key order doesn't matter, and snapshot images are excluded.
 - [x] Runner unit tests:

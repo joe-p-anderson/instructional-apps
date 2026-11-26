@@ -6,7 +6,7 @@ Spec: .scratch/shell-revision/spec.md (Displays; stories 72–74).
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] e2e: for every Tool and Mode at 1366×768, and at the Tool's minimum Display width, the Display area's scroll height doesn't exceed its client height.
 - [x] e2e: least squares at 1366×768 shows the Fit panel's R² without scrolling. With residuals off, no empty residual frame is shown.

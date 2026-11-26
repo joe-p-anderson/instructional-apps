@@ -10,7 +10,7 @@ Spec: .scratch/shell-revision/spec.md (Tool contract; Frame and Task drawer; sto
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] `defineTool()` accepts a positive `minDisplayWidth`, defaults it to 480, and rejects zero, negative and non-number values (framework unit tests). It is documented with `layout` in the Tool contract and the README.
 - [x] e2e at 768×1024, on the oscilloscope, Conductor Properties and spacetime Lab 10 Activities: the drawer bar is shown, and the Display box is at least the Tool's minimum width.
