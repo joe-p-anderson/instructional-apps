@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<!--
+  Test fixture: the UI kit's handle (1-D and 2-D) and knob Controls on a plain 400 x 300 px board.
+  The board maps value to screen as x = 40 px per unit from its left edge and y = 30 px per unit up
+  from its bottom edge. window.kit holds the Controls; window.changes logs every onChange.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Handle fixture</title>
+<link rel="stylesheet" href="../../../framework/v1/theme.css">
+<style>
+  #board { position: relative; width: 400px; height: 300px; margin: 40px; background: var(--fw-paper); border: 1px solid var(--fw-border); }
+</style>
+</head>
+<body>
+<div id="board"></div>
+<div id="knobs"></div>
+<script type="module">
+  import { handle, knob } from '../../../framework/v1/ui-kit.js';
+
+  const board = document.getElementById('board');
+  const changes = [];
+  window.changes = changes;
+
+  // Board mapping: client px <-> value.
+  const toScreen = (x, y) => {
+    const r = board.getBoundingClientRect();
+    return { x: r.left + 40 * x, y: r.bottom - 30 * y };
+  };
+  const fromScreen = (cx, cy) => {
+    const r = board.getBoundingClientRect();
+    return { x: (cx - r.left) / 40, y: (r.bottom - cy) / 30 };
+  };
+
+  const level = handle({
+    id: 'level', name: 'Level', unit: 'V', min: 0, max: 10, step: 0.1, coarse: 1, value: 2, decimals: 1,
+    toScreen: (v) => toScreen(1, v),
+    fromScreen: (cx, cy) => fromScreen(cx, cy).y,
+    onChange: (v) => changes.push(['level', v]),
+  });
+  const point = handle({
+    id: 'point', name: 'Point P',
+    x: { name: 'x', unit: 'm', min: 0, max: 10, step: 0.1, coarse: 1, decimals: 1 },
+    y: { name: 'y', unit: 'm', min: 0, max: 10, step: 0.1, coarse: 1, decimals: 1 },
+    value: { x: 5, y: 5 },
+    toScreen: (p) => toScreen(p.x, p.y),
+    fromScreen,
+    onChange: (p) => changes.push(['point', p]),
+  });
+  board.append(level.el, point.el);
+  level.place();
+  point.place();
+
+  const dial = knob({ id: 'dial', name: 'Dial', onTurn: (d) => changes.push(['dial', d]),
+    onPush: () => changes.push(['dial', 'push']) });
+  document.getElementById('knobs').append(dial.el);
+
+  window.kit = { level, point, dial };
+</script>
+</body>
+</html>

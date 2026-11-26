@@ -278,6 +278,26 @@ html.fw-root, html.fw-root body {
 .fw-legend-row { display: flex; align-items: center; gap: 7px; font-size: 14px; margin-bottom: 6px; }
 .fw-legend-line { display: inline-block; width: 22px; height: 2.5px; flex-shrink: 0; }
 
+/* ── Handles and knobs (handle.js) ── */
+/* A layer over a Display to hold handles: it passes the pointer through except on a handle. */
+.fw-handle-layer { position: absolute; inset: 0; pointer-events: none; }
+.fw-handle-layer > * { pointer-events: auto; }
+/* A handle the kit makes is a round grab target centred on its toScreen() point inside a
+   positioned parent; the Tool usually draws the marker itself beneath it. */
+.fw-handle { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;
+  cursor: grab; touch-action: none; }
+.fw-handle:active { cursor: grabbing; }
+.fw-handle:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: 1px; }
+.fw-handle.fw-locked { cursor: not-allowed; }
+.fw-knob { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; cursor: ns-resize;
+  touch-action: none; font-size: 14px; }
+.fw-knob-dial { position: relative; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--fw-border-dk);
+  background: var(--fw-surface); }
+.fw-knob-dial::after { content: ''; position: absolute; left: 50%; top: 4px; width: 2px; height: 12px; margin-left: -1px;
+  background: var(--fw-text); }
+.fw-knob:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: 2px; }
+.fw-knob.fw-locked { cursor: not-allowed; opacity: 0.55; }
+
 /* Read by screen readers, not shown. */
 .fw-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
