@@ -16,6 +16,7 @@ import { controlRegistry, createControl } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
 import { h, handle, metric, section, slider } from '../../framework/v1/ui-kit.js';
 import { plotTheme } from '../../framework/v1/plot-theme.js';
+import { plotlyMapping } from '../../framework/v1/plot-map.js';
 import { loadPlotly } from '../../framework/v1/vendor.js';
 import { cosWave, linspace, metrics } from './signal.js';
 
@@ -100,12 +101,10 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
   container.append(root);
 
   // ── Plot markers: kit handles over the Display (the plot draws the dots beneath them) ──
+  // Client pixels <-> plot data (x s, y V); toScreen is also the Display contract's.
+  const { toScreen, fromScreen } = plotlyMapping(plotDiv);
   const at = (x, y) => toScreen(x, y);
-  const pointer = (cx, cy) => {
-    const fl = plotDiv._fullLayout;
-    const rect = plotDiv.getBoundingClientRect();
-    return { x: fl.xaxis.p2d(cx - rect.left - fl._size.l), y: fl.yaxis.p2d(cy - rect.top - fl._size.t) };
-  };
+  const pointer = (cx, cy) => fromScreen(cx, cy) ?? { x: NaN, y: NaN };
   const markerSpecs = {
     'Va-marker': { key: 'Va', label: 'Va marker', fill: theme.traces[0], unit: 'V', reversed: false,
       at: (s) => [0, s.Va], toScreen: (v) => at(0, v), fromScreen: (cx, cy) => pointer(cx, cy).y },
@@ -190,13 +189,6 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
   const resizeObserver = new ResizeObserver(fit);
   resizeObserver.observe(plotDiv);
 
-  // Display contract: client pixel position of the data point (x s, y V), once laid out.
-  function toScreen(x, y) {
-    const fl = plotDiv._fullLayout;
-    if (!fl || Math.abs(fl.width - plotDiv.clientWidth) >= 2) return null;
-    const rect = plotDiv.getBoundingClientRect();
-    return { x: rect.left + fl._size.l + fl.xaxis.d2p(x), y: rect.top + fl._size.t + fl.yaxis.d2p(y) };
-  }
   update();
 
   return {

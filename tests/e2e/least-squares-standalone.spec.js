@@ -177,3 +177,76 @@ test('the residual-pattern guide is a collapsed note that opens and closes', asy
   await toggle.click();
   await expect(guide).toBeHidden();
 });
+
+// Keyboard access (story 63): the (m, b) handle and, in edit mode, each data point are kit
+// handles that can be focused and moved with the arrow keys, Shift for bigger steps.
+test('the (m, b) handle can be focused and moved with the arrow keys, and sits on the drawn point', async ({ page }) => {
+  await open(page);
+  await page.waitForFunction(() => window.toolHost.instances[0].displays[2].toScreen(0, 0));
+  const handle = page.getByRole('group', { name: '(m, b) handle', exact: true });
+  const s0 = await snapshot(page);
+
+  await handle.focus();
+  await page.keyboard.press('ArrowRight');
+  const s1 = await snapshot(page);
+  expect(s1.m).toBeGreaterThan(s0.m);
+  expect(s1.b).toBeCloseTo(s0.b, 9);
+  await page.keyboard.press('Shift+ArrowUp');
+  const s2 = await snapshot(page);
+  expect(s2.b).toBeGreaterThan(s1.b);
+  expect(s2.m).toBeCloseTo(s1.m, 9);
+  // A Shift step is bigger than a plain one.
+  await page.keyboard.press('ArrowUp');
+  const s3 = await snapshot(page);
+  expect(s2.b - s1.b).toBeGreaterThan(5 * (s3.b - s2.b));
+  await expect(handle).toHaveAccessibleDescription(/^m = .+, b = .+$/);
+
+  const at = await instance(page, 'const s = i.state.snapshot(); return i.displays[2].toScreen(s.m, s.b);');
+  const box = await handle.boundingBox();
+  expect(Math.abs(box.x + box.width / 2 - at.x)).toBeLessThan(2);
+  expect(Math.abs(box.y + box.height / 2 - at.y)).toBeLessThan(2);
+
+  // Through the origin, b stays 0.
+  await page.getByRole('checkbox', { name: 'Through origin (b = 0)', exact: true }).check();
+  await handle.focus();
+  await page.keyboard.press('ArrowUp');
+  expect((await snapshot(page)).b).toBe(0);
+
+  // A locked handle ignores the keys.
+  await instance(page, 'i.controls.get("line").lock();');
+  const locked = await snapshot(page);
+  await handle.focus();
+  await page.keyboard.press('ArrowRight');
+  expect((await snapshot(page)).m).toBe(locked.m);
+});
+
+test('in edit mode each data point can be focused and moved up and down with the arrow keys', async ({ page }) => {
+  await open(page);
+  const point5 = page.getByRole('slider', { name: 'Data point 5', exact: true });
+  await expect(point5).toBeHidden();
+  await page.getByRole('checkbox', { name: 'Edit points', exact: true }).check();
+  await page.waitForFunction(() => window.toolHost.instances[0].displays[0].toScreen(0, 0));
+  await expect(page.getByRole('slider', { name: /^Data point \d+$/ })).toHaveCount(11);
+
+  const before = await instance(page, 'return i.controls.get("points").get();');
+  await point5.focus();
+  await page.keyboard.press('Shift+ArrowUp');
+  const after = await instance(page, 'return i.controls.get("points").get();');
+  expect(after[4]).toBeGreaterThan(before[4]);
+  expect(after.filter((y, k) => y !== before[k])).toHaveLength(1);
+  await page.keyboard.press('ArrowDown');
+  const down = await instance(page, 'return i.controls.get("points").get();');
+  expect(down[4]).toBeLessThan(after[4]);
+  await expect(point5).toHaveAttribute('aria-valuetext', /\d/);
+
+  // It sits at the point's height (plain axes: plotted y is the reading).
+  const at = await instance(page, 'const ys = i.controls.get("points").get(); return i.displays[0].toScreen(0, ys[4]);');
+  const box = await point5.boundingBox();
+  expect(Math.abs(box.y + box.height / 2 - at.y)).toBeLessThan(2);
+
+  // Locked points ignore the keys.
+  await instance(page, 'i.controls.get("points").lock();');
+  await point5.focus();
+  await page.keyboard.press('ArrowUp');
+  expect(await instance(page, 'return i.controls.get("points").get();')).toEqual(down);
+});

@@ -14,16 +14,17 @@
 // Controls: selects 'dataset', 'y-transform', 'x-transform', 'view'; buttons 'new-data',
 //   'reset-data', 'optimize', 'copy-csv'; toggles 'show-residuals', 'edit-points',
 //   'through-origin'; 'check' (the "Check your …" reveal); custom 'line' (the (m, b) handle,
-//   value { m, b }) and 'points' (the draggable data points, value: array of raw y).
+//   value { m, b }) and 'points' (the draggable data points, value: array of raw y). Each is
+//   also a kit handle (focusable, arrow keys), not registered: '(m, b) handle' and 'Data point N'.
 // Displays: 'scatter' (toScreen(X, Y) in plotted units), 'residuals', 'plane' (toScreen(m, b)).
 
 import { controlRegistry, createControl } from '../../framework/v1/control.js';
 import { createEmitter, defineTool } from '../../framework/v1/tool.js';
-import { button, h, metric, section, select, themeVars, toggle } from '../../framework/v1/ui-kit.js';
+import { button, h, handle, metric, section, select, themeVars, toggle } from '../../framework/v1/ui-kit.js';
 import { typeset } from '../../framework/v1/vendor.js';
 import {
   DATASETS, DATASET_IDS, PI, TF, TF_ORDER, axisLabel, bestLine, coarseRange, ellPoint, feasible,
-  feasibleM0, fineRange, fitMeasures, fmt, fmtTick, generate, hits, interpret, lineUnits, niceStep,
+  feasibleM0, fineRange, fitMeasures, fmt, fmtTick, fmtUnit, generate, hits, interpret, lineUnits, niceStep,
   startLine, stats, tfSym, toCsv, transformPoints,
 } from './fit.js';
 
@@ -32,7 +33,6 @@ const QUANTITY_LABELS = { g: 'Implied g', R: 'Implied R', A: 'Implied A', B: 'Im
 const R2_LEVELS = [0, 0.5, 0.75, 0.9, 0.95, 0.99, 0.999];
 const OUTER = [2, 4, 8]; // SSE as a multiple of SST, beyond the R² = 0 ring
 const MARGIN = { l: 64, r: 14, t: 12, b: 46 };
-const GRAB_RADIUS = 16; // px
 
 const STYLE = `
 /* The Display never scrolls inside itself (framework README): the Graph and the parameter plane
@@ -150,7 +150,8 @@ function mount(container, modeId = 'fit', setup = {}) {
       clampHandle();
       commit();
     },
-    onLock: () => redraw(), onHide: () => redraw() });
+    onLock: (locked) => { if (locked) planeHandle.lock(); else planeHandle.unlock(); redraw(); },
+    onHide: (hidden) => { if (hidden) planeHandle.hide(); else planeHandle.show(); redraw(); } });
   ctl.points = createControl({ id: 'points', label: 'Data points',
     get: () => st.raw.map((p) => p.y),
     set: (ys) => { applyYs(ys); commit(); },
@@ -161,6 +162,102 @@ function mount(container, modeId = 'fit', setup = {}) {
   const scatterCv = h('canvas', { class: 'ls-canvas ls-scatter', role: 'img', 'aria-label': 'Scatter plot with error bars and your line' });
   const residualCv = h('canvas', { class: 'ls-canvas ls-residuals', role: 'img', 'aria-label': 'Residuals' });
   const planeCv = h('canvas', { class: 'ls-canvas ls-plane', role: 'img', 'aria-label': 'Parameter plane: drag to choose m and b' });
+
+  // ── kit handles over the plots: the (m, b) point and, in edit mode, each data point ──
+  // The plot windows change with the data, axes and view, so each handle's value is its place
+  // within the current window (0 to 1 on each axis): an arrow key moves it 1% of the window,
+  // Shift+arrow 10%. Its accessible text gives the real values.
+  const scatterLayer = h('div', { class: 'fw-handle-layer' });
+  const planeLayer = h('div', { class: 'fw-handle-layer' });
+  const unitText = (u) => (u ? ` ${u}` : '');
+  const frac = (v, lo, hi) => (hi > lo ? (v - lo) / (hi - lo) : 0);
+  const lerp = (t, lo, hi) => lo + t * (hi - lo);
+  const local = (cv, cx, cy) => { const r = cv.getBoundingClientRect(); return [cx - r.left, cy - r.top]; };
+  const unit01 = (name) => ({ name, min: 0, max: 1, step: 0.01, coarse: 0.1 });
+
+  const planeHandle = handle({ id: 'line-handle', name: '(m, b) handle', x: unit01('m'), y: unit01('b'),
+    value: { x: 0, y: 0 },
+    format: () => {
+      const u = lineUnits(st.ds, st.xT, st.yT);
+      return `m = ${fmt(st.m, 4)}${unitText(u.m)}, b = ${fmt(st.b, 4)}${unitText(u.b)}`;
+    },
+    toScreen: ({ x, y }) => {
+      const f = frames.plane, R = range();
+      if (!f || !R) return null;
+      const r = planeCv.getBoundingClientRect();
+      return { x: r.left + f.X(lerp(x, R.m0, R.m1)), y: r.top + f.Y(lerp(y, R.b0, R.b1)) };
+    },
+    fromScreen: (cx, cy) => {
+      const f = frames.plane, R = range();
+      if (!f || !R) return null;
+      const [px, py] = local(planeCv, cx, cy);
+      return { x: frac(f.ix(px), R.m0, R.m1), y: frac(f.iy(py), R.b0, R.b1) };
+    },
+    onChange: ({ x, y }) => {
+      const R = range();
+      stopAnim();
+      st.m = lerp(x, R.m0, R.m1);
+      st.b = st.locked ? 0 : lerp(y, R.b0, R.b1);
+      commit();
+    } });
+  planeLayer.append(planeHandle.el);
+
+  let pointHandles = [];
+  function pointHandle(i) {
+    const yr = () => frames.scatterRange.yr;
+    const ph = handle({ id: `point-${i + 1}`, name: `Data point ${i + 1}`, ...unit01(`Data point ${i + 1}`), value: 0,
+      format: () => {
+        const d = D();
+        return `${d.y.sym} = ${fmt(st.raw[i]?.y ?? 0, 4)}${unitText(fmtUnit(d.y.unit))}`;
+      },
+      toScreen: (v) => {
+        const f = frames.scatter, p = points()[i];
+        if (!f || !p) return null;
+        const r = scatterCv.getBoundingClientRect();
+        return { x: r.left + f.X(p.X), y: r.top + f.Y(lerp(v, ...yr())) };
+      },
+      fromScreen: (cx, cy) => {
+        const f = frames.scatter;
+        if (!f) return null;
+        return frac(f.iy(local(scatterCv, cx, cy)[1]), ...yr());
+      },
+      onChange: (v) => {
+        const raw = TF[st.yT].inv(lerp(v, ...yr()));
+        const ys = st.raw.map((p) => p.y);
+        ys[i] = Number.isFinite(raw) ? raw : 0;
+        applyYs(ys);
+        commit();
+      } });
+    // While a point is dragged the scatter window stays put, so the point follows the pointer.
+    ph.el.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 || ph.isLocked() || ph.isHidden()) return;
+      stopAnim();
+      st.dragPt = i; st.scRange = scatterRange(points());
+    });
+    const end = () => { if (st.dragPt === i) { st.dragPt = -1; st.scRange = null; redraw(); } };
+    ph.el.addEventListener('pointerup', end);
+    ph.el.addEventListener('pointercancel', end);
+    return ph;
+  }
+
+  /** Bring the handles in step with the State and the plots just drawn. */
+  function syncHandles() {
+    const R = range();
+    if (R) planeHandle.update({ x: frac(st.m, R.m0, R.m1), y: frac(st.b, R.b0, R.b1) });
+    if (pointHandles.length !== st.raw.length) {
+      for (const ph of pointHandles) { ph.destroy(); ph.el.remove(); }
+      pointHandles = st.raw.map((p, i) => pointHandle(i));
+      scatterLayer.append(...pointHandles.map((ph) => ph.el));
+    }
+    const editing = st.edit && !ctl.points.isHidden();
+    const pts = points();
+    pointHandles.forEach((ph, i) => {
+      if (editing) ph.show(); else ph.hide();
+      if (ctl.points.isLocked()) ph.lock(); else ph.unlock();
+      if (frames.scatterRange && pts[i]) ph.update(frac(pts[i].Y, ...frames.scatterRange.yr));
+    });
+  }
+
   const residualWrap = h('div', { class: 'ls-col', hidden: true },
     h('div', { class: 'ls-caption' }, 'Residuals  y − (m x + b)'),
     h('div', { class: 'fw-display' }, residualCv),
@@ -199,14 +296,14 @@ function mount(container, modeId = 'fit', setup = {}) {
     h('div', { class: 'fw-displays ls-displays' },
       h('div', { class: 'ls-col' },
         h('div', { class: 'ls-caption' }, 'Graph'),
-        h('div', { class: 'fw-display ls-grow' }, scatterCv),
+        h('div', { class: 'fw-display ls-grow', style: 'position:relative' }, scatterCv, scatterLayer),
         residualWrap,
         h('details', { class: 'ls-more' },
           h('summary', {}, 'How the line is fitted'),
           'This is unweighted least squares: error bars are drawn, but every point counts equally in the fit.')),
       h('div', { class: 'ls-col' },
         h('div', { class: 'ls-caption' }, 'Parameter space'),
-        h('div', { class: 'fw-display ls-grow' }, planeCv),
+        h('div', { class: 'fw-display ls-grow', style: 'position:relative' }, planeCv, planeLayer),
         h('details', { class: 'ls-more' },
           h('summary', {}, 'Reading the parameter plane'),
           h('span', { html: 'Each point here is a line. Drag to choose the slope <i>m</i> and intercept <i>b</i>. '
@@ -490,12 +587,13 @@ function mount(container, modeId = 'fit', setup = {}) {
     return { xr: [x0 < 0 ? x0 - px : 0, x1 > 0 ? x1 + px : 0], yr: [y0 < 0 ? y0 - py : 0, y1 > 0 ? y1 + py : 0] };
   }
 
-  const frames = { scatter: null, plane: null };
+  const frames = { scatter: null, plane: null, scatterRange: null };
   function drawScatter(pts) {
     const { ctx, W, H, laidOut } = prep(scatterCv, 380);
     const rg = st.scRange ?? scatterRange(pts);
     const f = frame(ctx, W, H, rg.xr, rg.yr, axisLabel(st.xT, D().x), axisLabel(st.yT, D().y));
     frames.scatter = laidOut ? f : null;
+    frames.scatterRange = rg;
     clip(ctx, f);
     ctx.strokeStyle = C.accent; ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.moveTo(f.L, f.Y(st.m * rg.xr[0] + st.b)); ctx.lineTo(f.R, f.Y(st.m * rg.xr[1] + st.b)); ctx.stroke();
@@ -638,6 +736,7 @@ function mount(container, modeId = 'fit', setup = {}) {
     drawScatter(pts);
     if (st.showRes) drawResid(pts);
     drawPlane(S, pts);
+    syncHandles();
   }
   let queued = 0;
   function redraw() {
@@ -664,32 +763,8 @@ function mount(container, modeId = 'fit', setup = {}) {
   planeCv.addEventListener('pointerup', onPlaneUp);
   planeCv.addEventListener('pointercancel', onPlaneUp);
 
-  // edit mode: drag a data point vertically (the scatter window is frozen during the drag)
-  function onScatterDown(e) {
-    const f = frames.scatter;
-    if (!st.edit || !f || ctl.points.isLocked() || ctl.points.isHidden()) return;
-    const r = scatterCv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
-    let best = -1, bd = GRAB_RADIUS;
-    points().forEach((p, i) => { const dd = Math.hypot(f.X(p.X) - px, f.Y(p.Y) - py); if (dd < bd) { bd = dd; best = i; } });
-    if (best < 0) return;
-    st.dragPt = best; st.scRange = scatterRange(points());
-    scatterCv.setPointerCapture?.(e.pointerId);
-    redraw();
-  }
-  function onScatterMove(e) {
-    if (st.dragPt < 0 || !frames.scatter) return;
-    const r = scatterCv.getBoundingClientRect();
-    const raw = TF[st.yT].inv(frames.scatter.iy(e.clientY - r.top));
-    const ys = st.raw.map((p) => p.y);
-    ys[st.dragPt] = Number.isFinite(raw) ? raw : 0;
-    applyYs(ys);
-    commit();
-  }
-  function onScatterUp() { if (st.dragPt >= 0) { st.dragPt = -1; st.scRange = null; redraw(); } }
-  scatterCv.addEventListener('pointerdown', onScatterDown);
-  scatterCv.addEventListener('pointermove', onScatterMove);
-  scatterCv.addEventListener('pointerup', onScatterUp);
-  scatterCv.addEventListener('pointercancel', onScatterUp);
+  // edit mode: each data point is a kit handle (pointHandle), dragged up and down or moved with
+  // the arrow keys; a press elsewhere on the plane above jumps the (m, b) point there.
 
   const resizeObserver = new ResizeObserver(() => redraw());
   resizeObserver.observe(root);
@@ -727,7 +802,8 @@ function mount(container, modeId = 'fit', setup = {}) {
       cancelAnimationFrame(queued);
       resizeObserver.disconnect();
       planeCv.removeEventListener('pointerdown', onPlaneDown);
-      scatterCv.removeEventListener('pointerdown', onScatterDown);
+      planeHandle.destroy();
+      for (const ph of pointHandles) ph.destroy();
       changes.clear();
       root.remove();
     },

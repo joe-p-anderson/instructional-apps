@@ -91,3 +91,59 @@ test('unlocking a slider at its default leaves the reset disabled', async ({ pag
   await page.evaluate(() => window.sl.set(1));
   await expect(reset).toBeEnabled();
 });
+
+test('a slider is a group named like its inputs, so its reset can be found by role', async ({ page }) => {
+  await addSlider(page, { id: 'amp', name: 'Va', unit: 'V', value: 1, reset: 0.25 });
+  await expect(page.getByRole('group', { name: 'Va (V)', exact: true })
+    .getByRole('button', { name: 'Reset to 0.25 V', exact: true })).toBeEnabled();
+});
+
+// resetButton() and numberBox(): the slider's parts, for a Tool's own composite Controls.
+test('resetButton() is an icon-only ↻ named "Reset to <text>", disabled at the default and while locked', async ({ page }) => {
+  await page.evaluate(async () => {
+    const kit = await import('/framework/v1/ui-kit.js');
+    window.st = { value: 1, locked: false, resets: 0 };
+    window.rb = kit.resetButton({ text: '0 V', atDefault: () => window.st.value === 0,
+      isLocked: () => window.st.locked, onReset: () => { window.st.resets += 1; } });
+    document.body.append(window.rb.el);
+    window.rb.sync();
+  });
+  const reset = page.getByRole('button', { name: 'Reset to 0 V', exact: true });
+  await expect(reset).toHaveText('↻');
+  await expect(reset).toHaveAttribute('title', 'Reset to 0 V');
+  await expect(reset).toBeEnabled();
+  await reset.click();
+  expect(await page.evaluate(() => window.st.resets)).toBe(1);
+
+  await page.evaluate(() => { window.st.value = 0; window.rb.sync(); });
+  await expect(reset).toBeDisabled();
+  await page.evaluate(() => { window.st.value = 2; window.st.locked = true; window.rb.sync(); });
+  await expect(reset).toBeDisabled();
+  await page.evaluate(() => { window.st.locked = false; window.rb.sync(); });
+  await expect(reset).toBeEnabled();
+});
+
+test('numberBox() commits a typed number on Enter, marks a non-number invalid, and never commits its own rounding', async ({ page }) => {
+  await page.evaluate(async () => {
+    const kit = await import('/framework/v1/ui-kit.js');
+    window.commits = [];
+    window.nb = kit.numberBox({ name: 'f (Hz)', min: 0, max: 100, step: 'any', onCommit: (n) => window.commits.push(n) });
+    document.body.append(window.nb.el);
+    window.nb.show('12.35');
+  });
+  const box = page.getByRole('spinbutton', { name: 'f (Hz)', exact: true });
+  await expect(box).toHaveValue('12.35');
+  await box.press('Enter');
+  expect(await page.evaluate(() => window.commits)).toEqual([]);
+
+  await box.fill('40');
+  await box.press('Enter');
+  expect(await page.evaluate(() => window.commits)).toEqual([40]);
+
+  await box.fill('');
+  await box.press('Enter');
+  await expect(box).toHaveAttribute('aria-invalid', 'true');
+  await page.evaluate(() => window.nb.show('40.00'));
+  await expect(box).not.toHaveAttribute('aria-invalid', 'true');
+  expect(await page.evaluate(() => window.commits)).toEqual([40]);
+});

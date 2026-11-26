@@ -3,8 +3,9 @@ import { installCanvasTextRecorder, displayTexts } from './helpers/display-text.
 
 // No Display scrolls inside itself: for every Tool and Mode, the Display area (.fw-displays)
 // holds its content without overflow, at 1366×768 and at the Tool's minimum Display width.
-// Display text meets the floor: at 1366×768 no visible text in the Display area, DOM or canvas,
-// is under 12 px (the token is 13 px), except exempt artwork marked `data-fw-artwork`.
+// Display text meets the floor: at 1366×768 and at the Tool's minimum Display width, no visible
+// text in the Display area, DOM or canvas, is under 12 px (the token is 13 px), except exempt
+// artwork marked `data-fw-artwork`. Activities are checked in every Part at 1366×768.
 
 const TOOLS = ['bench-scope', 'electrostatics', 'least-squares', 'oscilloscope', 'spacetime', 'vernier'];
 
@@ -62,7 +63,9 @@ for (const tool of TOOLS) {
 
       const min = await minDisplayWidth(page);
       await setDisplayWidth(page, min);
+      await settle(page);
       expect(await overflow(page), `${mode} at a ${min} px Display`).toBeLessThanOrEqual(0);
+      expect(await smallText(page), `${mode} at a ${min} px Display: text under ${TEXT_FLOOR} px`).toEqual([]);
     }
     // Bench-scope's other skin draws its screen readouts at its own native size.
     if (tool === 'bench-scope') {
@@ -71,12 +74,17 @@ for (const tool of TOOLS) {
       await expect(page.locator('svg[data-model="TDS2001C"]')).toBeVisible();
       await settle(page);
       expect(await smallText(page), `bench-scope / TDS2001C: Display text under ${TEXT_FLOOR} px`).toEqual([]);
+      const min = await minDisplayWidth(page);
+      await setDisplayWidth(page, min);
+      await settle(page);
+      expect(await smallText(page), `bench-scope / TDS2001C at a ${min} px Display: text under ${TEXT_FLOOR} px`).toEqual([]);
     }
   });
 }
 
 for (const url of ACTIVITIES) {
-  test(`${url}: Display text meets the floor in every Part at 1366×768`, async ({ page }) => {
+  test(`${url}: no Display scrolls inside itself and its text meets the floor in every Part at 1366×768`, async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
     await installCanvasTextRecorder(page);
     await page.goto(url);
     await page.waitForFunction(() => window.activityHost);
@@ -86,6 +94,7 @@ for (const url of ACTIVITIES) {
       if (tab !== null) await page.getByRole('tab').nth(tab).click();
       const part = tab === null ? url : `${url} / ${await page.getByRole('tab').nth(tab).textContent()}`;
       await settle(page);
+      expect(await overflow(page), `${part}: Display scrolls inside itself`).toBeLessThanOrEqual(0);
       expect(await smallText(page), `${part}: Display text under ${TEXT_FLOOR} px`).toEqual([]);
     }
   });

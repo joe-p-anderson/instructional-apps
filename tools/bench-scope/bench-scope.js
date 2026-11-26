@@ -309,5 +309,11 @@ export default defineTool({
   title: 'Bench Oscilloscope',
   modes: [{ id: 'scope', title: 'Oscilloscope' }],
   layout: 'banner',
+  // The screen is drawn at the instrument's native size (800×480 or 320×240) and scaled with the
+  // panel, and its readouts sit in fixed slots matched to the softkeys, so their font can't grow
+  // to make up for a small Display without overlapping. 1200 px is the narrowest Display at which
+  // both skins' readouts are at least 13 CSS px (13.1 px TBS2072B, 13.4 px TDS2001C); below it
+  // they shrink in proportion (11 px at 1000).
+  minDisplayWidth: 1200,
   mount,
 });

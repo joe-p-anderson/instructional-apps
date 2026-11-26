@@ -16,6 +16,7 @@ import { controlRegistry } from '../../../framework/v1/control.js';
 import { createEmitter } from '../../../framework/v1/tool.js';
 import { h, handle, metric, section, slider } from '../../../framework/v1/ui-kit.js';
 import { WINDOW, clamp, fieldGrid, gaussField, gaussFlux, sigmaRing } from '../conductor.js';
+import { plotlyMapping } from '../../../framework/v1/plot-map.js';
 import { e0Joystick } from '../controls.js';
 import { PLOT_CONFIG, Plotly, boundaryTrace, conductorLayout, heatmapTrace, plotDisplay, quiverTrace, sigmaTrace, plotColors, toolStyles } from '../plot.js';
 
@@ -56,13 +57,7 @@ export function mount(container, setup = {}) {
   // ── Controls ──
   // The surface handles' mapping to the plot (client pixels), once the plot is drawn.
   const plotDiv = h('div', { style: 'width:100%;height:100%;touch-action:none' });
-  let toScreen = () => null;
-  function toData(cx, cy) {
-    const fl = plotDiv._fullLayout;
-    if (!fl) return null;
-    const rect = plotDiv.getBoundingClientRect();
-    return { x: fl.xaxis.p2d(cx - rect.left - fl.xaxis._offset), y: fl.yaxis.p2d(cy - rect.top - fl.yaxis._offset) };
-  }
+  const { toScreen, fromScreen: toData } = plotlyMapping(plotDiv);
   const handleXY = () => [p.r * Math.cos(p.handleAngle) + p.xc, p.r * Math.sin(p.handleAngle) + p.yc];
   const cmAxis = (min, name) => ({ name, unit: 'cm', min, max: WINDOW, step: 0.1, coarse: 1, decimals: 1 });
 
@@ -163,7 +158,6 @@ export function mount(container, setup = {}) {
   Plotly.newPlot(plotDiv, traces(), conductorLayout(plotColors(root)), PLOT_CONFIG);
   ready = true;
   const plot = plotDisplay(plotDiv, { id: 'gauss', label: 'Gauss’s law' });
-  toScreen = plot.display.toScreen;
   plotDiv.on('plotly_afterplot', placeHandles);
 
   update();

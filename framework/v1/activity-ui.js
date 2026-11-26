@@ -83,7 +83,7 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
   for (const instance of Object.values(host.instances)) instance.state.onChange(autosave);
 
   // ── Name gate: the Part tabs stay hidden until a name starts the Run ──
-  const student = h('div', { class: 'fw-student', hidden: true });
+  const student = h('div', { class: 'fw-student', role: 'note', 'aria-label': 'Student', hidden: true });
   const download = reportButton(host, 'fw-download');
   download.hidden = true;
   const completion = completionDialog();
@@ -203,7 +203,8 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
     const feedback = h('span', { class: 'fw-task-feedback fw-drawer-feedback', role: 'status', 'aria-live': 'polite' });
     const note = h('span', { class: 'fw-drawer-note', hidden: true }, 'Open to answer');
     const submit = h('button', { type: 'button', class: 'fw-button fw-drawer-submit' }, 'Submit');
-    const el = h('div', { class: 'fw-drawer-bar' }, toggleButton, feedback, note, submit);
+    const el = h('div', { class: 'fw-drawer-bar', role: 'group', 'aria-label': 'Current Task' },
+      toggleButton, feedback, note, submit);
 
     toggleButton.addEventListener('click', () => (isOpen() ? close({ focus: true }) : open()));
     submit.addEventListener('click', () => current?.submit());
