@@ -49,3 +49,9 @@ test('plotTheme is the v1 plot palette while the element is not in a page', () =
   assert.deepEqual(plotTheme(element({ '--fw-plot-bg': '#fffdf0' }, { connected: false })), V1);
   assert.deepEqual(plotTheme(null), V1);
 });
+
+test('plotTheme also accepts a computed style (CSSStyleDeclaration), as v1 callers pass', () => {
+  const props = { '--fw-plot-bg': ' #fffdf0', '--fw-plot-font-size': '15px' };
+  const style = { getPropertyValue: (name) => props[name] ?? '' };
+  assert.deepEqual(plotTheme(style), { ...V1, background: '#fffdf0', font: { ...V1.font, size: 15 } });
+});

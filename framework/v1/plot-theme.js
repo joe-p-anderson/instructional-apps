@@ -22,9 +22,12 @@ const TOKENS = {
 /**
  * The theme's plot palette and font as computed at `el` (default: the root element):
  * { background, grid, axis, text, ink, muted, traces: [c1, c2, c3], font: { family, size } }
- * (size in px).
+ * (size in px). `source` is an element or, as in v1, a computed style (CSSStyleDeclaration).
  */
-export function plotTheme(el = globalThis.document?.documentElement) {
+export function plotTheme(source = globalThis.document?.documentElement) {
+  const el = typeof source?.getPropertyValue === 'function'
+    ? { isConnected: true, ownerDocument: { defaultView: { getComputedStyle: () => source } } }
+    : source;
   const { trace1, trace2, trace3, family, size, ...colors } = themeVars(el, TOKENS);
   return { ...colors, traces: [trace1, trace2, trace3], font: { family, size: parseFloat(size) } };
 }
