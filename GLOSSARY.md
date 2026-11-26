@@ -41,8 +41,12 @@ A view that renders the simulation for the student (plot, diagram, canvas).
 _Avoid_: graph, panel, view
 
 **Panel layout**:
-How the page arranges a Tool's Controls and Displays and an Activity's Tasks: `side`, `strip` or `banner`. Fixed per Tool; an Activity cannot change it.
+How the page arranges a Tool's Controls and Displays and an Activity's Tasks: `side`, `strip` or `banner`. Fixed per Tool; an Activity cannot change it. When the screen is too narrow for the Tool's Display, `side` moves its Tasks into the Task drawer.
 _Avoid_: theme, skin, template
+
+**Task drawer**:
+The narrow-screen home of a `side` layout's Tasks: a bar above the Display with the current Task's title, Submit and last result, which opens over the Display to show the whole current Task.
+_Avoid_: tasks panel, sidebar
 
 **State**:
 The named values a simulation exposes for tasks to read and record.
@@ -61,7 +65,7 @@ The student's deliberate act of committing the current state of a task for evalu
 _Avoid_: check, submission
 
 **Attempt**:
-One Submit of a task, with the State and answers at that moment and whether it passed.
+One Submit of a task, with the State and answers at that moment and whether it passed. A Submit that repeats the previous failed Attempt's State and answers exactly is refused and is not an Attempt.
 _Avoid_: try, submission
 
 **Hint**:
@@ -71,6 +75,10 @@ _Avoid_: help, tip
 **Run**:
 One student's work through an Activity in one browser, from first load onward; every Report from it carries the same Run fingerprint and the student's name.
 _Avoid_: session, attempt (an Attempt is one Submit within a Run)
+
+**Name gate**:
+The screen that asks for the student's name before a Run starts. It is shown only when the browser has no stored name; a name entered once is used for every Activity on the site until the student signs out.
+_Avoid_: login, sign-in screen
 
 **Report**:
 The file a student downloads from an Activity and turns in to Brightspace, holding their name, Attempts, answers and snapshots from one Run. It may be partial.
