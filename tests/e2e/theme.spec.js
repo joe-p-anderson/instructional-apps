@@ -296,14 +296,17 @@ test('buttons, tabs and reset buttons show a focus-visible outline', async ({ pa
     p1.getByRole('button', { name: 'Submit Task 1.1' }),
   ];
   for (const target of targets) {
-    // Keyboard focus: focus the element before it, then Tab onto it.
-    await target.evaluate((e) => {
+    // Keyboard focus: focus the element before it and Tab onto it, or, when it is the first
+    // focusable element (the first Part tab, now in the header row), Shift+Tab back from the next.
+    const key = await target.evaluate((e) => {
       const all = [...document.querySelectorAll('button, input, textarea, [tabindex]')]
         .filter((x) => x.tabIndex >= 0 && !x.disabled && x.checkVisibility());
       const i = all.indexOf(e);
-      if (i > 0) all[i - 1].focus(); else document.body.focus();
+      if (i > 0) { all[i - 1].focus(); return 'Tab'; }
+      all[i + 1].focus();
+      return 'Shift+Tab';
     });
-    await page.keyboard.press('Tab');
+    await page.keyboard.press(key);
     await expect(target).toBeFocused();
     await expect(target).toHaveCSS('outline-style', 'solid');
     await expect(target).toHaveCSS('outline-width', '2px');
