@@ -6,6 +6,12 @@
 //   runner.task(partId, taskId)   // status, misses, hint, answers (to show), attempts
 //   runner.draft(partId, taskId, answers) // keep unsubmitted Question answers (saved with the Run)
 //   runner.submit(partId, taskId, answers?) // judge State + Question answers; returns the Attempt
+//                                 //   (plus its hint). A Submit whose State and answers deep-equal
+//                                 //   the Task's last Attempt, when that Attempt missed, is refused:
+//                                 //   it returns { refused: true, reason: 'unchanged',
+//                                 //   feedback: 'Nothing changed since your last try', hint } and
+//                                 //   records nothing (no Attempt, draft kept, Hint no closer).
+//                                 //   Only the last Attempt counts, so A, B, A records three.
 //   runner.score()                // points earned/possible per Task, Part and total (see scoring.js)
 //   runner.save()                 // JSON-able Run: name, fingerprint, Attempts, drafts, per-Part Tool State
 //   runner.restore(saved)         // resume a saved Run in a fresh runner; Attempts for Task ids
@@ -17,7 +23,7 @@
 // Each Part has its own Tool instance (Tool contract: state.snapshot/describe/onChange,
 // controls.get(id) with get/set/lock/unlock/show/hide, displays[].snapshot).
 import { createConditionRegistry } from './conditions.js';
-import { createFingerprint, sealReport, REPORT_FORMAT_VERSION, FRAMEWORK_VERSION } from '../report.js';
+import { canonicalJSON, createFingerprint, sealReport, REPORT_FORMAT_VERSION, FRAMEWORK_VERSION } from '../report.js';
 import { validateActivity } from './activity.js';
 import { judgeTask, scoreActivity } from './scoring.js';
 import { decodeActivity, decodeHint } from './keys.js';
@@ -246,6 +252,10 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
 
       const tool = tools[part.id];
       const state = tool.state.snapshot();
+      const record = progress.get(part.id).get(task.id);
+      if (repeatsLastMiss(record, state, answers)) {
+        return { refused: true, reason: 'unchanged', feedback: UNCHANGED_FEEDBACK, hint: hintFor(task, record) };
+      }
       const { results, passed } = judgeTask(task, state, answers, { info: tool.state.describe(), registry });
       const attempt = {
         at: clock().toISOString(),
@@ -254,7 +264,6 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
         results,
         passed,
       };
-      const record = progress.get(part.id).get(task.id);
       record.attempts.push(attempt);
       record.draft = null;
       if (attempt.passed) {
@@ -266,6 +275,18 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
       return { ...structuredClone(attempt), hint: hintFor(task, record) };
     },
   };
+}
+
+export const UNCHANGED_FEEDBACK = 'Nothing changed since your last try';
+
+// True when the State and answers deep-equal the Task's last Attempt and that
+// Attempt missed. Compared in the Report checksum's canonical form, so key order
+// doesn't matter; snapshot images are not part of State or answers.
+function repeatsLastMiss(record, state, answers) {
+  const last = record.attempts.at(-1);
+  if (!last || last.passed) return false;
+  return canonicalJSON(last.state) === canonicalJSON(state)
+    && canonicalJSON(last.answers ?? {}) === canonicalJSON(answers);
 }
 
 const missesOf = (record) => record.attempts.filter((a) => !a.passed).length;
