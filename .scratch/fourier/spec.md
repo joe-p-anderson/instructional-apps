@@ -64,18 +64,18 @@ A new Tool, `fourier` ("Fourier Series"), built on framework v1, with two Modes.
    - Multiple choice: square Aₙ ∝ 1/n, triangle Aₙ ∝ 1/n².
    - Set N to the smallest value where each sum stays within about 5% of the original away from the jumps or corners.
    - Free text: why jumps make the terms fall slowly, and "same signal, two descriptions".
-2. **Part 2, Analysis: shifted sine.**
+2. **Part 2, Analysis: a plain sine** (no shift).
    - Hand-compute a₁ and b₁ from the shaded products, then convert to A₁ and φ₁. These are auto-checked.
    - Multiple choice: the n = 2 and n = 3 products have zero net area.
 3. **Part 3, Analysis: square.**
    - Hand-compute Aₙ and φₙ for n = 1 to 5.
    - Multiple choice on the pattern: even terms are zero, and Aₙ ∝ 1/n.
-4. **Part 4, Low-pass on the square** (f₀ = 1 kHz, f_c = 3 kHz).
+4. **Part 4, RC filters on the square** (f₀ = 1 kHz, f_c = 3 kHz). One Part: low-pass first, then high-pass.
    - Try gain only, phase only, and both.
    - Multiple choice: which recovers the RC charging curve.
    - Free text: why both are needed.
    - Hand-compute the output 3rd harmonic. The formulas for |H| and ∠H are given in the Task.
-5. **Part 5, High-pass on the square:** the same steps, ending on the decaying spikes.
+   - Switch the filter to high-pass with both toggles on, ending on the decaying spikes, then hand-compute the high-pass 3rd harmonic and ask whether the gains add to 1.
 
 ## User Stories
 
@@ -197,13 +197,13 @@ The State publishes every Control value (Mode, waveform, amplitude, f₀, DC off
 ### Activity
 
 - **Data:** the Activity is pure data in the Tool's activities. Course "PHY/EGR 3120". It follows the oscilloscope Activity's encoded answer keys.
-- **Part order:** synthesis (square vs triangle), analysis (shifted sine), analysis (square), low-pass, high-pass.
+- **Part order:** synthesis (square vs triangle), analysis (plain sine), analysis (square), RC filters (low-pass then high-pass).
 - **Defaults:** f₀ = 1 kHz, amplitude ±1 V, f_c = 3 kHz, N from 0 to 100.
 - **Checks:** numeric Questions use a 2% relative tolerance for amplitudes, and ±2° absolute for phases.
 - **Angle equivalence:** phases are judged mod 360°, so the difference between the given and correct angle is wrapped into (−180°, 180°] before the ±2° check.
   - The framework v1 numeric Question gains an optional modulus for this. It ships in place in framework v1 per ADR 0003, with its own runner unit test.
 - **Question types:** multiple-choice checks use `choice` Questions, and explanations use `text` Questions (ungraded, recorded in the Report).
-- **Formulas in Part 4:** the formulas |H| = 1/√(1+(f/f_c)²) and ∠H = −arctan(f/f_c) are given in Part 4's Task text. The high-pass equivalents are given in Part 5's.
+- **Formulas in Part 4:** the formulas |H| = 1/√(1+(f/f_c)²) and ∠H = −arctan(f/f_c) are given in Part 4's Task text. The high-pass equivalents are given in the high-pass Task's text.
 - **Revealing the spectrum:** the Task that asks for coefficients hides the spectrum Display, and the next Task shows it.
 
 ### Site
@@ -253,7 +253,8 @@ Good tests check behaviour through a public seam, not internals. These are the t
 - **Source:** the reference Desmos graph is "Square Wave Fourier Series" (desmos.com/calculator/32b54ddf9a). This Tool keeps its pedagogical arc: build the sum, then filter it, then compare with the analytic V_C and V_R.
 - **High-pass gain:** the Desmos high-pass uses amplitude (1 − A). The correct first-order high-pass gain is |H| = 1/√(1+(f_c/f)²).
   - The *complex* gains do add to 1 (H_LP + H_HP = 1), which is why V_C + V_R = v_in. The *magnitudes* do not add to 1.
-  - Part 5's questions can use this to draw out why phase matters.
+  - Part 4's high-pass questions can use this to draw out why phase matters.
 - **Waveform alignment:** the square wave's φₙ = −90° under the cos convention is deliberate, so that φₙ carries over to the phasor Activity. Part 3's Task text should say so.
 - **Why Synthesis comes first:** students see the series as a representation before learning how to compute the coefficients. Analysis then answers "where did those numbers come from?"
 - **Implementation order:** a natural ticket order is engine → Tool shell with both Modes → Synthesis Displays → Analysis Displays → numeric modulus option → Activity → site listing and e2e tests.
+- **Revision (2026-11-26):** after the first build the instructor asked for N = ∞ as the N slider's top position, a plain sine in Part 2, Parts 4 and 5 merged into one RC filters Part, and framework v1 Part tabs that collapse to Part numbers (active tab in full) when the titles don't fit the header.
