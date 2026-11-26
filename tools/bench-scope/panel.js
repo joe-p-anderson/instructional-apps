@@ -51,6 +51,9 @@ export function createPanel({ svgText, model, onEvent, values }) {
   el.innerHTML = svgText;
   const svg = el.querySelector('svg');
   svg.classList.add('bs-panel-svg');
+  // Exempt artwork: the front panel's printed labels scale with the Display, so they are not held
+  // to the 13 px Display text floor. The screen canvas (a sibling) is.
+  svg.setAttribute('data-fw-artwork', '');
   svg.setAttribute('role', 'group');
   svg.setAttribute('aria-label', `${model.model ?? svg.dataset.model} front panel`);
 

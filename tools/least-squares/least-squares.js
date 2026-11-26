@@ -54,7 +54,7 @@ const STYLE = `
 .ls-more > summary:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: 2px; }
 .ls-more[open] > summary { margin-bottom: 4px; }
 .ls-scatter.ls-editing { cursor: ns-resize; touch-action: none; }
-.ls-caption { font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--fw-text-muted); }
+.ls-caption { font-size: 13px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--fw-text-muted); }
 .ls-legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 4px 12px; }
 .ls-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .ls-row .fw-toggle, .ls-row .fw-select { margin-bottom: 0; }
@@ -422,7 +422,7 @@ function mount(container, modeId = 'fit', setup = {}) {
   // ── drawing ──
   const colors = () => themeVars(root, { accent: '--fw-blue', ink: '--fw-text', muted: '--fw-text-dim',
     faint: '--fw-text-muted', grid: '--fw-grid', axis: '--fw-border-dk', ok: '--fw-green', bad: '--fw-red',
-    res: '--fw-orange', panel: '--fw-surface', font: '--fw-font' });
+    res: '--fw-orange', panel: '--fw-surface', font: '--fw-font', size: '--fw-plot-font-size' });
 
   // Canvases are drawn at their box size, or at a fallback size while hidden (for snapshots).
   function prep(cv, fallbackH) {
@@ -446,7 +446,7 @@ function mount(container, modeId = 'fit', setup = {}) {
     const xs = niceStep(xr[1] - xr[0], Math.max(3, (R - L) / 90));
     const ys = niceStep(yr[1] - yr[0], Math.max(3, (B - T) / 55));
     ctx.lineWidth = 1;
-    ctx.font = `13px ${C.font}`;
+    ctx.font = `${C.size} ${C.font}`;
     ctx.fillStyle = C.muted;
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     for (let v = Math.ceil(xr[0] / xs) * xs; v <= xr[1] + xs * 1e-9; v += xs) {
@@ -544,7 +544,7 @@ function mount(container, modeId = 'fit', setup = {}) {
     ctx.moveTo(x - 5, y); ctx.lineTo(x + 5, y); ctx.moveTo(x, y - 5); ctx.lineTo(x, y + 5);
     ctx.stroke();
     if (text) {
-      ctx.font = `bold 13px ${C.font}`; ctx.fillStyle = C.accent;
+      ctx.font = `bold ${C.size} ${C.font}`; ctx.fillStyle = C.accent;
       ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(text, x + 13, y - 10);
     }
   }
@@ -592,11 +592,11 @@ function mount(container, modeId = 'fit', setup = {}) {
       const xs = ps.map((p) => p[0]), ys = ps.map((p) => p[1]);
       if (Math.max(...xs) - Math.min(...xs) < 40 && Math.max(...ys) - Math.min(...ys) < 40) return;
       const [x, y] = inside.reduce((a, p) => (p[1] < a[1] ? p : a));
-      ctx.font = `12px ${C.font}`;
+      ctx.font = `${C.size} ${C.font}`;
       const w = ctx.measureText(text).width + 6;
       if (placed.some((q) => Math.abs(q[0] - x) < (q[2] + w) / 2 + 2 && Math.abs(q[1] - y) < 16)) return;
       placed.push([x, y, w]);
-      ctx.fillStyle = C.panel; ctx.fillRect(x - w / 2, y - 7, w, 14);
+      ctx.fillStyle = C.panel; ctx.fillRect(x - w / 2, y - 8, w, 16);
       ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, x, y);
     };
     if (st.view === 'fine') {

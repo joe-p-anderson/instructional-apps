@@ -98,5 +98,16 @@ guides, caveats, legends for rare states) in a collapsed note (`<details>`) or i
 `tests/e2e/display-fit.spec.js` checks every Tool and Mode; add a new Tool to its list. Example:
 `tools/least-squares/`.
 
+**Display text is at least 13 px.** `--fw-plot-font-size` (13 px) is the floor for all text drawn in a Display,
+canvas, SVG and Plotly alike: tick labels, captions, legends, readouts. Read it with `plotTheme()` or
+`themeVars(el, { size: '--fw-plot-font-size' })` and draw at that size or larger; don't hard-code a smaller
+one. The floor is for the size as shown: SVG or canvas drawn in its own units and scaled to the Display (a
+`viewBox`, a native-resolution screen) must come out at 13 CSS px or more at 1366×768. **Exempt artwork:**
+a picture that scales with the Display and whose printed labels are not what the student reads, such as
+bench-scope's front panel, is marked with the `data-fw-artwork` attribute; text inside it is not held to the
+floor. `tests/e2e/display-fit.spec.js` checks every Tool and Mode, and the Activities, at 1366×768: no visible
+DOM or canvas text in `.fw-displays` under 12 px outside `[data-fw-artwork]`. Examples: `tools/least-squares/`
+(canvas), `tools/bench-scope/panel.js` (the exemption).
+
 In every layout a locked Task says which Task unlocks it, and each Part tab carries a progress badge ("1/3"),
 filled once the Part is complete; the tab's accessible name reads it as "(1 of 3 Tasks done)".

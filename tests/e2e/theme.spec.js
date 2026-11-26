@@ -232,7 +232,7 @@ test('the oscilloscope plot takes its palette and font from the --fw-plot-* toke
     const set = (html) => {
       html.style.setProperty('--fw-plot-trace-1', '#007a33');
       html.style.setProperty('--fw-plot-bg', '#fffdf0');
-      html.style.setProperty('--fw-plot-font-size', '13px');
+      html.style.setProperty('--fw-plot-font-size', '15px');
     };
     if (document.documentElement) set(document.documentElement);
     else new MutationObserver((_, obs) => { if (document.documentElement) { set(document.documentElement); obs.disconnect(); } })
@@ -250,7 +250,7 @@ test('the oscilloscope plot takes its palette and font from the --fw-plot-* toke
   expect(plot.paper).toBe('#fffdf0');
   expect(plot.font.family).toBe(plot.token);
   expect(plot.font.family).toMatch(/^'?"?Libre Baskerville/);
-  expect(plot.font.size).toBe(13);
+  expect(plot.font.size).toBe(15);
 });
 
 test('slider thumbs are 18 px and round on a 4 px track', async ({ page }) => {
