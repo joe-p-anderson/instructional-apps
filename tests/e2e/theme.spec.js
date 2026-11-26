@@ -302,9 +302,13 @@ test('buttons, tabs and reset buttons show a focus-visible outline', async ({ pa
   await open(page);
   await enterName(page);
   const p1 = part(page, 1);
+  // Move Va off its default so its reset is enabled (and so focusable).
+  const va = p1.getByRole('spinbutton', { name: 'Va (V)', exact: true });
+  await va.fill('2.5');
+  await va.press('Enter');
   const targets = [
     page.getByRole('tab', { name: /Part 1/ }),
-    p1.getByRole('button', { name: 'Reset Va' }),
+    p1.getByRole('button', { name: /^Reset to [\d.]+ V$/ }),
     p1.getByRole('button', { name: 'Submit Task 1.1' }),
   ];
   for (const target of targets) {
