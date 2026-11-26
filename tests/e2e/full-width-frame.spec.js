@@ -19,9 +19,15 @@ const fixture = (layout, { page = 'activity', max } = {}) =>
 async function openActivity(page, url) {
   await page.goto(url);
   await page.waitForFunction(() => window.activityHost);
-  await page.getByRole('textbox', { name: 'Your name' }).fill('Ada Lovelace');
-  await page.getByRole('button', { name: 'Start' }).click();
-  await expect(page.getByRole('tablist')).toBeVisible();
+  // The name is stored site-wide (shell revision 06): after the first Activity the gate is skipped.
+  const name = page.getByRole('textbox', { name: 'Your name' });
+  const tabs = page.getByRole('tablist');
+  await expect(name.or(tabs)).toBeVisible();
+  if (await name.isVisible()) {
+    await name.fill('Ada Lovelace');
+    await page.getByRole('button', { name: 'Start' }).click();
+  }
+  await expect(tabs).toBeVisible();
 }
 
 async function openStandalone(page, url) {
