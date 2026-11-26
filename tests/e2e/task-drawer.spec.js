@@ -21,8 +21,12 @@ async function openActivity(page, url) {
 }
 
 const part = (page, n) => page.getByRole('tabpanel', { name: new RegExp(`Part ${n}`) });
-const bar = (scope) => scope.locator('.fw-drawer-bar');
-const toggle = (scope) => bar(scope).locator('.fw-drawer-toggle');
+// The bar is a group named "Current Task"; its expand toggle is the button named after the
+// current Task ("Task 1.1 — …", or "✓ All Tasks done"), which says whether the drawer is open.
+const bar = (scope) => scope.getByRole('group', { name: 'Current Task' });
+const toggle = (scope) => bar(scope).getByRole('button', { name: /^(Task \d|✓ All Tasks done)/ });
+const MUTED = 'rgb(110, 96, 74)'; // --fw-text-muted
+const animating = (locator) => locator.evaluate((el) => el.getAnimations().length > 0);
 const box = (locator) => locator.evaluate((e) => {
   const r = e.getBoundingClientRect();
   return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height };
@@ -46,7 +50,7 @@ for (const { name, url } of ACTIVITIES) {
     const min = await page.evaluate(() => window.activityHost.tool.minDisplayWidth);
     expect((await box(p1.locator('.fw-displays'))).width).toBeGreaterThanOrEqual(min);
     // The Part tab badges carry progress.
-    await expect(page.getByRole('tab', { name: /Part 1/ }).locator('.fw-tab-badge')).toBeVisible();
+    await expect(page.getByRole('tab', { name: /Part 1/ }).getByText(/^\d+\/\d+$/)).toBeVisible();
     // No page scroll sideways.
     expect(await page.evaluate(() => document.scrollingElement.scrollWidth <= innerWidth)).toBe(true);
   });
@@ -90,12 +94,12 @@ test('a refused identical Submit shows its text and flash on the drawer bar', as
   await submit.click(); // a miss
   await expect(feedback).toContainText('✗');
   await expect(feedback).toHaveAttribute('aria-live', 'polite');
-  await page.waitForTimeout(700); // let the first emphasis end
-  await expect(feedback).not.toHaveClass(/fw-emphasis/);
+  await expect.poll(() => animating(feedback)).toBe(false); // the first emphasis has ended
   await submit.click(); // the same again: refused
   await expect(feedback).toHaveText('Nothing changed since your last try');
-  await expect(feedback).toHaveClass(/fw-refused/);
-  await expect(feedback).toHaveClass(/fw-emphasis/);
+  // Shown in muted text, not as a miss, and flashed again.
+  expect(await feedback.evaluate((el) => getComputedStyle(el).color)).toBe(MUTED);
+  expect(await animating(feedback)).toBe(true);
 });
 
 test('a Task with Questions opens, is answered and submitted; opening leaves the Display box unchanged', async ({ page }) => {

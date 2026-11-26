@@ -33,7 +33,7 @@ test('a name entered in one Activity starts the next Activity with no Name gate'
   await expect(nameBox(page)).toBeHidden();
   await expect(page.getByRole('tab', { name: /Part 1/ })).toHaveAttribute('aria-selected', 'true');
   expect((await run(page)).name).toBe('Ada Lovelace');
-  await expect(page.locator('.fw-student')).toHaveText('Ada Lovelace');
+  await expect(page.getByRole('banner').getByRole('note', { name: 'Student' })).toHaveText('Ada Lovelace');
 });
 
 test("Sign out, once confirmed, shows the Name gate here and keeps the other Activity's Run", async ({ page }) => {
@@ -67,7 +67,7 @@ test("Sign out, once confirmed, shows the Name gate here and keeps the other Act
   await open(page, A);
   await expect(nameBox(page)).toBeHidden();
   expect(await run(page)).toEqual(runA);
-  await expect(page.locator('.fw-student')).toHaveText('Ada Lovelace');
+  await expect(page.getByRole('banner').getByRole('note', { name: 'Student' })).toHaveText('Ada Lovelace');
   // Sign-out's label uses the Run's name, not the stored one.
   await page.getByRole('button', { name: 'More actions' }).click();
   await expect(page.getByRole('menuitem', { name: 'Not Ada Lovelace? Sign out' })).toBeVisible();
