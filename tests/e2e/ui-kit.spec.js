@@ -98,6 +98,34 @@ test('a slider is a group named like its inputs, so its reset can be found by ro
     .getByRole('button', { name: 'Reset to 0.25 V', exact: true })).toBeEnabled();
 });
 
+test('a slider with valueText names a special position: the box and the range read that text there', async ({ page }) => {
+  await page.evaluate(async () => {
+    const kit = await import('/framework/v1/ui-kit.js');
+    window.sl = kit.slider({ id: 'N', name: 'N', min: 0, max: 4, step: 1, decimals: 0, value: 3,
+      valueText: (v) => (v === 4 ? '∞' : undefined) });
+    document.body.append(window.sl.el);
+  });
+  const range = page.getByRole('slider', { name: 'N', exact: true });
+  const box = page.getByRole('spinbutton', { name: 'N', exact: true });
+  await expect(box).toHaveValue('3');
+  await expect(range).not.toHaveAttribute('aria-valuetext');
+
+  await range.focus();
+  await range.press('ArrowRight');
+  expect(await page.evaluate(() => window.sl.get())).toBe(4);
+  await expect(range).toHaveAttribute('aria-valuetext', '∞');
+  await expect(box).toHaveAttribute('aria-valuetext', '∞');
+  await expect(box).toHaveAttribute('placeholder', '∞');
+  await expect(box).toHaveValue('');
+
+  await box.fill('2');
+  await box.press('Enter');
+  expect(await page.evaluate(() => window.sl.get())).toBe(2);
+  await expect(range).not.toHaveAttribute('aria-valuetext');
+  await expect(box).not.toHaveAttribute('aria-valuetext');
+  await expect(box).toHaveValue('2');
+});
+
 // resetButton() and numberBox(): the slider's parts, for a Tool's own composite Controls.
 test('resetButton() is an icon-only ↻ named "Reset to <text>", disabled at the default and while locked', async ({ page }) => {
   await page.evaluate(async () => {

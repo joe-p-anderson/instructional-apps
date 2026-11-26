@@ -38,21 +38,25 @@ test('State publishes the Mode, the input and N with units', async ({ page }) =>
     return { s: i.state.snapshot(), info: i.state.describe() };
   });
   expect(s).toEqual({ mode: 'synthesis', waveform: 'square', amp: 1, f0: 1000, offset: 0, shift: 0,
-    filter: 'off', fc: 3000, applyGain: true, applyPhase: true, fcRatio: 3, tau: 1e3 / (2 * Math.PI * 3000), N: 1 });
+    filter: 'off', fc: 3000, applyGain: true, applyPhase: true, fcRatio: 3, tau: 1e3 / (2 * Math.PI * 3000), N: 1, infinite: false });
   expect(info.amp.unit).toBe('V');
   expect(info.f0.unit).toBe('Hz');
   expect(info.offset.unit).toBe('V');
   expect(info.shift.unit).toBe('°');
   expect(info.N.unit).toBe('');
+  expect(info.infinite.unit).toBe('');
   for (const k of Object.keys(s)) expect(info[k], k).toBeTruthy();
 });
 
-test('the time plot draws the input, the partial sum, the N = ∞ curve and the highest harmonic', async ({ page }) => {
+const traceNames = (page) => page.evaluate(() => document
+  .querySelector('[data-tool="fourier"] [data-display="time"] .js-plotly-plot').data.map((t) => t.name));
+const legend = (page) => page.locator('[data-mode="synthesis"] .fw-legend-row:visible');
+const nSlider = (page) => page.getByRole('slider', { name: 'N', exact: true });
+
+test('the time plot draws the input, the partial sum and the highest harmonic, with no N = ∞ curve', async ({ page }) => {
   await open(page);
-  const names = await page.evaluate(() => document
-    .querySelector('[data-tool="fourier"] [data-display="time"] .js-plotly-plot').data.map((t) => t.name));
-  expect(names).toEqual(['Input', 'N = ∞ (infinite series)', 'Highest harmonic', 'Partial sum']);
-  await expect(page.locator('[data-mode="synthesis"] .fw-legend-row')).toHaveCount(4);
+  expect(await traceNames(page)).toEqual(['Input', 'Highest harmonic', 'Partial sum']);
+  await expect(legend(page)).toHaveText(['Input', 'Highest harmonic (n = 1)', 'Partial sum through N']);
   await expect(page.locator('[data-mode="synthesis"] .xtitle')).toHaveText('Time (ms)');
   await expect(page.locator('[data-mode="synthesis"] .ytitle')).toHaveText('Voltage (V)');
 });
@@ -73,6 +77,69 @@ test('moving N changes the partial sum; N = 0 is the DC term alone; an even N ad
   expect((await traceY(page, 'Partial sum')).every((v) => v === 0)).toBe(true);
 });
 
+test('the slider has one position past 100, ∞: the sum is then the N = ∞ curve and the highest harmonic goes', async ({ page }) => {
+  await open(page);
+  await setN(page, 100);
+  await expect(nSlider(page)).not.toHaveAttribute('aria-valuetext');
+  await nSlider(page).focus();
+  await nSlider(page).press('ArrowRight');
+  expect(await state(page)).toMatchObject({ N: 101, infinite: true });
+  await expect(nSlider(page)).toHaveAttribute('aria-valuetext', '∞');
+  await expect(nBox(page)).toHaveAttribute('aria-valuetext', '∞');
+  await expect(nBox(page)).toHaveAttribute('placeholder', '∞');
+  expect(await traceNames(page)).toEqual(['Input', 'N = ∞ (infinite series)']);
+  await expect(legend(page)).toHaveText(['Input', 'N = ∞ (the infinite series)']);
+
+  // No filter: the infinite series of the square is the square itself.
+  const input = await traceY(page, 'Input');
+  const limit = await traceY(page, 'N = ∞ (infinite series)');
+  expect(limit.filter((v, k) => Math.abs(v - input[k]) > 1e-9).length).toBeLessThan(10);
+
+  await nSlider(page).press('ArrowLeft');
+  expect(await state(page)).toMatchObject({ N: 100, infinite: false });
+  expect(await traceNames(page)).toEqual(['Input', 'Highest harmonic', 'Partial sum']);
+});
+
+test('typing 101 or more in the N box goes to ∞, and a Condition on an N band does not pass there', async ({ page }) => {
+  await open(page);
+  await setN(page, 500);
+  const s = await state(page);
+  expect(s).toMatchObject({ N: 101, infinite: true });
+  expect(JSON.parse(JSON.stringify(s))).toEqual(s);
+  expect(s.N > 18 && s.N < 32).toBe(false);
+});
+
+test('the y range holds the high-pass spikes at ∞', async ({ page }) => {
+  await open(page);
+  await page.getByRole('combobox', { name: 'Filter', exact: true }).selectOption('highpass');
+  await setN(page, 101);
+  const { y, range } = await page.evaluate(() => {
+    const plot = document.querySelector('[data-tool="fourier"] [data-display="time"] .js-plotly-plot');
+    return { y: Array.from(plot.data.find((t) => t.name === 'N = ∞ (infinite series)').y), range: plot.layout.yaxis.range };
+  });
+  expect(Math.max(...y)).toBeGreaterThan(1.5);
+  expect(Math.max(...y)).toBeLessThan(range[1]);
+  expect(Math.min(...y)).toBeGreaterThan(range[0]);
+});
+
+test('an Activity Setup can start at ∞, and ∞ serializes and restores', async ({ page }) => {
+  await open(page);
+  const r = await page.evaluate(async () => {
+    const { default: tool } = await import('/tools/fourier/fourier.js');
+    const i = tool.mount(document.body.appendChild(document.createElement('div')), 'synthesis', { N: 101 });
+    const start = i.state.snapshot();
+    const saved = JSON.parse(JSON.stringify(i.serialize()));
+    i.controls.get('N').set(5);
+    i.restore(saved);
+    const back = i.state.snapshot();
+    i.destroy();
+    return { start, saved: saved.N, back };
+  });
+  expect(r.start).toMatchObject({ N: 101, infinite: true });
+  expect(r.saved).toBe(101);
+  expect(r.back).toMatchObject({ N: 101, infinite: true });
+});
+
 test('play advances N and pause stops it', async ({ page }) => {
   await open(page);
   const play = page.getByRole('button', { name: 'Play', exact: true });
@@ -86,13 +153,20 @@ test('play advances N and pause stops it', async ({ page }) => {
   expect((await state(page)).N).toBe(paused);
 });
 
-test('play stops at N = 100, and pressing it again starts over from 0', async ({ page }) => {
+test('play steps through 100 to ∞ and stops there, and pressing it again starts over from 0', async ({ page }) => {
   await open(page);
   await setN(page, 98);
   const play = page.getByRole('button', { name: 'Play', exact: true });
+  await page.evaluate(() => {
+    window.seenN = [];
+    window.toolHost.instances[0].state.onChange((s) => window.seenN.push(s.infinite ? '∞' : s.N));
+  });
   await play.click();
-  await expect.poll(async () => (await state(page)).N, { timeout: 5000 }).toBe(100);
+  await expect.poll(async () => (await state(page)).infinite, { timeout: 5000 }).toBe(true);
   await expect(play).toHaveAttribute('aria-pressed', 'false');
+  expect(await page.evaluate(() => window.seenN)).toEqual([99, 100, '∞']);
+  await page.waitForTimeout(600);
+  expect(await state(page)).toMatchObject({ N: 101, infinite: true });
   await play.click();
   await expect.poll(async () => (await state(page)).N, { timeout: 5000 }).toBeGreaterThanOrEqual(1);
   expect((await state(page)).N).toBeLessThan(10);
@@ -158,7 +232,7 @@ test('the input Controls are kit Controls with units, and the waveform select of
   }
 });
 
-test('changing the waveform redraws the input, the N = ∞ curve and the partial sum', async ({ page }) => {
+test('changing the waveform redraws the input, the partial sum and the N = ∞ curve', async ({ page }) => {
   await open(page);
   await setN(page, 5);
   const before = { input: await traceY(page, 'Input'), sum: await traceY(page, 'Partial sum') };
@@ -166,9 +240,10 @@ test('changing the waveform redraws the input, the N = ∞ curve and the partial
     await waveSelect(page).selectOption(w);
     expect((await state(page)).waveform).toBe(w);
     expect(await traceY(page, 'Input'), w).not.toEqual(before.input);
-    expect(await traceY(page, 'N = ∞ (infinite series)'), w).not.toEqual(before.input);
     expect(await traceY(page, 'Partial sum'), w).not.toEqual(before.sum);
   }
+  await setN(page, 101);
+  expect(await traceY(page, 'N = ∞ (infinite series)')).not.toEqual(before.input);
 });
 
 test('the sawtooth has even harmonics: at N = 2 the highest harmonic is not zero', async ({ page }) => {
