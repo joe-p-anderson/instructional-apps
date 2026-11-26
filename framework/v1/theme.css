@@ -123,15 +123,22 @@ html.fw-root, html.fw-root body {
 .fw-course, .fw-subtitle { font-size: 14px; color: var(--fw-text-dim); font-style: italic; }
 .fw-course { flex: 0 1000 auto; min-width: 3em; align-self: center; margin-left: -6px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The short notes (the student's name, the save status, "Link copied") stack two to a column so
+   the save status costs the row no width; buttons and the ⋯ menu span both lines. */
 .fw-header-actions {
   flex: 0 0 auto;
   margin-left: auto;
   align-self: center;
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: auto auto;
   align-items: center;
-  gap: 10px;
+  justify-items: end;
+  column-gap: 10px;
   white-space: nowrap;
 }
+.fw-header-actions > :not(.fw-student, .fw-save-status, .fw-share-status) { grid-row: 1 / span 2; }
+.fw-header-actions > .fw-student, .fw-header-actions > .fw-save-status, .fw-header-actions > .fw-share-status { line-height: 1.2; }
 .fw-header .fw-button { font-size: 14px; letter-spacing: 0.04em; padding: 3px 8px; }
 .fw-header .fw-student { font-size: 15px; }
 
@@ -364,7 +371,7 @@ html.fw-root, html.fw-root body {
 .fw-share-status:empty { display: none; }
 
 /* Header save status (tool-host.js saveStatus): muted "Saved hh:mm", or the warning in the miss colour */
-.fw-save-status { font-size: 14px; color: var(--fw-text-dim); white-space: nowrap; }
+.fw-save-status { font-size: 13px; color: var(--fw-text-dim); white-space: nowrap; }
 .fw-save-status:empty { display: none; }
 .fw-save-status[data-state="failed"] { color: var(--fw-red); font-weight: 600; }
 
