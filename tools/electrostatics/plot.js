@@ -1,6 +1,7 @@
 // Plotly helpers shared by the electrostatics Modes: the square ±WINDOW conductor plot, the
-// |E| heatmap, quiver arrows and the conductor boundary. Colours come from the v1 theme
-// variables (read from the element the plot lives in).
+// |E| heatmap, quiver arrows and the conductor boundary. Colours and font come from the theme
+// (read from the element the plot lives in): the plot ground, grid, axes, text and font from
+// the --fw-plot-* tokens, the marks from the named theme colours.
 
 import { themeVars } from '../../framework/v1/ui-kit.js';
 import { loadPlotly } from '../../framework/v1/vendor.js';
@@ -19,9 +20,11 @@ export function toolStyles() {
 export const PLOT_CONFIG = { displayModeBar: false, scrollZoom: false, responsive: true };
 
 const VARS = {
-  blue: '--fw-blue', red: '--fw-red', yellow: '--fw-yellow', text: '--fw-text', dim: '--fw-text-dim',
-  muted: '--fw-text-muted', surface: '--fw-surface', bg: '--fw-bg', grid: '--fw-grid', border: '--fw-border',
-  borderDk: '--fw-border-dk',
+  blue: '--fw-blue', red: '--fw-red', yellow: '--fw-yellow', text: '--fw-text', muted: '--fw-text-muted',
+  bg: '--fw-bg', border: '--fw-border',
+  // From the plot tokens:
+  surface: '--fw-plot-bg', grid: '--fw-plot-grid', borderDk: '--fw-plot-axis', dim: '--fw-plot-text',
+  font: '--fw-plot-font', fontSize: '--fw-plot-font-size',
 };
 
 /** The plot's theme colours as seen from `el` (the v1 palette before it is in the page). */
@@ -36,7 +39,7 @@ export function conductorLayout(C, { cmax = 1e4, colorTitle = '|E| (V/m)' } = {}
   return {
     paper_bgcolor: C.surface,
     plot_bgcolor: C.surface,
-    font: { family: "'Baskerville Old Face', Baskerville, Georgia, serif", size: 13, color: C.dim },
+    font: { family: C.font, size: parseFloat(C.fontSize), color: C.dim },
     xaxis: { ...axis, title: { text: 'x (cm)', standoff: 5, font: { size: 14 } }, scaleanchor: 'y', scaleratio: 1 },
     yaxis: { ...axis, title: { text: 'y (cm)', standoff: 5, font: { size: 14 } } },
     margin: { l: 50, r: 62, t: 12, b: 44 },

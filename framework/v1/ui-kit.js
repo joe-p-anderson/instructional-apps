@@ -160,6 +160,11 @@ const PALETTE = {
   '--fw-red': '#B81C1C', '--fw-orange': '#E8720C', '--fw-yellow': '#8A5F00', '--fw-hint-bg': '#FBF3DF',
   '--fw-green': '#2A6E2A', '--fw-text': '#1A1008', '--fw-text-dim': '#5C4F38', '--fw-text-muted': '#6E604A',
   '--fw-grid': '#DDD5C0', '--fw-font': "'Libre Baskerville', Georgia, serif",
+  // Plot tokens (plot-theme.js), resolved.
+  '--fw-plot-bg': '#FAF8F2', '--fw-plot-grid': '#DDD5C0', '--fw-plot-axis': '#8B7D5E', '--fw-plot-text': '#5C4F38',
+  '--fw-plot-ink': '#1A1008', '--fw-plot-muted': '#C8BFA0', '--fw-plot-trace-1': '#1B4F8A',
+  '--fw-plot-trace-2': '#B81C1C', '--fw-plot-trace-3': '#E8720C',
+  '--fw-plot-font': "'Libre Baskerville', Georgia, serif", '--fw-plot-font-size': '14px',
 };
 
 /**

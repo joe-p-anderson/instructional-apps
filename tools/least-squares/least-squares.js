@@ -35,19 +35,27 @@ const MARGIN = { l: 64, r: 14, t: 12, b: 46 };
 const GRAB_RADIUS = 16; // px
 
 const STYLE = `
-.ls-displays { flex: 1; min-height: 0; overflow-y: auto; display: grid; gap: 12px;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); align-items: start; }
-.ls-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+/* The Display never scrolls inside itself (framework README): the Graph and the parameter plane
+   take whatever height is left, and secondary text sits in collapsed notes (.ls-more). */
+.ls-displays { flex: 1; min-height: 0; display: grid; gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px); grid-template-rows: minmax(0, 1fr); }
+.ls-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
+.ls-col[hidden] { display: none; }
+.ls-col > .ls-col { flex: none; }
 .ls-displays .fw-display { flex: none; }
+.ls-displays .fw-display.ls-grow { flex: 1 1 0; min-height: 120px; }
 .ls-canvas { display: block; width: 100%; }
-.ls-scatter { height: 380px; }
-.ls-residuals { height: 170px; }
-.ls-plane { height: 300px; touch-action: none; cursor: crosshair; }
-.ls-scatter.ls-editing { cursor: ns-resize; touch-action: none; }
-.ls-caption { font-size: 14px; font-variant: small-caps; letter-spacing: 0.12em; color: var(--fw-text-muted); }
-.ls-note { font-size: 13px; color: var(--fw-text-dim); font-style: italic; line-height: 1.4; margin: 0;
+.ls-grow > .ls-canvas { height: 100%; }
+.ls-residuals { height: 150px; }
+.ls-plane { touch-action: none; cursor: crosshair; }
+.ls-more { font-size: 13px; color: var(--fw-text-dim); line-height: 1.4;
   border-left: 3px solid var(--fw-border); padding-left: 8px; }
-.ls-legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 12px; font-size: 13px; color: var(--fw-text-dim); }
+.ls-more > summary { cursor: pointer; font-style: italic; }
+.ls-more > summary:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: 2px; }
+.ls-more[open] > summary { margin-bottom: 4px; }
+.ls-scatter.ls-editing { cursor: ns-resize; touch-action: none; }
+.ls-caption { font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--fw-text-muted); }
+.ls-legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 4px 12px; }
 .ls-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .ls-row .fw-toggle, .ls-row .fw-select { margin-bottom: 0; }
 .ls-story { font-size: 15px; line-height: 1.45; margin-bottom: 8px; }
@@ -156,10 +164,12 @@ function mount(container, modeId = 'fit', setup = {}) {
   const residualWrap = h('div', { class: 'ls-col', hidden: true },
     h('div', { class: 'ls-caption' }, 'Residuals  y − (m x + b)'),
     h('div', { class: 'fw-display' }, residualCv),
-    h('div', { class: 'ls-legend' },
-      h('div', { html: '<b>Random scatter about 0</b>: the straight line describes the data.' }),
-      h('div', { html: '<b>A curve or trend</b>: wrong model or wrong axes. The line is systematically off.' }),
-      h('div', { html: '<b>One far-off point</b>: an outlier. Check that measurement before trusting the fit.' })));
+    h('details', { class: 'ls-more' },
+      h('summary', {}, 'Reading the residuals'),
+      h('div', { class: 'ls-legend' },
+        h('div', { html: '<b>Random scatter about 0</b>: the straight line describes the data.' }),
+        h('div', { html: '<b>A curve or trend</b>: wrong model or wrong axes. The line is systematically off.' }),
+        h('div', { html: '<b>One far-off point</b>: an outlier. Check that measurement before trusting the fit.' }))));
 
   const out = {
     eq: h('div', { class: 'ls-eq' }),
@@ -184,25 +194,31 @@ function mount(container, modeId = 'fit', setup = {}) {
       section('Experiment', ctl.dataset.el, h('div', { class: 'ls-row' }, ctl['new-data'].el, ctl['copy-csv'].el, copyStatus)),
       section('Model', story, ctl.check.el, checkPanel),
       section('Axes', ctl['y-transform'].el, ctl['x-transform'].el),
+      section('Parameter space', ctl.view.el, ctl.optimize.el, ctl['through-origin'].el),
       section('Show', ctl['show-residuals'].el, ctl['edit-points'].el, ctl['reset-data'].el)),
     h('div', { class: 'fw-displays ls-displays' },
       h('div', { class: 'ls-col' },
         h('div', { class: 'ls-caption' }, 'Graph'),
-        h('div', { class: 'fw-display' }, scatterCv),
+        h('div', { class: 'fw-display ls-grow' }, scatterCv),
         residualWrap,
-        h('p', { class: 'ls-note' }, 'This is unweighted least squares: error bars are drawn, but every point counts equally in the fit.')),
+        h('details', { class: 'ls-more' },
+          h('summary', {}, 'How the line is fitted'),
+          'This is unweighted least squares: error bars are drawn, but every point counts equally in the fit.')),
       h('div', { class: 'ls-col' },
         h('div', { class: 'ls-caption' }, 'Parameter space'),
-        h('div', { class: 'fw-display' }, planeCv),
-        h('div', { class: 'ls-row' }, ctl.view.el, ctl.optimize.el, ctl['through-origin'].el),
-        h('p', { class: 'ls-note', html: 'Each point here is a line. Drag to choose the slope <i>m</i> and intercept <i>b</i>. '
-          + 'Rings are contours of equal error, labeled by R². The least-squares line sits at the bottom of the bowl. '
-          + '<b>Fine</b> zooms in near the bottom. The green patch is every line that passes through all the error bars.' }),
+        h('div', { class: 'fw-display ls-grow' }, planeCv),
+        h('details', { class: 'ls-more' },
+          h('summary', {}, 'Reading the parameter plane'),
+          h('span', { html: 'Each point here is a line. Drag to choose the slope <i>m</i> and intercept <i>b</i>. '
+            + 'Rings are contours of equal error, labeled by R². The least-squares line sits at the bottom of the bowl. '
+            + '<b>Fine</b> zooms in near the bottom. The green patch is every line that passes through all the error bars.' })),
         h('div', { class: 'ls-fit' },
           h('div', { class: 'ls-caption' }, 'Fit'),
           out.eq, out.m.el, out.b.el, out.pass, bars.SST.el, bars.SSE.el, out.ratio.el, out.R2.el, out.why,
-          h('p', { class: 'ls-note', html: 'R² is the fraction of the variation in y that the line accounts for. It does <b>not</b> tell you '
-            + 'whether the model is right, and it is not an uncertainty on <i>m</i>. Look at the graph and the residuals first.' })))));
+          h('details', { class: 'ls-more' },
+            h('summary', {}, 'What R² tells you'),
+            h('span', { html: 'R² is the fraction of the variation in y that the line accounts for. It does <b>not</b> tell you '
+              + 'whether the model is right, and it is not an uncertainty on <i>m</i>. Look at the graph and the residuals first.' }))))));
   container.append(root);
 
   // ── operations (no emit; commit() publishes) ──
