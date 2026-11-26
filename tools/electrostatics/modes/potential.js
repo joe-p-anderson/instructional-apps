@@ -16,6 +16,7 @@
 import { controlRegistry } from '../../../framework/v1/control.js';
 import { createEmitter } from '../../../framework/v1/tool.js';
 import { h, handle, metric, section, slider, toggle } from '../../../framework/v1/ui-kit.js';
+import { plotlyMapping } from '../../../framework/v1/plot-map.js';
 import { RADIUS, WINDOW, fieldGrid, linspace, potentialProbe } from '../conductor.js';
 import { PLOT_CONFIG, Plotly, boundaryTrace, conductorLayout, heatmapTrace, plotDisplay, quiverTrace, plotColors, toolStyles } from '../plot.js';
 
@@ -92,13 +93,7 @@ export function mount(container, setup = {}) {
   // ── Controls ──
   // The probes' mapping to the plot (in client pixels), once the plot is drawn.
   const plotDiv = h('div', { style: 'width:100%;height:100%;touch-action:none' });
-  let toScreen = () => null;
-  function fromScreen(cx, cy) {
-    const fl = plotDiv._fullLayout;
-    if (!fl) return null;
-    const rect = plotDiv.getBoundingClientRect();
-    return { x: fl.xaxis.p2d(cx - rect.left - fl.xaxis._offset), y: fl.yaxis.p2d(cy - rect.top - fl.yaxis._offset) };
-  }
+  const { toScreen, fromScreen } = plotlyMapping(plotDiv);
   const drawnAt = (k) => { const s = probes(); return toScreen(s[`x${k}`], s[`y${k}`]); };
 
   let pair = null;
@@ -205,7 +200,6 @@ export function mount(container, setup = {}) {
   const plot = plotDisplay(plotDiv, { id: 'potential', label: 'Potential' });
 
   // ── The probe handles sit over the drawn points; re-place them whenever the plot is redrawn ──
-  toScreen = plot.display.toScreen;
   plotDiv.on('plotly_afterplot', placeProbes);
 
   update();

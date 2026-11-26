@@ -4,6 +4,7 @@
 // the --fw-plot-* tokens, the marks from the named theme colours.
 
 import { themeVars } from '../../framework/v1/ui-kit.js';
+import { plotlyMapping } from '../../framework/v1/plot-map.js';
 import { loadPlotly } from '../../framework/v1/vendor.js';
 import { RADIUS, WINDOW, linspace } from './conductor.js';
 
@@ -80,18 +81,14 @@ export function boundaryTrace({ color = 'rgba(26,16,8,0.25)', dash = 'dot', widt
 
 /**
  * Wire a plot div up as a Display: keeps it sized to its box (it may be mounted into a hidden
- * tab), and gives toScreen(x, y) in cm and a PNG snapshot. Returns { display, fit, stop }.
+ * tab), and gives toScreen(x, y) in cm (framework/v1/plot-map.js) and a PNG snapshot.
+ * Returns { display, fit, stop }.
  */
 export function plotDisplay(plotDiv, { id, label }) {
   const fit = () => { if (plotDiv.offsetParent && plotDiv._fullLayout) Plotly.Plots.resize(plotDiv); };
   const observer = new ResizeObserver(fit);
   observer.observe(plotDiv);
-  function toScreen(x, y) {
-    const fl = plotDiv._fullLayout;
-    if (!fl || !plotDiv.offsetParent || Math.abs(fl.width - plotDiv.clientWidth) >= 2) return null;
-    const rect = plotDiv.getBoundingClientRect();
-    return { x: rect.left + fl.xaxis._offset + fl.xaxis.d2p(x), y: rect.top + fl.yaxis._offset + fl.yaxis.d2p(y) };
-  }
+  const { toScreen } = plotlyMapping(plotDiv);
   const snapshot = () => {
     const size = Math.round(Math.min(plotDiv.clientWidth, plotDiv.clientHeight)) || 560;
     return Plotly.toImage(plotDiv, { format: 'png', width: size, height: size });
