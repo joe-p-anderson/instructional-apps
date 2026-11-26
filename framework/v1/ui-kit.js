@@ -87,9 +87,13 @@ export function numberBox({ name, min, max, step = 'any', width, onCommit = () =
  *   log: the range input moves on a logarithmic scale (min > 0), for values spanning decades
  *        such as a frequency; dragging it rounds to 3 significant digits. The number box and
  *        get/set stay in plain units.
+ *   valueText(v): optional; returns the text for a value that a number can't show (such as '∞'
+ *        for a top position past the last number), or undefined for a plain value. At such a
+ *        value the range's aria-valuetext is that text and the number box is empty, with the
+ *        text as its placeholder and aria-valuetext. get/set still use the number.
  */
 export function slider({ id, label, name = label != null ? labelText(label) : id, unit = '', min, max,
-  step = 'any', value, reset = value, decimals = 2, log = false, onChange = () => {} }) {
+  step = 'any', value, reset = value, decimals = 2, log = false, valueText = () => undefined, onChange = () => {} }) {
   let current = clamp(Number(value), min, max);
 
   const a11yName = unit ? `${name} (${unit})` : name;
@@ -107,7 +111,12 @@ export function slider({ id, label, name = label != null ? labelText(label) : id
 
   function render() {
     range.value = String(log ? Math.log10(current) : current);
-    num.show(current.toFixed(decimals));
+    const text = valueText(current);
+    num.show(text == null ? current.toFixed(decimals) : '');
+    for (const el of [range, num.el]) {
+      if (text == null) el.removeAttribute('aria-valuetext'); else el.setAttribute('aria-valuetext', text);
+    }
+    if (text == null) num.el.removeAttribute('placeholder'); else num.el.setAttribute('placeholder', text);
     resetBtn.sync();
   }
 

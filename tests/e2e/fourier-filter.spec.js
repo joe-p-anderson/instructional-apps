@@ -21,6 +21,13 @@ const fcBox = (page) => page.getByRole('spinbutton', { name: 'f_c (Hz)', exact: 
 const gainBox = (page) => page.getByRole('checkbox', { name: 'Apply gain', exact: true });
 const phaseBox = (page) => page.getByRole('checkbox', { name: 'Apply phase shift', exact: true });
 const readout = (page, name) => page.getByRole('status', { name, exact: true });
+const setN = async (page, n) => {
+  const box = page.getByRole('spinbutton', { name: 'N', exact: true });
+  await box.fill(String(n));
+  await box.press('Enter');
+};
+/** The N = ∞ curve: the sum curve with the slider at its top position, ∞ (it leaves N there). */
+const limitY = async (page) => { await setN(page, 101); return traceY(page, LIMIT); };
 
 test('the filter Controls are kit Controls, off by default, and published in State with units', async ({ page }) => {
   await open(page);
@@ -45,13 +52,14 @@ test('the filter Controls are kit Controls, off by default, and published in Sta
 
 test('turning the filter on changes the N = ∞ curve and the partial sum, but not the input', async ({ page }) => {
   await open(page);
-  await page.getByRole('spinbutton', { name: 'N', exact: true }).fill('9');
-  await page.getByRole('spinbutton', { name: 'N', exact: true }).press('Enter');
-  const before = { input: await traceY(page, 'Input'), limit: await traceY(page, LIMIT), sum: await traceY(page, 'Partial sum') };
+  await setN(page, 9);
+  const before = { input: await traceY(page, 'Input'), sum: await traceY(page, 'Partial sum'), limit: await limitY(page) };
 
   await filterSelect(page).selectOption('lowpass');
   expect((await state(page)).filter).toBe('lowpass');
-  const lp = { limit: await traceY(page, LIMIT), sum: await traceY(page, 'Partial sum') };
+  const lp = { limit: await traceY(page, LIMIT) };
+  await setN(page, 9);
+  lp.sum = await traceY(page, 'Partial sum');
   expect(await traceY(page, 'Input')).toEqual(before.input);
   expect(lp.limit).not.toEqual(before.limit);
   expect(lp.sum).not.toEqual(before.sum);
@@ -60,24 +68,26 @@ test('turning the filter on changes the N = ∞ curve and the partial sum, but n
 
   await filterSelect(page).selectOption('highpass');
   // The high-pass square's spikes overshoot the input: they reach beyond 1 V.
-  expect(Math.max(...(await traceY(page, LIMIT)).map(Math.abs))).toBeGreaterThan(1.5);
+  expect(Math.max(...(await limitY(page)).map(Math.abs))).toBeGreaterThan(1.5);
 });
 
 test('toggling gain and toggling phase each change the curves', async ({ page }) => {
   await open(page);
   await filterSelect(page).selectOption('lowpass');
-  const both = { limit: await traceY(page, LIMIT), sum: await traceY(page, 'Partial sum') };
+  const both = { sum: await traceY(page, 'Partial sum'), limit: await limitY(page) };
 
   await gainBox(page).uncheck();
   expect((await state(page)).applyGain).toBe(false);
-  const phaseOnly = { limit: await traceY(page, LIMIT), sum: await traceY(page, 'Partial sum') };
+  const phaseOnly = { limit: await traceY(page, LIMIT) };
+  await setN(page, 1);
+  phaseOnly.sum = await traceY(page, 'Partial sum');
   expect(phaseOnly.limit).not.toEqual(both.limit);
   expect(phaseOnly.sum).not.toEqual(both.sum);
 
   await gainBox(page).check();
   await phaseBox(page).uncheck();
   expect((await state(page)).applyPhase).toBe(false);
-  const gainOnly = { limit: await traceY(page, LIMIT), sum: await traceY(page, 'Partial sum') };
+  const gainOnly = { sum: await traceY(page, 'Partial sum'), limit: await limitY(page) };
   expect(gainOnly.limit).not.toEqual(both.limit);
   expect(gainOnly.limit).not.toEqual(phaseOnly.limit);
   expect(gainOnly.sum).not.toEqual(both.sum);
