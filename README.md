@@ -8,6 +8,7 @@ Static instructional apps, served as-is (no build). Tools are built on [framewor
 - [Least squares fitting](tools/least-squares/): linearize a physical model, fit a straight line by dragging its (m, b) handle, and judge it by SSE, R², residuals and error bars.
 - [Electrostatics](tools/electrostatics/): a charged circular conductor in an applied field, with electric field, potential (probes P1/P2) and Gauss's law Modes.
 - [Spacetime diagrams](tools/spacetime/): draw events, worldlines and rods in an Earth frame K and a rocket frame K′, with Lorentz-transformed coordinates, intervals and proper times.
+- [Fourier Series](tools/fourier/) (PHY/EGR 3120): build a periodic signal from its harmonics, and watch the partial sum approach it as N grows.
 
 ## Activities
 
