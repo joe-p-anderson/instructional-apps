@@ -166,3 +166,13 @@ test('the Activity layout fits a laptop screen without horizontal scrolling', as
   );
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+test('rendered maths (MathJax) is out of the Tab order', async ({ page }) => {
+  await open(page);
+  await enterName(page);
+  await expect(page.locator('mjx-container').first()).toBeAttached();
+  // MathJax elements Tab would stop on: tabindex >= 0 on a container or inside one.
+  const tabStops = () => page.evaluate(() => [...document.querySelectorAll('mjx-container, mjx-container *')]
+    .filter((el) => el.tabIndex >= 0).length);
+  await expect.poll(tabStops).toBe(0);
+});

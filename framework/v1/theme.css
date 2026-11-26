@@ -257,8 +257,9 @@ html.fw-root, html.fw-root body {
 }
 .fw-button { border: 1.5px solid var(--fw-blue); color: var(--fw-blue); font-size: 16px; letter-spacing: 0.08em; padding: 3px 10px; }
 .fw-button:hover:not(:disabled) { background: var(--fw-blue); color: #fff; }
-.fw-reset { min-width: 48px; }
+.fw-reset { min-width: 32px; }
 .fw-reset:hover:not(:disabled) { border-color: var(--fw-blue); color: var(--fw-blue); }
+.fw-reset:disabled { opacity: 0.4; cursor: default; }
 
 .fw-toggle, .fw-select { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 16px; }
 .fw-select select {

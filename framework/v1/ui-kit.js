@@ -24,7 +24,14 @@ function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 
 function nameLabel(name, label, unit) {
   return h('span', { class: 'fw-control-name', html: label ?? escapeHtml(name) },
-    unit ? h('span', { class: 'fw-unit' }, ' ', unit) : null);
+    unit ? h('span', { class: 'fw-unit' }, ` (${unit})`) : null);
+}
+
+/** Plain text of trusted label HTML ('<i>v</i>/<i>c</i>' -> 'v/c'). */
+function labelText(label) {
+  const tmp = document.createElement('span');
+  tmp.innerHTML = label;
+  return tmp.textContent;
 }
 
 /** Escape text for HTML or XML markup (& < > " ' as numeric character references). */
@@ -35,21 +42,25 @@ export function escapeHtml(s) {
 /**
  * Slider paired with a number box and a reset button.
  * slider({ id, name, label, unit, min, max, step, value, reset = value, decimals = 2, log = false, onChange })
+ *   The label reads "Label (unit)"; both inputs are named "name (unit)", where name defaults to
+ *   the label's text (then the id). The reset is an icon-only ↻ named "Reset to <reset> <unit>",
+ *   disabled while the value equals the reset value.
  *   log: the range input moves on a logarithmic scale (min > 0), for values spanning decades
  *        such as a frequency; dragging it rounds to 3 significant digits. The number box and
  *        get/set stay in plain units.
  */
-export function slider({ id, name = id, label, unit = '', min, max, step = 'any', value, reset = value,
-  decimals = 2, log = false, onChange = () => {} }) {
+export function slider({ id, label, name = label != null ? labelText(label) : id, unit = '', min, max,
+  step = 'any', value, reset = value, decimals = 2, log = false, onChange = () => {} }) {
   let current = clamp(Number(value), min, max);
 
+  const a11yName = unit ? `${name} (${unit})` : name;
   const range = log
     ? h('input', { type: 'range', class: 'fw-range', min: Math.log10(min), max: Math.log10(max), step: 'any',
-      'aria-label': name })
-    : h('input', { type: 'range', class: 'fw-range', min, max, step, 'aria-label': name });
-  const num = h('input', { type: 'number', class: 'fw-number', min, max, step, 'aria-label': name });
-  const resetBtn = h('button', { type: 'button', class: 'fw-reset', 'aria-label': `Reset ${name}`,
-    title: `Reset to ${reset}` }, `↻ ${reset}`);
+      'aria-label': a11yName })
+    : h('input', { type: 'range', class: 'fw-range', min, max, step, 'aria-label': a11yName });
+  const num = h('input', { type: 'number', class: 'fw-number', min, max, step, 'aria-label': a11yName });
+  const resetText = `Reset to ${reset}${unit ? ` ${unit}` : ''}`;
+  const resetBtn = h('button', { type: 'button', class: 'fw-reset', 'aria-label': resetText, title: resetText }, '↻');
 
   const el = h('div', { class: 'fw-slider' },
     h('div', { class: 'fw-slider-header' }, nameLabel(name, label, unit), num),
@@ -59,6 +70,12 @@ export function slider({ id, name = id, label, unit = '', min, max, step = 'any'
     range.value = String(log ? Math.log10(current) : current);
     num.value = current.toFixed(decimals);
     num.classList.remove('fw-invalid');
+    syncReset();
+  }
+
+  // Disabled at the default; lock disables it with the inputs and unlock restores this.
+  function syncReset() {
+    if (!ctl.isLocked()) resetBtn.disabled = current === clamp(Number(reset), min, max);
   }
 
   function set(v) {
@@ -79,9 +96,11 @@ export function slider({ id, name = id, label, unit = '', min, max, step = 'any'
   num.addEventListener('keydown', (e) => { if (e.key === 'Enter') commitNumber(); });
   num.addEventListener('change', commitNumber);
   resetBtn.addEventListener('click', () => set(reset));
-  render();
 
-  return createControl({ id, label: name, el, get: () => current, set });
+  const ctl = createControl({ id, label: name, el, get: () => current, set,
+    onLock: (locked) => { if (!locked) syncReset(); } });
+  render();
+  return ctl;
 }
 
 /** Checkbox toggle. toggle({ id, name, label, value = false, onChange, onLock, onHide }) */
