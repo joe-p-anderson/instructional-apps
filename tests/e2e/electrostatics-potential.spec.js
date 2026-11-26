@@ -41,8 +41,8 @@ async function drag(page, from, to) {
 
 test('the Potential tab has every Control shown and unlocked, with the old defaults', async ({ page }) => {
   await open(page);
-  await expect(page.getByRole('slider', { name: 'Q', exact: true })).toBeEnabled();
-  await expect(page.getByRole('spinbutton', { name: 'Q', exact: true })).toHaveValue('1.0');
+  await expect(page.getByRole('slider', { name: 'Q (nC)', exact: true })).toBeEnabled();
+  await expect(page.getByRole('spinbutton', { name: 'Q (nC)', exact: true })).toHaveValue('1.0');
   await expect(page.getByRole('checkbox', { name: 'Lock to surface' })).toBeEnabled();
   await expect(page.getByRole('checkbox', { name: 'Measure at infinity' })).toBeEnabled();
 
@@ -127,7 +127,7 @@ test('lock to surface and measure at infinity are never on together', async ({ p
 
 test('a reload and a share link restore the same setup', async ({ page, browser }) => {
   await open(page);
-  await setNumber(page, 'Q', -2.4);
+  await setNumber(page, 'Q (nC)', -2.4);
   await drag(page, [-6, -6], [3, -8]);
   await page.getByRole('checkbox', { name: 'Measure at infinity' }).check();
   const want = await snapshot(page);

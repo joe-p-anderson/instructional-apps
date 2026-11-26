@@ -71,17 +71,17 @@ test('exposure rules show, lock and hide the expected Controls, including the Δ
   });
   await page.getByRole('tab', { name: /Part 2/ }).click();
   const p2 = part(page, 2);
-  await expect(p2.getByRole('slider', { name: 'Δt', exact: true })).toBeHidden();
-  await expect(p2.getByRole('slider', { name: 'Va', exact: true })).toBeDisabled();
-  await expect(p2.getByRole('slider', { name: 'f', exact: true })).toBeEnabled();
+  await expect(p2.getByRole('slider', { name: 'Δt (s)', exact: true })).toBeHidden();
+  await expect(p2.getByRole('slider', { name: 'Va (V)', exact: true })).toBeDisabled();
+  await expect(p2.getByRole('slider', { name: 'f (Hz)', exact: true })).toBeEnabled();
 
   // Passing Task 1.1 locks Δt (slider, number box and marker) for Task 1.2.
   await page.getByRole('tab', { name: /Part 1/ }).click();
   const p1 = part(page, 1);
-  await setNumber(page, p1, 'Δt', 0.5);
+  await setNumber(page, p1, 'Δt (s)', 0.5);
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click();
-  await expect(p1.getByRole('slider', { name: 'Δt', exact: true })).toBeDisabled();
-  await expect(p1.getByRole('spinbutton', { name: 'Δt', exact: true })).toBeDisabled();
+  await expect(p1.getByRole('slider', { name: 'Δt (s)', exact: true })).toBeDisabled();
+  await expect(p1.getByRole('spinbutton', { name: 'Δt (s)', exact: true })).toBeDisabled();
   expect(await exposure(page, 'phase')).toMatchObject({ Dt: 'locked', 'Dt-marker': 'locked', f: 'open' });
 });
 
@@ -105,14 +105,14 @@ test('the φ Tasks hide the readouts that print φ; they reappear once a later T
   await page.getByRole('tab', { name: /Part 1/ }).click();
 
   // Task 1.2 also asks for φ.
-  await setNumber(page, p1, 'Δt', 0.5);
+  await setNumber(page, p1, 'Δt (s)', 0.5);
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click();
   await expect(p1.getByRole('button', { name: 'Submit Task 1.2' })).toBeVisible();
   await expect(phi).toBeHidden();
   await expect(ratio).toBeHidden();
 
   // Task 1.3 (the Question) no longer hides them.
-  await setNumber(page, p1, 'f', 0.25);
+  await setNumber(page, p1, 'f (Hz)', 0.25);
   await p1.getByRole('button', { name: 'Submit Task 1.2' }).click();
   await expect(phi).toBeVisible();
   await expect(phi).toContainText('0.7854 rad');
@@ -154,7 +154,7 @@ test('dragging through the target without Submitting does not pass; a Submit at 
   await expect(p1.getByRole('button', { name: 'Submit Task 1.2', includeHidden: true })).toBeDisabled();
 
   // A Submit at the target passes, marks the Task done and unlocks the next one.
-  await setNumber(page, p1, 'Δt', 0.5);
+  await setNumber(page, p1, 'Δt (s)', 0.5);
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click();
   await expect(card11).toHaveAttribute('data-status', 'passed');
   await expect(p1.getByRole('button', { name: 'Submit Task 1.1' })).toBeHidden();
@@ -171,9 +171,9 @@ test('the free-text Question follows Task 1.2', async ({ page }) => {
   // Disabled while locked (and, in the oscilloscope's side layout, not shown until it opens).
   const answer = p1.getByRole('textbox', { name: /difficult to measure/, includeHidden: true });
   await expect(answer).toBeDisabled();
-  await setNumber(page, p1, 'Δt', 0.5);
+  await setNumber(page, p1, 'Δt (s)', 0.5);
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click();
-  await setNumber(page, p1, 'f', 0.25);
+  await setNumber(page, p1, 'f (Hz)', 0.25);
   await p1.getByRole('button', { name: 'Submit Task 1.2' }).click();
   await expect(answer).toBeEnabled();
   await answer.fill('The traces must be lined up by eye.');

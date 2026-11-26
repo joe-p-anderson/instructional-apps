@@ -66,7 +66,7 @@ test('choosing band-pass reveals the Q Control, switching away hides it, and CH2
 
   await sourceSel.selectOption('independent');
   await expect(fc).toBeHidden();
-  await expect(page.getByRole('spinbutton', { name: 'CH2 phase', exact: true })).toBeVisible();
+  await expect(page.getByRole('spinbutton', { name: 'CH2 phase (°)', exact: true })).toBeVisible();
 
   await sourceSel.selectOption('off');
   // Only the CH2 readout badge is left in the CH2 colour.

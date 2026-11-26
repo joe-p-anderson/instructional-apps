@@ -29,7 +29,7 @@ test('the downloaded Report has the expected shape and represents partial work f
   await start(page);
   const p1 = page.getByRole('tabpanel', { name: /Part 1/ });
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click(); // a miss
-  await setNumber(p1, 'Δt', 0.5);
+  await setNumber(p1, 'Δt (s)', 0.5);
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click(); // a pass
   await expect(p1.getByRole('region', { name: 'Task 1.1' })).toHaveAttribute('data-status', 'passed');
 

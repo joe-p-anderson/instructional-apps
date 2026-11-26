@@ -17,8 +17,8 @@ const snapshot = (page) => page.evaluate(() => window.toolHost.instances[0].stat
 
 test('a reload restores the Standalone State', async ({ page }) => {
   await open(page);
-  await setNumber(page, 'f', 0.25);
-  await setNumber(page, 'Va', 1.5);
+  await setNumber(page, 'f (Hz)', 0.25);
+  await setNumber(page, 'Va (V)', 1.5);
 
   await page.reload();
   await page.waitForFunction(() => window.toolHost);
@@ -26,13 +26,13 @@ test('a reload restores the Standalone State', async ({ page }) => {
   const s = await snapshot(page);
   expect(s.f).toBeCloseTo(0.25, 9);
   expect(s.Va).toBeCloseTo(1.5, 9);
-  await expect(page.getByRole('spinbutton', { name: 'f', exact: true })).toHaveValue(/^0\.25/);
+  await expect(page.getByRole('spinbutton', { name: 'f (Hz)', exact: true })).toHaveValue(/^0\.25/);
 });
 
 test('a share link reproduces the State in a fresh browser', async ({ page, browser }) => {
   await open(page);
-  await setNumber(page, 'f', 0.4);
-  await setNumber(page, 'Δt', 1.5);
+  await setNumber(page, 'f (Hz)', 0.4);
+  await setNumber(page, 'Δt (s)', 1.5);
 
   await page.getByRole('button', { name: 'Copy share link' }).click();
   const link = page.getByRole('textbox', { name: 'Share link' });
@@ -49,7 +49,7 @@ test('a share link reproduces the State in a fresh browser', async ({ page, brow
 
   // The link is applied once: the hash is cleared, so a later reload shows their own autosave.
   expect(new URL(theirs.url()).hash).toBe('');
-  await setNumber(theirs, 'f', 0.8);
+  await setNumber(theirs, 'f (Hz)', 0.8);
   await theirs.reload();
   await theirs.waitForFunction(() => window.toolHost);
   expect((await snapshot(theirs)).f).toBeCloseTo(0.8, 9);

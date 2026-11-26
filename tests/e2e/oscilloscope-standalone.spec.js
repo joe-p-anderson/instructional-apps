@@ -17,12 +17,15 @@ test('Standalone mode shows one tab per Mode', async ({ page }) => {
 test('Standalone mode shows every Control, unlocked', async ({ page }) => {
   await open(page);
 
-  // The signal Controls: each slider is paired with a number box and a reset button.
-  for (const name of ['Va', 'f', 'Δt']) {
+  // The signal Controls: each slider is paired with a number box and a reset button, which is
+  // disabled while the slider is at its default.
+  for (const name of ['Va (V)', 'f (Hz)', 'Δt (s)']) {
     await expect(page.getByRole('slider', { name, exact: true })).toBeVisible();
     await expect(page.getByRole('slider', { name, exact: true })).toBeEnabled();
     await expect(page.getByRole('spinbutton', { name, exact: true })).toBeEnabled();
-    await expect(page.getByRole('button', { name: `Reset ${name}` })).toBeEnabled();
+    const reset = page.locator('.fw-slider', { has: page.getByRole('slider', { name, exact: true }) })
+      .getByRole('button', { name: /^Reset to / });
+    await expect(reset).toBeDisabled();
   }
 
   // Every registered Control (including the draggable markers inside the Display)
@@ -55,14 +58,14 @@ test('live metrics publish φ, T and pk-pk as State with units', async ({ page }
   expect(info.T.unit).toBe('s');
   expect(info.pkpk.unit).toBe('V');
 
-  await page.getByRole('spinbutton', { name: 'f', exact: true }).fill('0.25');
-  await page.getByRole('spinbutton', { name: 'f', exact: true }).press('Enter');
+  await page.getByRole('spinbutton', { name: 'f (Hz)', exact: true }).fill('0.25');
+  await page.getByRole('spinbutton', { name: 'f (Hz)', exact: true }).press('Enter');
   await expect(page.getByRole('status', { name: 'T', exact: true })).toContainText('4.000 s');
 });
 
 test('layout fits a laptop screen without horizontal scrolling', async ({ page }) => {
   await open(page);
-  await expect(page.getByRole('slider', { name: 'Va', exact: true })).toBeVisible();
+  await expect(page.getByRole('slider', { name: 'Va (V)', exact: true })).toBeVisible();
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
