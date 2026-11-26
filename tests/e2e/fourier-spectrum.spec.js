@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// The spectrum and filter-curve Displays in the Fourier Tool's Analysis Mode (ticket 06).
+// The spectrum and filter-curve Displays in the Fourier Tool's Analysis Mode.
 
 const PAGE = '/tools/fourier/';
 
@@ -147,13 +147,18 @@ test('the spectrum source and the filter settings serialize and restore', async 
   expect(restored.bad.spectrumSource).toBe('output');
 });
 
-test('the spectrum and filter-curve snapshots are PNGs, even while hidden', async ({ page }) => {
+test('the spectrum and filter-curve snapshots are PNGs, and a hidden Display leaves the displays list', async ({ page }) => {
   await openAnalysis(page);
-  const pngs = await page.evaluate(async () => {
+  const { pngs, hiddenIds, shownIds } = await page.evaluate(async () => {
     const i = window.toolHost.instances[1];
+    const shots = await Promise.all(['spectrum', 'filter-curves'].map((id) => i.displays.find((d) => d.id === id).snapshot()));
     i.controls.get('spectrum').hide();
-    i.controls.get('filter-curves').hide();
-    return Promise.all(['spectrum', 'filter-curves'].map((id) => i.displays.find((d) => d.id === id).snapshot()));
+    const hidden = i.displays.map((d) => d.id);
+    i.controls.get('spectrum').show();
+    return { pngs: shots, hiddenIds: hidden, shownIds: i.displays.map((d) => d.id) };
   });
   for (const png of pngs) expect(png).toMatch(/^data:image\/png;base64,/);
+  // So the Report at Submit holds no picture of a spectrum the Task hid.
+  expect(hiddenIds).toEqual(['product', 'filter-curves']);
+  expect(shownIds).toEqual(['product', 'spectrum', 'filter-curves']);
 });

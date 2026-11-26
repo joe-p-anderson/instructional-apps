@@ -73,7 +73,7 @@ test('the partial sum through N = 100 is already within 5% of the square a tenth
   for (let p = 0.1; p <= 0.4; p += 0.01) close(partialSum(s, 100, p * 1e-3), 1, 0.05, `p=${p}`);
 });
 
-// ── Every waveform (ticket 03) ──
+// ── Every waveform ──
 
 const WAVE = (waveform, extra = {}) => ({ waveform, amp: 1, f0: 1000, offset: 0, shift: 0, ...extra });
 

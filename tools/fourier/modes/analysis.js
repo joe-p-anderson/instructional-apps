@@ -20,6 +20,8 @@
 //     the product is in V too. It always shows the unfiltered input.
 //   'spectrum' (Aₙ bars and φₙ stems for n = 0 … 10, of the chosen source) and 'filter-curves'
 //     (gain and phase against f with f_c and each harmonic marked): see ../spectrum-displays.js.
+//   The displays list leaves out a Display while it is hidden, so the snapshots the runner takes
+//   at Submit never include a spectrum the Task hid.
 // serialize() is { waveform, amp, f0, offset, shift, filter, fc, applyGain, applyPhase,
 //   testFunction, n, spectrumSource }; restore() validates and clamps each.
 //
@@ -34,7 +36,8 @@ import { plotlyMapping } from '../../../framework/v1/plot-map.js';
 import { SPECTRUM_SOURCES, TEST_FUNCTIONS, ideal, testFunction } from '../engine.js';
 import { FILTER_DEFAULTS, FILTER_STATE_INFO, filterControls } from '../filter.js';
 import { INPUT_DEFAULTS, INPUT_STATE_INFO, inputControls } from '../inputs.js';
-import { PLOT_CONFIG, Plotly, fitToBox, themedLayout } from '../plot.js';
+import { PLOT_CONFIG, Plotly, fitToBox, line, themedLayout, toolStyles, translucent } from '../plot.js';
+import { signalState, toCount } from '../signal.js';
 import { filterCurveDisplay, spectrumDisplay } from '../spectrum-displays.js';
 
 export const id = 'analysis';
@@ -59,19 +62,7 @@ const SOURCE_LABELS = { input: 'Input', output: 'Filtered output' };
 
 const SHADE_ALPHA = 0.4; // the shaded areas' opacity, so the curves read through them
 
-/** A theme colour (#rgb, #rrggbb or rgb()) at the given opacity, as Plotly's fills need it. */
-function translucent(color, alpha) {
-  const c = String(color).trim();
-  let rgb = c.match(/^rgba?\(([^)]+)\)$/)?.[1].split(',').slice(0, 3).map(Number);
-  const hex = c.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i)?.[1];
-  if (hex) {
-    const full = hex.length === 3 ? [...hex].map((d) => d + d).join('') : hex;
-    rgb = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16));
-  }
-  return rgb ? `rgba(${rgb.join(',')},${alpha})` : c;
-}
-
-const toN = (v) => Math.min(MAX_TEST_N, Math.max(0, Math.round(Number(v))));
+const toN = (v) => toCount(v, MAX_TEST_N);
 const validN = (v) => Number.isFinite(Number(v));
 
 export function mount(container, setup = {}) {
@@ -85,7 +76,8 @@ export function mount(container, setup = {}) {
   const changes = createEmitter();
   const theme = plotTheme(); // read per mount, so the plot follows the page's theme
 
-  const getState = () => ({ mode: id, ...input, ...filters.state(input.f0), testFunction: fn, n, spectrumSource: source });
+  const signal = signalState(inputs, filters);
+  const getState = () => ({ mode: id, ...signal.state(), testFunction: fn, n, spectrumSource: source });
 
   // ── Controls ──
   const fnSelect = select({ id: 'testFunction', name: 'Test function', label: 'Test function',
@@ -109,12 +101,13 @@ export function mount(container, setup = {}) {
     positive: translucent(theme.traces[0], SHADE_ALPHA),
     negative: translucent(theme.traces[1], SHADE_ALPHA),
   };
-  const legendRow = (color, html, extra = '') => h('div', { class: 'fw-legend-row' },
-    h('span', { class: 'fw-legend-line', style: `background:${color};${extra}` }), h('span', { html }));
-  const swatch = 'height:12px';
+  const legendRow = (color, html, swatch = '') => h('div', { class: 'fw-legend-row' },
+    h('span', { class: `fw-legend-line ${swatch}`.trim(), style: `background:${color}` }), h('span', { html }));
+  const swatch = 'fo-legend-swatch';
 
-  const plotDiv = h('div', { style: 'width:100%;height:100%' });
-  const root = h('div', { class: 'fw-tool', 'data-tool': 'fourier', 'data-mode': id },
+  const plotDiv = h('div', { class: 'fo-plot' });
+  const root = h('div', { class: 'fw-tool fo-tool', 'data-tool': 'fourier', 'data-mode': id },
+    toolStyles(),
     h('aside', { class: 'fw-controls' },
       inputs.el,
       filters.el,
@@ -128,14 +121,13 @@ export function mount(container, setup = {}) {
         legendRow(STYLE.negative, 'Negative area', swatch)),
       section('Spectrum', sourceSelect.el,
         h('div', { class: 'fw-hint' }, 'Bars are the amplitudes, stems the phases in degrees. The product plot always uses the unfiltered input.'))),
-    h('div', { class: 'fw-displays', style: 'gap:8px' },
-      h('div', { class: 'fw-display', 'data-display': 'product', style: 'flex:1.3' }, plotDiv),
+    h('div', { class: 'fw-displays fo-displays-stack' },
+      h('div', { class: 'fw-display fo-display-product', 'data-display': 'product' }, plotDiv),
       spectrumView.el,
       curvesView.el));
   container.append(root);
 
   // ── Plot ──
-  const line = (name, x, y, style, extra = {}) => ({ name, x, y, mode: 'lines', line: style, hoverinfo: 'skip', ...extra });
   const area = (name, x, y, color) => line(name, x, y, { width: 0, color }, { fill: 'tozeroy', fillcolor: color });
   let T = 1 / input.f0;
   function traces() {
@@ -172,7 +164,12 @@ export function mount(container, setup = {}) {
 
   Plotly.newPlot(plotDiv, traces(), layout(), PLOT_CONFIG);
   const box = fitToBox(plotDiv);
-  const { toScreen } = plotlyMapping(plotDiv);
+  const productDisplay = {
+    id: 'product',
+    label: 'Product plot',
+    snapshot: () => Plotly.toImage(plotDiv, { format: 'png', width: 720, height: 360 }),
+    toScreen: plotlyMapping(plotDiv).toScreen,
+  };
   update();
 
   return {
@@ -182,16 +179,10 @@ export function mount(container, setup = {}) {
       onChange: (f) => changes.on(f),
     },
     controls: controlRegistry(controls),
-    displays: [{
-      id: 'product',
-      label: 'Product plot',
-      snapshot: () => Plotly.toImage(plotDiv, { format: 'png', width: 720, height: 360 }),
-      toScreen,
-    }, spectrumView.display, curvesView.display],
-    serialize: () => {
-      const { fcRatio, tau, ...settings } = filters.state(input.f0);
-      return { ...input, ...settings, testFunction: fn, n, spectrumSource: source };
+    get displays() {
+      return [productDisplay, ...[spectrumView, curvesView].filter((v) => !v.control.isHidden()).map((v) => v.display)];
     },
+    serialize: () => ({ ...signal.settings(), testFunction: fn, n, spectrumSource: source }),
     restore(saved = {}) {
       inputs.restore(saved); // each redraws once with the settings not yet restored
       filters.restore(saved);

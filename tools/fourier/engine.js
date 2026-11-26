@@ -107,7 +107,7 @@ export function partialSum(s, N, t) {
   return v;
 }
 
-// ── The RC filter (ticket 04) ──
+// ── The RC filter ──
 //
 // Filter: { type, fc, gain, phase }
 //   type   'off' | 'lowpass' | 'highpass' (FILTER_TYPES): a first-order RC low-pass (output V_C,
@@ -222,7 +222,7 @@ export function limitCurve(input, filter) {
   return (t) => partialSum(s, LIMIT_N, t);
 }
 
-// ── Analysis (ticket 05): the input times a test function over one period of f0 ──
+// ── Analysis: the input times a test function over one period of f0 ──
 // The test functions are cos(2π n f0 t) and sin(2π n f0 t); n = 0 is the DC test (cos 0 = 1,
 // sin 0 = 0). With v = a0 + Σ (an cos nωt + bn sin nωt), an = An cos φn and bn = −An sin φn, the
 // product's average over one period is a0 for cos at n = 0, and an/2 or bn/2 for n ≥ 1.

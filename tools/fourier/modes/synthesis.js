@@ -30,7 +30,8 @@ import { MAX_N, filterSeries, harmonic, ideal, limitCurve, partialSum, series } 
 import { FILTER_DEFAULTS, FILTER_STATE_INFO, filterControls } from '../filter.js';
 import { INPUT_DEFAULTS, INPUT_STATE_INFO, inputControls } from '../inputs.js';
 import { coefficientTable } from '../coefficient-table.js';
-import { PLOT_CONFIG, Plotly, fitToBox, themedLayout } from '../plot.js';
+import { PLOT_CONFIG, Plotly, fitToBox, line, themedLayout, toolStyles } from '../plot.js';
+import { signalState, toCount } from '../signal.js';
 
 export const id = 'synthesis';
 export const title = 'Synthesis';
@@ -48,12 +49,12 @@ const STATE_INFO = {
   N: { label: 'Highest harmonic N', unit: '' },
 };
 
-const toN = (v) => Math.min(MAX_N, Math.max(0, Math.round(Number(v))));
+const toN = (v) => toCount(v, MAX_N);
 
 export function mount(container, setup = {}) {
   const start = { ...DEFAULTS, ...setup };
-  const inputs = inputControls(start, () => { redraw(); update(); });
-  const filters = filterControls(start, () => { redraw(); update(); });
+  const inputs = inputControls(start, () => { recomputeCurves(); update(); });
+  const filters = filterControls(start, () => { recomputeCurves(); update(); });
   let input = inputs.value();
   const changes = createEmitter();
   const theme = plotTheme(); // read per mount, so the plot follows the page's theme
@@ -62,12 +63,13 @@ export function mount(container, setup = {}) {
   let timer = null; // play's interval id, per instance
   let destroyed = false;
 
-  const getState = () => ({ mode: id, ...input, ...filters.state(input.f0), N });
+  const signal = signalState(inputs, filters);
+  const getState = () => ({ mode: id, ...signal.state(), N });
 
   // ── Time axis (ms on the plot, s in the engine) and the curves that do not depend on N ──
-  // redraw() recomputes them from the input; update() redraws the plot for N.
+  // recomputeCurves() recomputes them from the input and filter; update() redraws the plot for N.
   let coeffs; let T; let ts; let tMs; let inputY; let limitY; let yRange;
-  function redraw() {
+  function recomputeCurves() {
     input = inputs.value();
     const filter = filters.value();
     coeffs = filterSeries(series(input), filter); // the filtered exact table through MAX_N
@@ -85,7 +87,7 @@ export function mount(container, setup = {}) {
     filters.update(input.f0);
     table?.update(series(input));
   }
-  redraw();
+  recomputeCurves();
 
   // ── Controls ──
   const nSlider = slider({ id: 'N', name: 'N', label: 'N (highest harmonic)', min: 0, max: MAX_N, step: 1,
@@ -129,11 +131,12 @@ export function mount(container, setup = {}) {
   const legendRow = (style, html) => h('div', { class: 'fw-legend-row' },
     h('span', { class: 'fw-legend-line', style: `background:${style.color}` }), h('span', { html }));
   const topLabel = h('span');
-  const topRow = h('div', { class: 'fw-legend-row', style: 'opacity:0.7' },
+  const topRow = h('div', { class: 'fw-legend-row fo-legend-faint' },
     h('span', { class: 'fw-legend-line', style: `background:${TRACE_STYLE.top.color}` }), topLabel);
 
-  const plotDiv = h('div', { style: 'width:100%;height:100%' });
-  const root = h('div', { class: 'fw-tool', 'data-tool': 'fourier', 'data-mode': id },
+  const plotDiv = h('div', { class: 'fo-plot' });
+  const root = h('div', { class: 'fw-tool fo-tool', 'data-tool': 'fourier', 'data-mode': id },
+    toolStyles(),
     h('aside', { class: 'fw-controls' },
       inputs.el,
       table?.el,
@@ -149,7 +152,6 @@ export function mount(container, setup = {}) {
   container.append(root);
 
   // ── Plot ──
-  const line = (name, x, y, style, extra = {}) => ({ name, x, y, mode: 'lines', line: style, hoverinfo: 'skip', ...extra });
   function traces() {
     return [
       line('Input', tMs, inputY, TRACE_STYLE.input),
@@ -187,10 +189,7 @@ export function mount(container, setup = {}) {
       snapshot: () => Plotly.toImage(plotDiv, { format: 'png', width: 720, height: 360 }),
       toScreen,
     }],
-    serialize: () => {
-      const { fcRatio, tau, ...settings } = filters.state(input.f0);
-      return { ...input, ...settings, N };
-    },
+    serialize: () => ({ ...signal.settings(), N }),
     restore(saved = {}) {
       stop();
       inputs.restore(saved);

@@ -12,9 +12,10 @@
 // answer keys (framework/v1/authoring/encode-keys.html, or encodeKey() from
 // framework/v1/runner/keys.js); decode one with decodeKey(). The keys agree with the engine
 // (tests/unit/fourier/activity.test.js checks them against series() and productAverage()).
-// Tolerances: amplitudes (and aₙ, bₙ) 2% relative; phases ±2° judged mod 360°, so −90° and
-// 270° both pass. The N Conditions accept a band about the smallest N within 5%, since students
-// judge it by eye. Hints guide and never state the passing value.
+// Tolerances: amplitudes (and aₙ, bₙ) 2% relative, or 0.01 V absolute for a zero amplitude;
+// phases ±2° judged mod 360°, so −90° and 270° both pass. The N Conditions accept a band about
+// the smallest N within 5% (from a little below it, where the error is just over 5%), since
+// students judge it by eye. Hints guide and never state the passing value.
 // Points: 1 per Task with a Condition, none for a Task without one, 1 per graded Question.
 //
 // Every Setup fixes f₀ = 1 kHz, ±1 V and no offset; Parts 1–3 fix the filter off, and the first
@@ -30,6 +31,7 @@ const FILTER_LOCK = ['waveform', ...FIXED.filter((id) => !TOGGLES.includes(id))]
 const FILTERED = { ...SETUP, waveform: 'square', shift: 0, fc: 3000, applyGain: false, applyPhase: false, N: 30 };
 
 const AMP = { kind: 'numeric', relTol: 0.02, points: 1 };
+const ZERO = { kind: 'numeric', tol: 0.01, points: 1 }; // a zero amplitude: relTol would leave no tolerance
 const PHASE = { kind: 'numeric', tol: 2, modulus: 360, points: 1 };
 
 export default {
@@ -73,7 +75,7 @@ export default {
           prompt: 'Select the Square wave. Raise N until the partial sum stays within 5% of the square wave '
             + '(±0.05 V) everywhere more than 0.1 ms from a jump, and stop at the smallest N that does. '
             + 'Press Play to watch the sum build up, then fine-tune N with the slider.',
-          condition: 'enc1:PQwPBUVBFwRRT0MbTBIAEgoAH0dCVkUaEBhXU1FfR1MwMTNSVRIcExIWXxFUVC8AERANThdGERwAUgEUGxVSDkUOWlYWRxgMOmYmWUBVEgtEBUwYVkVBTVEGFQ1ZAUdORzxQSUwVQgQTHBkaQlFJAiMhPk9HEgoCVFsPAlBSBAQHOQAOSAhHTkcGGgBOB00KCRVeUwdFKwA1LDNUEFtVVBYEDQJZRUMSBhhBG0QQDR0LUkdATAl9',
+          condition: 'enc1:PQwPBUVBFwRRT0MbTBIAEgoAH0dCVkUaEBhXU1FfR1MwMTNSVRIcExIWXxFUVC8AERANThdGERwAUgEUGxVSDkUOWlYWRxgMOmYmWUBVEgtEBUwYVkVBTVEGFQ1ZAUdORzxQSUwVQgQTHBkaQl1JAiMhPk9HEgoCVFsPAlBSBAQHOQAOSAhHTkcGGgBOB00KCRVeUwdFKwA1LDNUEFtVVBYEDQJZRUMSBhhBG0QQDR0LUkdATAl9',
           points: 1,
           hint: { after: 3, text: 'Judge the wiggles on the flat tops, not the overshoot right at each jump: that overshoot never shrinks, however large N gets. Each new odd harmonic squeezes the wiggles closer to the jumps.' },
         },
@@ -186,10 +188,10 @@ export default {
           questions: [
             { ...AMP, id: 'A1', prompt: 'A₁ (V)', answer: 'enc1:V1kfQQISUFhGQVVbHlFUQldK' },
             { ...PHASE, id: 'phi1', prompt: 'φ₁ (°)', answer: 'enc1:S04d' },
-            { ...AMP, id: 'A2', prompt: 'A₂ (V)', answer: 'enc1:Vg' },
+            { ...ZERO, id: 'A2', prompt: 'A₂ (V)', answer: 'enc1:Vg' },
             { ...AMP, id: 'A3', prompt: 'A₃ (V)', answer: 'enc1:VlkZRAUUUlJCTVBZGlxWTFJE' },
             { ...PHASE, id: 'phi3', prompt: 'φ₃ (°)', answer: 'enc1:S04d' },
-            { ...AMP, id: 'A4', prompt: 'A₄ (V)', answer: 'enc1:Vg' },
+            { ...ZERO, id: 'A4', prompt: 'A₄ (V)', answer: 'enc1:Vg' },
             { ...AMP, id: 'A5', prompt: 'A₅ (V)', answer: 'enc1:VlkfQwUWV1ZKRVlVGVNVR1dHRg' },
             { ...PHASE, id: 'phi5', prompt: 'φ₅ (°)', answer: 'enc1:S04d' },
           ],
