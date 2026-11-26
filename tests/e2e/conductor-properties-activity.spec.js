@@ -75,10 +75,10 @@ test('a Task passes only on a Submit at the target, and its Hint appears after 3
   await expect(p1.getByRole('region', { name: 'Task 1.2' })).toHaveAttribute('data-status', 'open');
 });
 
-// Shell revision 09: the Tasks that need the joystick, arc picker, P₁ and P₂ pass with the
+// Shell revision 09: the Tasks, which need the joystick, arc picker, P₁, P₂ and the surface handles, pass with the
 // keyboard alone (focus() stands in for Tab; every key is a keyboard press).
-test('the Electric Field and Potential Tasks pass using only the keyboard', async ({ page }) => {
-  test.setTimeout(90_000); // four Tasks, key by key
+test('every Task passes using only the keyboard', async ({ page }) => {
+  test.setTimeout(120_000); // six Tasks, key by key
   await open(page);
   await enterName(page);
   const keys = async (loc, ...pressed) => { await loc.focus(); for (const k of pressed) await page.keyboard.press(k); };
@@ -116,6 +116,24 @@ test('the Electric Field and Potential Tasks pass using only the keyboard', asyn
   await answer(p2.getByRole('region', { name: 'Task 2.2' }), 'Same.');
   await keys(p2.getByRole('button', { name: 'Submit Task 2.2' }), 'Enter');
   await expect(p2.getByRole('region', { name: 'Task 2.2' })).toHaveAttribute('data-status', 'passed');
+
+  await keys(page.getByRole('tab', { name: /Part 3/ }), 'Enter');
+  await expect(page.getByRole('tab', { name: /Part 3/ })).toHaveAttribute('aria-selected', 'true');
+  const p3 = part(page, 3);
+
+  // Task 3.1: the surface (centre (8, 0), r = 2) moved into the bulk, outer extent below 5 cm.
+  await keys(p3.getByRole('group', { name: 'Gaussian surface centre' }), ...Array(8).fill('Shift+ArrowLeft'));
+  await expect(p3.getByRole('status', { name: 'Outer extent' })).toContainText('2.00 cm');
+  await answer(p3.getByRole('region', { name: 'Task 3.1' }), 'Zero.');
+  await keys(p3.getByRole('button', { name: 'Submit Task 3.1' }), 'Enter');
+  await expect(p3.getByRole('region', { name: 'Task 3.1' })).toHaveAttribute('data-status', 'passed');
+
+  // Task 3.2: the radius grown past the edge (outer extent above 5 cm, inner below).
+  await keys(p3.getByRole('slider', { name: 'Gaussian surface radius' }), ...Array(4).fill('Shift+ArrowUp'));
+  await expect(p3.getByRole('status', { name: 'Outer extent' })).toContainText('6.00 cm');
+  await answer(p3.getByRole('region', { name: 'Task 3.2' }), 'On the surface.');
+  await keys(p3.getByRole('button', { name: 'Submit Task 3.2' }), 'Enter');
+  await expect(p3.getByRole('region', { name: 'Task 3.2' })).toHaveAttribute('data-status', 'passed');
 });
 
 test('a reload restores progress and answers, and the Report opens in the Report Viewer', async ({ page }) => {
