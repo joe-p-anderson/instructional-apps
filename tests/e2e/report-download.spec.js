@@ -70,3 +70,39 @@ test('the Report can be downloaded right after the Run starts, before any Submit
   expect(report.earned).toBe(0);
   expect(report.parts.flatMap((p) => p.tasks).every((t) => t.attempts.length === 0)).toBe(true);
 });
+
+test('a repeated identical failed Submit is refused and the Report holds one Attempt', async ({ page }) => {
+  await start(page);
+  const p1 = page.getByRole('tabpanel', { name: /Part 1/ });
+  const submit = p1.getByRole('button', { name: 'Submit Task 1.1' });
+  const feedback = p1.getByRole('status', { name: 'Task 1.1 feedback' });
+  await submit.click(); // a miss
+  await expect(feedback).toContainText('✗');
+  await submit.click(); // the same again
+  await expect(feedback).toHaveText('Nothing changed since your last try');
+  await expect(feedback).toHaveAttribute('aria-live', 'polite');
+
+  const { report } = await download(page);
+  expect(report.parts[0].tasks[0].attempts.map((a) => a.passed)).toEqual([false]);
+});
+
+test('every Submit, a refusal too, emphasises the feedback line; reduced motion makes it static', async ({ page }) => {
+  await start(page);
+  const p1 = page.getByRole('tabpanel', { name: /Part 1/ });
+  const submit = p1.getByRole('button', { name: 'Submit Task 1.1' });
+  const feedback = p1.getByRole('status', { name: 'Task 1.1 feedback' });
+  const animating = () => feedback.evaluate((el) => el.getAnimations().length > 0);
+  await submit.click();
+  expect(await animating()).toBe(true);
+  await page.waitForTimeout(700);
+  await submit.click(); // refused, still emphasised
+  expect(await animating()).toBe(true);
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.waitForTimeout(700);
+  const background = () => feedback.evaluate((el) => getComputedStyle(el).backgroundColor);
+  const resting = await background();
+  await submit.click();
+  expect(await animating()).toBe(false);
+  expect(await background()).not.toBe(resting);
+});

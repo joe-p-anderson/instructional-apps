@@ -265,9 +265,10 @@ test('Hints appear after 3 misses, decoded', () => {
       const { runner, tools } = start();
       passUpTo(runner, tools, part, task.id);
       tools[part.id].draw([]);
-      assert.equal(runner.submit(part.id, task.id).hint, null);
-      assert.equal(runner.submit(part.id, task.id).hint, null);
-      const hint = runner.submit(part.id, task.id).hint;
+      // Each miss is a different try (an identical repeat would be refused).
+      assert.equal(runner.submit(part.id, task.id, { try: 0 }).hint, null);
+      assert.equal(runner.submit(part.id, task.id, { try: 1 }).hint, null);
+      const hint = runner.submit(part.id, task.id, { try: 2 }).hint;
       assert.equal(typeof hint, 'string', `Task "${task.id}" Hint after 3 misses`);
       assert.ok(hint.length > 20 && !isEncodedKey(hint), `Task "${task.id}" Hint is readable: ${hint}`);
     }
@@ -277,7 +278,7 @@ test('Hints appear after 3 misses, decoded', () => {
 test('Task 1.2\'s Hint gives the aim point (3, 5)', () => {
   const { runner, tools } = start();
   passUpTo(runner, tools, part1, 'rocket');
-  for (let i = 0; i < 3; i++) runner.submit('building', 'rocket');
+  for (let i = 0; i < 3; i++) runner.submit('building', 'rocket', { try: i });
   assert.match(runner.task('building', 'rocket').hint, /\(3, 5\)/);
 });
 

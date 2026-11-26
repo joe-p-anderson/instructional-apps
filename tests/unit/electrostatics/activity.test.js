@@ -164,9 +164,10 @@ test('each Task shows its Hint from the spec after 3 misses', () => {
     for (const [i, task] of part.tasks.entries()) {
       const { runner, tools } = start();
       openTask(runner, tools, part, i);
-      for (let n = 0; n < 2; n++) runner.submit(part.id, task.id);
+      // Each miss is a different try (an identical repeat would be refused).
+      for (let n = 0; n < 2; n++) runner.submit(part.id, task.id, { try: n });
       assert.equal(runner.task(part.id, task.id).hint, null, `${task.id} Hint before 3 misses`);
-      runner.submit(part.id, task.id);
+      runner.submit(part.id, task.id, { try: 2 });
       seen.push(runner.task(part.id, task.id).hint);
     }
   }

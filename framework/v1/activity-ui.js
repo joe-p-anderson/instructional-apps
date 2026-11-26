@@ -150,7 +150,7 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
     const check = h('span', { class: 'fw-task-check', 'aria-hidden': 'true' });
     const lockedNote = previous ? h('span', { class: 'fw-task-locked', hidden: true }, `Locked until ${previous} is done`) : null;
     const submit = h('button', { type: 'button', class: 'fw-button', 'aria-label': `Submit ${number}` }, 'Submit');
-    const feedback = h('span', { class: 'fw-task-feedback', role: 'status', 'aria-label': `${number} feedback` });
+    const feedback = h('span', { class: 'fw-task-feedback', role: 'status', 'aria-live': 'polite', 'aria-label': `${number} feedback` });
     const hint = h('div', { class: 'fw-task-hint', hidden: true });
     const el = h('section', { class: 'fw-task-card', 'aria-label': number, 'data-task': task.id },
       h('div', { class: 'fw-task-heading' }, check,
@@ -168,12 +168,30 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
     });
 
     submit.addEventListener('click', () => {
-      const attempt = host.runner.submit(part.id, task.id, given());
-      autosave();
-      if (attempt.passed) host.runner.snapshotsTaken().then(autosave); // persist the snapshots too
-      showFeedback(attempt, '✓ Correct!');
+      const result = host.runner.submit(part.id, task.id, given());
+      if (result.refused) {
+        // Same State and answers as the last miss: nothing recorded, nothing to save.
+        feedback.className = 'fw-task-feedback fw-refused';
+        feedback.textContent = result.feedback;
+      } else {
+        autosave();
+        if (result.passed) host.runner.snapshotsTaken().then(autosave); // persist the snapshots too
+        showFeedback(result, '✓ Correct!');
+      }
+      emphasize();
       render();
     });
+
+    // Re-trigger the feedback line's short emphasis (static under prefers-reduced-motion),
+    // then drop it, so the next Submit shows a fresh one.
+    let emphasisTimer;
+    function emphasize() {
+      clearTimeout(emphasisTimer);
+      feedback.classList.remove('fw-emphasis');
+      void feedback.offsetWidth; // reflow, so re-adding the class restarts the animation
+      feedback.classList.add('fw-emphasis');
+      emphasisTimer = setTimeout(() => feedback.classList.remove('fw-emphasis'), 600);
+    }
 
     function showFeedback(attempt, passText) {
       feedback.className = `fw-task-feedback ${attempt.passed ? 'fw-ok' : 'fw-fail'}`;
