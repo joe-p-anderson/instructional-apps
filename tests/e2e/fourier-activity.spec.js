@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import { readReport } from '../../framework/v1/report.js';
 
-// The Activity "Frequency Domain: Fourier Series" on the fourier Tool (ticket 07: Parts 1–3).
+// The Activity "Frequency Domain: Fourier Series" on the fourier Tool (tickets 07 and 08: Parts 1–5).
 
 const PAGE = '/tools/fourier/activities/fourier-series.html';
 
@@ -89,4 +91,91 @@ test('Part 3 hides the spectrum until the square wave\'s coefficients are submit
     'A₄ (V)': '0', 'A₅ (V)': '0.255', 'φ₅ (°)': '-90',
   });
   await expect(spectrum).toBeVisible();
+});
+
+const choose = (scope, name) => scope.getByRole('radio', { name, exact: typeof name === 'string' }).check();
+const toggles = async (scope, gain, phase) => {
+  await scope.getByRole('checkbox', { name: 'Apply gain', exact: true }).setChecked(gain);
+  await scope.getByRole('checkbox', { name: 'Apply phase shift', exact: true }).setChecked(phase);
+};
+const setN = async (scope, n) => {
+  const box = scope.getByRole('spinbutton', { name: 'N', exact: true });
+  await box.fill(String(n));
+  await box.press('Enter');
+};
+
+test('a full Run passes every Task through Part 5 and downloads a Report with the Display snapshots', async ({ page }) => {
+  test.setTimeout(120_000);
+  await open(page);
+  await enterName(page);
+
+  const p1 = part(page, 1);
+  await choose(p1, 'Square Aₙ ∝ 1/n; triangle Aₙ ∝ 1/n²');
+  await submit(p1, '1.1', {});
+  await setN(p1, 21);
+  await submit(p1, '1.2', {});
+  await p1.getByRole('combobox', { name: 'Waveform', exact: true }).selectOption('triangle');
+  await setN(p1, 3);
+  await submit(p1, '1.3', {});
+  await p1.getByRole('textbox', { name: /jumps/ }).fill('The jumps need fast terms.');
+  await p1.getByRole('textbox', { name: /same signal/ }).fill('Shape against harmonics.');
+  await submit(p1, '1.4', {});
+
+  await page.getByRole('tab', { name: /Part 2/ }).click();
+  const p2 = part(page, 2);
+  await submit(p2, '2.1', { 'a₁ (V)': '-0.5', 'b₁ (V)': '0.866' });
+  await submit(p2, '2.2', { 'A₁ (V)': '1', 'φ₁ (°)': '-120' });
+  await choose(p2, /^Their positive and negative areas cancel/);
+  await submit(p2, '2.3', {});
+
+  await page.getByRole('tab', { name: /Part 3/ }).click();
+  const p3 = part(page, 3);
+  await submit(p3, '3.1', {
+    'A₁ (V)': '1.273', 'φ₁ (°)': '-90', 'A₂ (V)': '0', 'A₃ (V)': '0.424', 'φ₃ (°)': '-90',
+    'A₄ (V)': '0', 'A₅ (V)': '0.255', 'φ₅ (°)': '-90',
+  });
+  await choose(p3, 'The even terms are zero, and Aₙ ∝ 1/n for odd n.');
+  await submit(p3, '3.2', {});
+
+  // Parts 4 and 5: gain only, phase only, both (with the choice), why both, the 3rd harmonic by hand.
+  for (const [n, phi] of [[4, '-135'], [5, '-45']]) {
+    await page.getByRole('tab', { name: new RegExp(`Part ${n}`) }).click();
+    const p = part(page, n);
+    await expect(p.getByRole('combobox', { name: 'Filter', exact: true })).toBeDisabled();
+    await expect(p.getByRole('checkbox', { name: 'Apply gain', exact: true })).not.toBeChecked();
+    await toggles(p, true, false);
+    await submit(p, `${n}.1`, {});
+    await toggles(p, false, true);
+    await submit(p, `${n}.2`, {});
+    await toggles(p, true, true);
+    await choose(p, 'Gain and phase together');
+    await submit(p, `${n}.3`, {});
+    await p.getByRole('textbox', { name: /^Why does the/ }).fill('Each harmonic must be scaled and delayed.');
+    await submit(p, `${n}.4`, {});
+    await submit(p, `${n}.5`, { 'Output A₃ (V)': '0.300', 'Output φ₃ (°)': phi });
+  }
+  const p5 = part(page, 5);
+  await choose(p5, /^The complex gains add to 1/);
+  const dialog = page.getByRole('dialog', { name: /Activity complete/ });
+  await expect(dialog).toBeHidden();
+  await submit(p5, '5.6', { '|H_LP| + |H_HP| at 3 kHz': '1.414' });
+
+  await expect(dialog).toBeVisible();
+  const [file] = await Promise.all([
+    page.waitForEvent('download'),
+    dialog.getByRole('button', { name: 'Download Report' }).click(),
+  ]);
+  const { report, checksumOk } = readReport(await readFile(await file.path(), 'utf8'));
+  expect(checksumOk).toBe(true);
+  expect(report.parts.map((p) => p.id)).toEqual(['synthesis', 'sine', 'square', 'lowpass', 'highpass']);
+  expect(report.parts.flatMap((p) => p.tasks).every((t) => t.passed)).toBe(true);
+  expect(report.earned).toBe(report.possible);
+
+  const both = report.parts[3].tasks.find((t) => t.id === 'both').attempts.find((a) => a.passed);
+  expect(both.state).toMatchObject({ filter: 'lowpass', fc: 3000, applyGain: true, applyPhase: true });
+  expect(both.snapshots).toEqual([
+    { display: 'time', png: expect.stringMatching(/^data:image\/png;base64,.{100,}/) },
+  ]);
+  const why = report.parts[4].tasks.find((t) => t.id === 'why-both').attempts[0];
+  expect(why.answers['why-both']).toBe('Each harmonic must be scaled and delayed.');
 });
