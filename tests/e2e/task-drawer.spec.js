@@ -72,7 +72,7 @@ test('Submit from the closed bar passes a Condition-only Task, and the bar moves
   await expect(bar(p1).getByRole('status', { name: 'Task 1.1 feedback' })).toContainText('✗');
   await expect(toggle(p1)).toHaveAttribute('aria-expanded', 'false');
 
-  await setNumber(p1, 'Δt', 0.5);
+  await setNumber(p1, 'Δt (s)', 0.5);
   await submit.click();
   await expect(p1.locator('[data-task="phase-pi-2"]')).toHaveAttribute('data-status', 'passed');
   await expect(toggle(p1)).toContainText('Task 1.2');
@@ -80,14 +80,32 @@ test('Submit from the closed bar passes a Condition-only Task, and the bar moves
   await expect(page.getByRole('tab', { name: /Part 1/ })).toHaveAccessibleName(/1 of 3 Tasks done/);
 });
 
+test('a refused identical Submit shows its text and flash on the drawer bar', async ({ page }) => {
+  await page.setViewportSize(PORTRAIT);
+  await openActivity(page, OSCILLOSCOPE);
+  const p1 = part(page, 1);
+  const submit = bar(p1).getByRole('button', { name: 'Submit Task 1.1' });
+  const feedback = bar(p1).getByRole('status', { name: 'Task 1.1 feedback' });
+
+  await submit.click(); // a miss
+  await expect(feedback).toContainText('✗');
+  await expect(feedback).toHaveAttribute('aria-live', 'polite');
+  await page.waitForTimeout(700); // let the first emphasis end
+  await expect(feedback).not.toHaveClass(/fw-emphasis/);
+  await submit.click(); // the same again: refused
+  await expect(feedback).toHaveText('Nothing changed since your last try');
+  await expect(feedback).toHaveClass(/fw-refused/);
+  await expect(feedback).toHaveClass(/fw-emphasis/);
+});
+
 test('a Task with Questions opens, is answered and submitted; opening leaves the Display box unchanged', async ({ page }) => {
   await page.setViewportSize(PORTRAIT);
   await openActivity(page, OSCILLOSCOPE);
   const p1 = part(page, 1);
   // Pass Tasks 1.1 and 1.2 to reach Task 1.3, which has a Question.
-  await setNumber(p1, 'Δt', 0.5);
+  await setNumber(p1, 'Δt (s)', 0.5);
   await bar(p1).getByRole('button', { name: 'Submit Task 1.1' }).click();
-  await setNumber(p1, 'f', 0.25);
+  await setNumber(p1, 'f (Hz)', 0.25);
   await bar(p1).getByRole('button', { name: 'Submit Task 1.2' }).click();
   await expect(toggle(p1)).toContainText('Task 1.3');
   await expect(bar(p1)).toContainText('Open to answer');
@@ -145,9 +163,9 @@ test('resizing from 1366 to 768 and back keeps a typed Question answer and the P
   await page.setViewportSize(LAPTOP);
   await openActivity(page, OSCILLOSCOPE);
   const p1 = part(page, 1);
-  await setNumber(p1, 'Δt', 0.5);
+  await setNumber(p1, 'Δt (s)', 0.5);
   await p1.getByRole('button', { name: 'Submit Task 1.1' }).click();
-  await setNumber(p1, 'f', 0.25);
+  await setNumber(p1, 'f (Hz)', 0.25);
   await p1.getByRole('button', { name: 'Submit Task 1.2' }).click();
   const answer = p1.getByRole('region', { name: 'Task 1.3' }).getByRole('textbox');
   await answer.fill('Lining traces up by eye');

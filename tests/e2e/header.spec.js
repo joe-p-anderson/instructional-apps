@@ -6,7 +6,7 @@ import { copyShareLink } from './helpers/share-link.js';
 
 const ACTIVITIES = [
   { url: '/tools/oscilloscope/activities/phase-period-amplitude.html',
-    title: 'Oscilloscope: Phase Shift, Period and Amplitude', course: 'PHY/EGR 3120' },
+    title: 'Sinusoidal Signals', course: 'PHY/EGR 3120' },
   { url: '/tools/electrostatics/activities/conductor-properties.html', title: 'Conductor Properties', course: 'PHY 4300' },
   { url: '/tools/spacetime/activities/lab10.html', title: 'Spacetime Diagrams', course: 'PHY 1200' },
 ];
@@ -60,9 +60,6 @@ for (const a of ACTIVITIES) {
     const banner = page.getByRole('banner');
     await expect(banner.getByRole('heading', { level: 1 })).toHaveText(a.title);
     await expect(banner.getByText(a.course, { exact: true })).toBeVisible();
-    // The oscilloscope Activity's long "Oscilloscope: …" title wraps its tabs until shell-revision
-    // ticket 12 retitles it "Sinusoidal Signals"; the row check then applies to it too.
-    if (a.title.startsWith('Oscilloscope:')) return;
     await expectOneRow(page, [banner.getByText('Ada Lovelace'),
       banner.getByRole('button', { name: 'Download Report' }), menuButton(page)]);
   });
