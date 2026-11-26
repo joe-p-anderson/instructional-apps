@@ -5,9 +5,8 @@ import { test, expect } from '@playwright/test';
 
 const TOOLS = ['bench-scope', 'electrostatics', 'least-squares', 'oscilloscope', 'spacetime', 'vernier'];
 
-// TODO(shell-revision 03): read each Tool's declared minDisplayWidth once defineTool() has it;
-// 480 px is the framework default.
-const MIN_DISPLAY_WIDTH = 480;
+/** The Tool's declared minimum Display width (defineTool() defaults it to 480 px). */
+const minDisplayWidth = (page) => page.evaluate(() => window.toolHost.tool.minDisplayWidth);
 
 async function open(page, tool) {
   await page.goto(`/tools/${tool}/`);
@@ -41,8 +40,9 @@ for (const tool of TOOLS) {
       await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
       expect(await overflow(page), `${mode} at 1366×768`).toBeLessThanOrEqual(0);
 
-      await setDisplayWidth(page, MIN_DISPLAY_WIDTH);
-      expect(await overflow(page), `${mode} at a ${MIN_DISPLAY_WIDTH} px Display`).toBeLessThanOrEqual(0);
+      const min = await minDisplayWidth(page);
+      await setDisplayWidth(page, min);
+      expect(await overflow(page), `${mode} at a ${min} px Display`).toBeLessThanOrEqual(0);
     }
   });
 }
