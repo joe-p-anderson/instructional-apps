@@ -196,3 +196,34 @@ export function limitCurve(input, filter) {
   const s = filterSeries(series(input, LIMIT_N), filter);
   return (t) => partialSum(s, LIMIT_N, t);
 }
+
+// ── Analysis (ticket 05): the input times a test function over one period of f0 ──
+// The test functions are cos(2π n f0 t) and sin(2π n f0 t); n = 0 is the DC test (cos 0 = 1,
+// sin 0 = 0). With v = a0 + Σ (an cos nωt + bn sin nωt), an = An cos φn and bn = −An sin φn, the
+// product's average over one period is a0 for cos at n = 0, and an/2 or bn/2 for n ≥ 1.
+
+/** The test functions, in the order the test-function select lists them. */
+export const TEST_FUNCTIONS = ['cos', 'sin'];
+
+/** The test function ('cos' or 'sin') at harmonic n of f0, at time t. */
+export function testFunction(fn, f0, n, t) {
+  if (fn === 'cos') return n === 0 ? 1 : Math.cos(TAU * n * f0 * t);
+  if (fn === 'sin') return n === 0 ? 0 : Math.sin(TAU * n * f0 * t);
+  throw new Error(`fourier engine: unknown test function '${fn}'`);
+}
+
+/** The analysis product at time t: the ideal input times the test function. */
+export function product(input, fn, n, t) {
+  return ideal(input, t) * testFunction(fn, input.f0, n, t);
+}
+
+/**
+ * The product's average over one period [0, 1/f0), by the midpoint rule over `samples` points.
+ * For tests and Activity answer keys only: no Display shows it.
+ */
+export function productAverage(input, fn, n, samples = 20000) {
+  const T = 1 / input.f0;
+  let sum = 0;
+  for (let i = 0; i < samples; i += 1) sum += product(input, fn, n, ((i + 0.5) / samples) * T);
+  return sum / samples;
+}

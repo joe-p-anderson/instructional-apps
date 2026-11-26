@@ -52,9 +52,9 @@ test('the time plot draws the input, the partial sum, the N = ∞ curve and the 
   const names = await page.evaluate(() => document
     .querySelector('[data-tool="fourier"] [data-display="time"] .js-plotly-plot').data.map((t) => t.name));
   expect(names).toEqual(['Input', 'N = ∞ (infinite series)', 'Highest harmonic', 'Partial sum']);
-  await expect(page.locator('[data-tool="fourier"] .fw-legend-row')).toHaveCount(4);
-  await expect(page.locator('[data-tool="fourier"] .xtitle')).toHaveText('Time (ms)');
-  await expect(page.locator('[data-tool="fourier"] .ytitle')).toHaveText('Voltage (V)');
+  await expect(page.locator('[data-mode="synthesis"] .fw-legend-row')).toHaveCount(4);
+  await expect(page.locator('[data-mode="synthesis"] .xtitle')).toHaveText('Time (ms)');
+  await expect(page.locator('[data-mode="synthesis"] .ytitle')).toHaveText('Voltage (V)');
 });
 
 test('moving N changes the partial sum; N = 0 is the DC term alone; an even N adds nothing', async ({ page }) => {
