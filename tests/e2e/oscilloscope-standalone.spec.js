@@ -149,7 +149,7 @@ test('each plot marker can be focused and moved with the arrow keys, like a drag
   await page.keyboard.press('Shift+ArrowUp');
   expect((await state()).Va).toBeCloseTo(2.11, 9);
   await expect(va).toHaveAttribute('aria-valuetext', '2.11 V');
-  await expect(page.getByRole('spinbutton', { name: 'Va', exact: true })).toHaveValue('2.11');
+  await expect(page.getByRole('spinbutton', { name: 'Va (V)', exact: true })).toHaveValue('2.11');
 
   // Δt marker at (T − Δt, Va): Right moves it right on the plot, so Δt shrinks.
   const dt = page.getByRole('slider', { name: 'Δt marker' });
