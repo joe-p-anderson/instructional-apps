@@ -5,7 +5,7 @@ import activity from '../../../tools/oscilloscope/activities/phase-period-amplit
 import { metrics } from '../../../tools/oscilloscope/signal.js';
 import { stubTool } from '../runner/stub-tool.js';
 
-const CONTROLS = ['Va', 'f', 'Dt', 'Va-marker', 'f-marker', 'Dt-marker'];
+const CONTROLS = ['Va', 'f', 'Dt', 'Va-marker', 'f-marker', 'Dt-marker', 'phi-readout', 'ratio-readout'];
 
 // A stub oscilloscope: settable signal values with the real derived metrics.
 function scope() {
@@ -43,6 +43,11 @@ test('the Activity names the oscilloscope Tool, with two Parts on the same Mode 
   assert.notDeepEqual(part1.setup, part2.setup);
 });
 
+test('the Activity is titled Sinusoidal Signals and keeps its id, so saved Runs and Reports still match', () => {
+  assert.equal(activity.title, 'Sinusoidal Signals');
+  assert.equal(activity.id, 'oscilloscope-phase-period-amplitude');
+});
+
 test('Task 1.1 passes at φ = π/2 within 0.05 and gives specific miss feedback', () => {
   const { runner, tools } = start();
   const t11 = part1.tasks[0].id;
@@ -62,6 +67,20 @@ test('Δt (slider and marker) is locked once Task 1.1 passes', () => {
   runner.submit(part1.id, part1.tasks[0].id);
   assert.equal(t.controls.get('Dt').isLocked, true);
   assert.equal(t.controls.get('Dt-marker').isLocked, true);
+});
+
+test('the φ readouts are hidden through Tasks 1.1 and 1.2, shown again for the Question, and left alone in Part 2', () => {
+  const { runner, tools } = start();
+  const t = tools[part1.id];
+  const hidden = () => ['phi-readout', 'ratio-readout'].map((id) => !t.controls.get(id).isVisible);
+  assert.deepEqual(hidden(), [true, true]);
+  t.setSignal({ Dt: 0.5 });
+  runner.submit(part1.id, part1.tasks[0].id);
+  assert.deepEqual(hidden(), [true, true]);
+  t.setSignal({ f: 0.25 });
+  runner.submit(part1.id, part1.tasks[1].id);
+  assert.deepEqual(hidden(), [false, false]);
+  assert.equal(tools[part2.id].controls.get('phi-readout').isVisible, true);
 });
 
 test('Task 1.2 targets φ = π/4 and is followed by the free-text Question', () => {

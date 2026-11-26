@@ -6,11 +6,13 @@
 // decodeKey() from framework/v1/runner/keys.js.
 
 const ALL = ['Va', 'f', 'Dt', 'Va-marker', 'f-marker', 'Dt-marker'];
+// The readouts that print φ: hidden while a Task asks the student to set φ.
+const PHI_READOUTS = ['phi-readout', 'ratio-readout'];
 
 export default {
   id: 'oscilloscope-phase-period-amplitude',
   version: 1,
-  title: 'Oscilloscope: Phase Shift, Period and Amplitude',
+  title: 'Sinusoidal Signals',
   course: 'PHY/EGR 3120',
   tool: 'oscilloscope',
   parts: [
@@ -25,6 +27,7 @@ export default {
           title: 'Phase shift \\(\\pi/2\\)',
           prompt: 'Set \\(\\phi = 2\\pi f \\Delta t = \\pi/2\\) (90°) by adjusting \\(f\\) and \\(\\Delta t\\).',
           show: ALL,
+          hide: PHI_READOUTS,
           condition: 'enc1:HVVeAlBUBkNJVxEEREZJVhETAAILAAJRVFcOF0NSXBZydmQXCQQICFBBAVRFTw9DSUVPXBhIRwAEABUAGjhBCQAVGRpRquUPc2SwqbgQAR9TQBxWQ0EHQw4',
           points: 1,
           hint: { after: 3, text: 'enc1:RCBEAlkAPz1bE0FRDVRLQTkuW0UmDgxLBFlKVRIXEUUzZCJFQllfVUYeXlZtfEs9LzEEAFkFRQBFT1JVQEF8N0xZSA5R' },
@@ -42,6 +45,7 @@ export default {
           id: 'phase-question',
           title: 'Measuring phase',
           prompt: 'Answer in a few sentences.',
+          show: PHI_READOUTS,
           questions: [{
             id: 'why-hard',
             kind: 'text',

@@ -32,7 +32,7 @@ test('a Report downloaded from the oscilloscope Activity opens in the student vi
   await page.getByLabel('Open a Report').setInputFiles(reportPath);
 
   const view = page.getByRole('article', { name: 'Report' });
-  await expect(view).toContainText('Oscilloscope: Phase Shift, Period and Amplitude');
+  await expect(view).toContainText('Sinusoidal Signals');
   await expect(view).toContainText('PHY/EGR 3120');
   await expect(view).toContainText('Ada Lovelace');
   await expect(view.getByRole('heading', { name: 'Part 1: Phase Shift' })).toBeVisible();
