@@ -58,8 +58,12 @@ test('a Task passes only on a Submit at the target, and its Hint appears after 3
   await submit.click();
   await expect(p1.getByRole('status', { name: 'Task 1.1 feedback' })).toContainText('need > 0');
   await expect(card).toHaveAttribute('data-status', 'open');
+  // Each further miss is a different try (an identical repeat would be refused, and not count).
+  const why = card.getByRole('textbox', { name: /electric field in the bulk/ });
+  await why.fill('first idea');
   await submit.click();
   await expect(p1.getByText(/Hint:/)).toBeHidden();
+  await why.fill('second idea');
   await submit.click();
   await expect(p1.getByText(/Hint:/)).toBeVisible();
   await expect(card).toContainText('Drag the E₀ joystick away from its centre');
@@ -74,6 +78,7 @@ test('a Task passes only on a Submit at the target, and its Hint appears after 3
 // Shell revision 09: the Tasks that need the joystick, arc picker, P₁ and P₂ pass with the
 // keyboard alone (focus() stands in for Tab; every key is a keyboard press).
 test('the Electric Field and Potential Tasks pass using only the keyboard', async ({ page }) => {
+  test.setTimeout(90_000); // four Tasks, key by key
   await open(page);
   await enterName(page);
   const keys = async (loc, ...pressed) => { await loc.focus(); for (const k of pressed) await page.keyboard.press(k); };
@@ -82,14 +87,14 @@ test('the Electric Field and Potential Tasks pass using only the keyboard', asyn
 
   // Task 1.1: push the E₀ joystick off centre.
   await keys(p1.getByRole('group', { name: 'E₀ joystick' }), 'Shift+ArrowRight', 'Shift+ArrowRight');
-  await answer(p1.getByRole('region', { name: 'Task 1.1' }), 'E = 0 in the bulk, else charges move.');
+  await answer(p1.getByRole('region', { name: 'Task 1.1' }), 'E = 0.');
   await keys(p1.getByRole('button', { name: 'Submit Task 1.1' }), 'Enter');
   await expect(p1.getByRole('region', { name: 'Task 1.1' })).toHaveAttribute('data-status', 'passed');
 
   // Task 1.2: Q above 0 (the slider) and θ above 0 (the arc picker).
   await keys(p1.getByRole('slider', { name: /^Q\b/ }), 'ArrowRight', 'ArrowRight');
   await keys(p1.getByRole('slider', { name: 'θ arc picker' }), 'Shift+ArrowRight');
-  await answer(p1.getByRole('region', { name: 'Task 1.2' }), 'The surface field is normal to the surface.');
+  await answer(p1.getByRole('region', { name: 'Task 1.2' }), 'Normal.');
   await keys(p1.getByRole('button', { name: 'Submit Task 1.2' }), 'Enter');
   await expect(p1.getByRole('region', { name: 'Task 1.2' })).toHaveAttribute('data-status', 'passed');
 
@@ -102,13 +107,13 @@ test('the Electric Field and Potential Tasks pass using only the keyboard', asyn
   await keys(p2.getByRole('group', { name: 'P₂' }), ...Array(6).fill('Shift+ArrowLeft'), ...Array(6).fill('Shift+ArrowDown'));
   await expect(p2.getByRole('status', { name: 'P1 position' })).toContainText('(-1.0, -1.0) cm');
   await expect(p2.getByRole('status', { name: 'P2 position' })).toContainText('(1.0, 1.0) cm');
-  await answer(p2.getByRole('region', { name: 'Task 2.1' }), 'V is constant inside.');
+  await answer(p2.getByRole('region', { name: 'Task 2.1' }), 'Constant.');
   await keys(p2.getByRole('button', { name: 'Submit Task 2.1' }), 'Enter');
   await expect(p2.getByRole('region', { name: 'Task 2.1' })).toHaveAttribute('data-status', 'passed');
 
   // Task 2.2: lock to surface.
   await keys(p2.getByRole('checkbox', { name: 'Lock to surface' }), 'Space');
-  await answer(p2.getByRole('region', { name: 'Task 2.2' }), 'The surface is at the same potential as the inside.');
+  await answer(p2.getByRole('region', { name: 'Task 2.2' }), 'Same.');
   await keys(p2.getByRole('button', { name: 'Submit Task 2.2' }), 'Enter');
   await expect(p2.getByRole('region', { name: 'Task 2.2' })).toHaveAttribute('data-status', 'passed');
 });

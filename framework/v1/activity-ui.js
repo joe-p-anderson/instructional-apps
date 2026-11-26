@@ -164,7 +164,7 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
     const label = h('span', { class: 'fw-drawer-title' });
     const toggleButton = h('button', { type: 'button', class: 'fw-drawer-toggle', 'aria-expanded': 'false',
       'aria-controls': row.id }, chevron, label);
-    const feedback = h('span', { class: 'fw-task-feedback fw-drawer-feedback', role: 'status' });
+    const feedback = h('span', { class: 'fw-task-feedback fw-drawer-feedback', role: 'status', 'aria-live': 'polite' });
     const note = h('span', { class: 'fw-drawer-note', hidden: true }, 'Open to answer');
     const submit = h('button', { type: 'button', class: 'fw-button fw-drawer-submit' }, 'Submit');
     const el = h('div', { class: 'fw-drawer-bar' }, toggleButton, feedback, note, submit);
@@ -210,7 +210,7 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
         }
       }
       toggleButton.disabled = !current;
-      feedback.className = current ? current.feedback.className + ' fw-drawer-feedback' : 'fw-task-feedback fw-drawer-feedback';
+      feedback.className = current ? current.feedback.className.replace(/\s*\bfw-emphasis\b/, '') + ' fw-drawer-feedback' : 'fw-task-feedback fw-drawer-feedback';
       feedback.textContent = current ? current.feedback.textContent : '';
       // A Task with Questions is answered in the drawer: until then the bar points there.
       const unseen = !!current && current.hasQuestions && !current.seen && !current.answered();
@@ -226,7 +226,7 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
       });
     }
 
-    return { el, update, close, attach };
+    return { el, update, close, attach, flash: () => flash(feedback) };
   }
 
   // previous: the number of the Task before this one, which unlocks it; null for a Part's first
@@ -245,7 +245,7 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
     const check = h('span', { class: 'fw-task-check', 'aria-hidden': 'true' });
     const lockedNote = previous ? h('span', { class: 'fw-task-locked', hidden: true }, `Locked until ${previous} is done`) : null;
     const submit = h('button', { type: 'button', class: 'fw-button', 'aria-label': `Submit ${number}` }, 'Submit');
-    const feedback = h('span', { class: 'fw-task-feedback', role: 'status', 'aria-label': `${number} feedback` });
+    const feedback = h('span', { class: 'fw-task-feedback', role: 'status', 'aria-live': 'polite', 'aria-label': `${number} feedback` });
     const hint = h('div', { class: 'fw-task-hint', hidden: true });
     const titleHtml = `${number} — ${task.title ?? ''}`;
     const el = h('section', { class: 'fw-task-card', 'aria-label': number, 'data-task': task.id, tabindex: '-1' },
@@ -265,11 +265,19 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
 
     submit.addEventListener('click', submitTask);
     function submitTask() {
-      const attempt = host.runner.submit(part.id, task.id, given());
-      autosave();
-      if (attempt.passed) host.runner.snapshotsTaken().then(autosave); // persist the snapshots too
-      showFeedback(attempt, '✓ Correct!');
+      const result = host.runner.submit(part.id, task.id, given());
+      if (result.refused) {
+        // Same State and answers as the last miss: nothing recorded, nothing to save.
+        feedback.className = 'fw-task-feedback fw-refused';
+        feedback.textContent = result.feedback;
+      } else {
+        autosave();
+        if (result.passed) host.runner.snapshotsTaken().then(autosave); // persist the snapshots too
+        showFeedback(result, '✓ Correct!');
+      }
+      flash(feedback);
       render();
+      views[part.id].drawer.flash(); // the drawer bar's copy of the feedback line flashes too
     }
 
     function showFeedback(attempt, passText) {
@@ -333,6 +341,17 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
       view.drawer.update();
     }
   }
+}
+
+// Re-trigger a feedback line's short emphasis (static under prefers-reduced-motion, theme.css),
+// then drop it, so the next Submit shows a fresh one.
+const flashTimers = new WeakMap();
+function flash(el) {
+  clearTimeout(flashTimers.get(el));
+  el.classList.remove('fw-emphasis');
+  void el.offsetWidth; // reflow, so re-adding the class restarts the animation
+  el.classList.add('fw-emphasis');
+  flashTimers.set(el, setTimeout(() => el.classList.remove('fw-emphasis'), 600));
 }
 
 // How each Question kind (runner/questions.js) is answered on the page: its field and how

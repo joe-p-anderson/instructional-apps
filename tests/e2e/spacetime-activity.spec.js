@@ -304,3 +304,13 @@ test('Part 2: only a rocket-frame rod lies from B to F, and it passes Task 2.5 o
   await expect(task).toHaveAttribute('data-status', 'passed');
   await expect(p2.getByText('5 of 5 Tasks done')).toBeVisible();
 });
+
+test('rendered maths (MathJax) is out of the Tab order', async ({ page }) => {
+  await open(page);
+  await enterName(page);
+  await expect(page.locator('mjx-container').first()).toBeAttached();
+  // MathJax elements Tab would stop on: tabindex >= 0 on a container or inside one.
+  const tabStops = () => page.evaluate(() => [...document.querySelectorAll('mjx-container, mjx-container *')]
+    .filter((el) => el.tabIndex >= 0).length);
+  await expect.poll(tabStops).toBe(0);
+});

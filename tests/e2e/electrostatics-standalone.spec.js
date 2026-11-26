@@ -20,14 +20,14 @@ test('the Electric field tab loads with every Control shown and unlocked', async
   await open(page);
   await expect(page.getByRole('tab', { name: 'Electric field' })).toHaveAttribute('aria-selected', 'true');
 
-  await expect(page.getByRole('slider', { name: 'Q', exact: true })).toBeEnabled();
-  for (const name of ['Q', 'θ', 'E₀x', 'E₀y']) {
+  await expect(page.getByRole('slider', { name: 'Q (nC)', exact: true })).toBeEnabled();
+  for (const name of ['Q (nC)', 'θ', 'E₀x', 'E₀y']) {
     await expect(page.getByRole('spinbutton', { name, exact: true })).toBeEnabled();
   }
-  await expect(page.getByRole('button', { name: 'Reset Q' })).toBeEnabled();
-  // θ and E₀ start at their defaults, so their resets start disabled.
-  await expect(page.getByRole('button', { name: 'Reset to 0 rad' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Reset to (0, 0) V/m' })).toBeDisabled();
+  // Q, θ and E₀ start at their defaults, so their resets start disabled.
+  await expect(page.getByRole('button', { name: 'Reset to 0 nC', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Reset to 0 rad', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Reset to (0, 0) V/m', exact: true })).toBeDisabled();
   await expect(page.getByLabel('θ arc picker')).toBeVisible();
   await expect(page.getByRole('tabpanel', { name: 'Electric field' }).getByLabel('E₀ joystick')).toBeVisible();
   await expect(page.getByRole('checkbox', { name: 'Induced charges' })).not.toBeChecked();
@@ -56,7 +56,7 @@ test('the State carries every value with a label and unit, and changing Q update
   expect(info.E0mag.unit).toBe('V/m');
   expect(info.theta.unit).toBe('rad');
 
-  await setNumber(page, 'Q', 1.5);
+  await setNumber(page, 'Q (nC)', 1.5);
   const s = await snapshot(page);
   expect(s.Q).toBeCloseTo(1.5, 9);
   expect(s.Emax).toBeGreaterThan(0);
@@ -125,7 +125,7 @@ test('the arc picker sets θ between 0 and π/2, but not while locked', async ({
 
 test('a reload and a share link restore the same setup', async ({ page, browser }) => {
   await open(page);
-  await setNumber(page, 'Q', -2.3);
+  await setNumber(page, 'Q (nC)', -2.3);
   await setNumber(page, 'θ', 0.7);
   await setNumber(page, 'E₀x', -600);
   await setNumber(page, 'E₀y', 800);
@@ -137,7 +137,7 @@ test('a reload and a share link restore the same setup', async ({ page, browser 
   await page.reload();
   await page.waitForFunction(() => window.toolHost);
   expect(await snapshot(page)).toEqual(want);
-  await expect(page.getByRole('spinbutton', { name: 'Q', exact: true })).toHaveValue('-2.3');
+  await expect(page.getByRole('spinbutton', { name: 'Q (nC)', exact: true })).toHaveValue('-2.3');
 
   const url = await copyShareLink(page);
   expect(url).toMatch(/#s=/);

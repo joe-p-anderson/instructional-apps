@@ -14,7 +14,7 @@ Spec: .scratch/shell-revision/spec.md (Header; stories 19–27).
 
 **Status:** ready-for-agent
 
-- [ ] At 1366×768 the title, tablist and actions share one row, checked by their top offsets, on every Activity and Standalone page.
+- [x] At 1366×768 the title, tablist and actions share one row, checked by their top offsets, on every Activity and Standalone page.
 - [x] Activity pages show the Activity's title and course. Standalone pages show the Tool title and no "Standalone" text.
 - [x] The ⋯ menu opens with Enter or Space, moves with the arrow keys and closes with Escape, returning focus to its button.
 - [x] Start over (with its confirm) and Print work from the menu. In Standalone mode, Copy share link copies the same `#s=` link as before.

@@ -108,8 +108,8 @@ export function e0Joystick({ id, name = 'E₀', value = { x: 0, y: 0 }, reset = 
     h('div', { class: 'es-pad-wrap' }, board.el,
       h('div', { class: 'es-caption' }, `Drag or use the arrow keys — max |${name}| = ${E0_MAX} V/m`)),
     h('div', { class: 'es-pair' },
-      h('label', {}, h('span', { class: 'es-box-label', html: `${sub('x')} V/m` }), boxX),
-      h('label', {}, h('span', { class: 'es-box-label', html: `${sub('y')} V/m` }), boxY),
+      h('label', {}, h('span', { class: 'es-box-label', html: `${sub('x')} (V/m)` }), boxX),
+      h('label', {}, h('span', { class: 'es-box-label', html: `${sub('y')} (V/m)` }), boxY),
       resetBtn));
 
   function draw() {
@@ -197,7 +197,7 @@ export function arcPicker({ id, name = 'θ', value = 0, reset = 0, onChange = ()
   const resetBtn = resetButton(`${reset} rad`);
   const el = h('div', { class: 'es-arc' },
     h('div', { class: 'fw-slider-header' },
-      h('span', { class: 'fw-control-name' }, name, h('span', { class: 'fw-unit' }, ' rad')),
+      h('span', { class: 'fw-control-name' }, name, h('span', { class: 'fw-unit' }, ' (rad)')),
       h('span', { class: 'es-box-row' }, box, resetBtn)),
     h('div', { class: 'es-arc-row' }, board.el,
       h('div', { class: 'es-caption es-arc-caption', html:
@@ -208,7 +208,7 @@ export function arcPicker({ id, name = 'θ', value = 0, reset = 0, onChange = ()
     const ctx = board.context();
     ctx.beginPath(); ctx.arc(ARC_CX, ARC_CY, ARC_R, -Math.PI / 2, 0);
     ctx.strokeStyle = C.border; ctx.lineWidth = 3; ctx.stroke();
-    ctx.font = '10px serif'; ctx.fillStyle = C.muted; ctx.textAlign = 'center';
+    ctx.font = `${C.fontSize} ${C.font}`; ctx.fillStyle = C.muted; ctx.textAlign = 'center';
     ctx.fillText('⊥', ARC_CX, ARC_CY - ARC_R - 15);
     ctx.fillText('∥', ARC_CX + ARC_R + 15, ARC_CY + 3);
     ctx.beginPath();
