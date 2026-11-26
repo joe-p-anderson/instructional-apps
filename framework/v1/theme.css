@@ -68,7 +68,7 @@
   --fw-plot-trace-2:   var(--fw-red);
   --fw-plot-trace-3:   var(--fw-orange);
   --fw-plot-font:      var(--fw-font);
-  --fw-plot-font-size: 14px;
+  --fw-plot-font-size: 13px;
 }
 
 .fw-app, .fw-app *, .fw-app *::before, .fw-app *::after { box-sizing: border-box; }
