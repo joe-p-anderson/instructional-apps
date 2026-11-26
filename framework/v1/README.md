@@ -11,7 +11,7 @@ Static ES modules and CSS, served as-is (no build, no install). Breaking changes
 | `theme.css` | The v1 Refined Cream theme (cream and serif, WCAG AA text contrast) and layout classes (`.fw-*`). Self-hosts Libre Baskerville from `vendor/libre-baskerville/` (SIL OFL, `OFL.txt` there). Its `:root` variables (`--fw-blue`, `--fw-surface`, `--fw-paper` for a white drawing ground, ...) are also the drawing colours; keep `themeVars`' fallback palette in `ui-kit.js` in step. Exposes plot tokens `--fw-plot-*` (background, grid, axis, text, ink, muted, trace-1..3, font, font-size), also in that fallback palette. |
 | `plot-theme.js` | `plotTheme(el?)`: the `--fw-plot-*` tokens as computed at `el` (default: the root element), as `{ background, grid, axis, text, ink, muted, traces, font: { family, size } }`: the plot-shaped view of the theme for a Tool's plots. Built on `themeVars`, so it shares its fallback (the v1 plot palette). Call it at mount. |
 | `tool-host.js` | `mountStandalone(tool, root)`: Standalone mode, one tab per Mode, every Control unlocked, State autosaved per Tool and Mode, `#s=` share link (Copy share link in the ⋯ menu). Also exports `createFrame`/`createTabs` for the Activity runner UI; see "Frame and header" below. |
-| `persistence.js` | Autosave (`standaloneStore(toolId, modeId)`, `runStore(activityId)`, the site-wide student name `nameStore()`, `createStore(key, storage)`, `browserStorage()`) and `#s=` share links (`shareHash`/`readShareHash`). No DOM. |
+| `persistence.js` | Autosave (`standaloneStore(toolId, modeId)`, `runStore(activityId)`, the site-wide student name `nameStore()`, `createStore(key, storage)`, `browserStorage()`; `save()` returns whether the write reached storage) and `#s=` share links (`shareHash`/`readShareHash`). No DOM. |
 | `runner/` | Activity runner core (pure logic, no DOM). `await runner.report()` assembles the sealed Report so far, also in Node (fixtures); `runner.save()`/`restore()` carry the Run, including unsubmitted Question drafts (`runner.draft()`) and whether the completion dialog has been shown (`runner.completionShown`, never in the Report). `runner.complete` is true once every Task has passed. `runner.submit()` refuses a Submit whose State and answers deep-equal the Task's last Attempt when that Attempt missed (canonical form, as the Report checksum): it returns `{ refused: true, reason: 'unchanged', feedback, hint }`, records no Attempt and doesn't bring the Hint closer, so refused Submits never reach the Report; the Task card shows "Nothing changed since your last try". Every Submit result briefly emphasises the Task's feedback line (a polite live region; static under `prefers-reduced-motion`). `runner/questions.js`: `questionKinds`, the one table of Question kinds (validation and judging). `runner/scoring.js`: the scoring rules (`scoreActivity`, `earnedFromResults`). `runner/keys.js`: encoded answer keys (`encodeKey`/`decodeKey`); the runner and scoring decode them, and an encoded Hint text is decoded only when the Hint is revealed. |
 | `report.js` | **The Report format**: schema (header comment), `sealReport`/`verifyReport`/`checksumOf` (keyed SHA-256 over canonical JSON), `readReport(text)`, `reportFilename`, `createFingerprint`, `REPORT_FORMAT_VERSION`, `FRAMEWORK_VERSION`. No DOM. |
 | `authoring/encode-keys.html` | Authoring helper: paste a Condition, Question key or Hint text (JS expression), copy the `enc1:` string into the Activity in its place. Also exposes `encodeKey()`/`decodeKey()` in the console. Deters casual cheating only (ADR 0001). |
@@ -85,12 +85,18 @@ actions never wrap.
 
 | | Title | Course | Actions | ⋯ menu |
 | --- | --- | --- | --- | --- |
-| Activity | `activity.title` (never the Tool's name) | `activity.course` | student's name (the Run's), Download Report | Start over, Print, Not <name>? Sign out |
-| Standalone | the Tool's title | none | ("Link copied" note) | Copy share link, Print |
+| Activity | `activity.title` (never the Tool's name) | `activity.course` | student's name (the Run's), save status, Download Report | Start over, Print, Not <name>? Sign out |
+| Standalone | the Tool's title | none | save status ("Link copied" note) | Copy share link, Print |
 
 The frame returns `addAction(el)`, which adds to the actions cluster before the ⋯ menu, and `menu`, whose
 `add({ id, label, onSelect }, { before })` adds a menu item. The ⋯ menu opens with Enter, Space or the arrow
 keys, moves with the arrow keys, Home and End, and closes with Escape, returning focus to its button.
+
+The save status (`saveStatus(frame)` in `tool-host.js`) shows the autosave: "Saved hh:mm" in muted text after
+each successful write, or "Not saved: download your Report" in the miss colour when the browser refuses it
+(each store's `save()` returns `true` or `false`). Successes are silent; the first failure is announced once
+through an assertive live region. The short notes in the actions (the name, the save status, "Link copied")
+stack two to a column so they don't widen the row. Passing `storage: null` turns autosave and its status off.
 
 ### Panel layouts
 

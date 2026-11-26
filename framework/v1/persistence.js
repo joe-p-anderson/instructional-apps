@@ -14,8 +14,9 @@
 //                                                every Activity; load() gives a non-blank string or null
 //   createStore(key, storage)                 -> a store under any other key
 //   each store is { load(), save(value), clear() }
-//   load() returns null when nothing usable is saved. No method ever throws, so a
-//   private window, blocked storage or a full quota just means no autosave.
+//   load() returns null when nothing usable is saved. save() returns true when the write
+//   reached storage and false when it didn't (no storage, a private window, blocked storage
+//   or a full quota), so the caller can show the save status. No method ever throws.
 //   browserStorage() -> localStorage, or null where it is unavailable.
 
 export function browserStorage() {
@@ -51,7 +52,8 @@ export function createStore(key, storage) {
       } catch { return null; }
     },
     save(value) {
-      try { storage?.setItem(key, JSON.stringify(value)); } catch { /* no autosave */ }
+      if (!storage) return false;
+      try { storage.setItem(key, JSON.stringify(value)); return true; } catch { return false; }
     },
     clear() {
       try { storage?.removeItem(key); } catch { /* nothing to clear */ }

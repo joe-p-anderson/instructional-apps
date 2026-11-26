@@ -9,9 +9,9 @@
 //   name gate is stored site-wide (nameStore): with no saved Run and a stored name, the Run
 //   starts at once under it and the gate is skipped; with neither, the gate appears.
 //   The header shows the Activity's title and course, the Part tabs, then the actions: the
-//   Run's name, Download Report and the ⋯ menu, which holds Start over (confirmed; discards
-//   this Activity's saved Run and reloads, starting a new Run under the stored name), Print and
-//   "Not <name>? Sign out" (confirmed; forgets the stored name, discards this Activity's saved
+//   Run's name, the save status (tool-host.js saveStatus), Download Report and the ⋯ menu,
+//   which holds Start over (confirmed; discards this Activity's saved Run and reloads, starting
+//   a new Run under the stored name), Print and "Not <name>? Sign out" (confirmed; forgets the stored name, discards this Activity's saved
 //   Run and reloads to the name gate; other Activities' Runs are kept).
 //   All judging, ordering and Control exposure come from the core; this layer only renders
 //   what runner.parts()/runner.task() report and forwards Start and Submit.
@@ -28,12 +28,12 @@
 import { browserStorage, nameStore, runStore } from './persistence.js';
 import { createRunner } from './runner/index.js';
 import { reportFilename } from './report.js';
-import { createFrame, createTabs, printItem } from './tool-host.js';
+import { createFrame, createTabs, printItem, saveStatus } from './tool-host.js';
 import { defineTool } from './tool.js';
 import { h } from './ui-kit.js';
 import { typeset } from './vendor.js';
 
-export function mountActivity(definition, activity, root, { conditionTypes, storage = browserStorage() } = {}) {
+export function mountActivity(definition, activity, root, { conditionTypes, storage } = {}) {
   const tool = defineTool(definition);
   if (activity.tool !== tool.id) throw new Error(`Activity "${activity.id}" is for Tool "${activity.tool}", not "${tool.id}".`);
   if (!document.title) document.title = activity.title;
@@ -71,8 +71,13 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
   host.select = tabs.select;
 
   // ── Autosave: the whole Run after every Start, Submit and Tool State change ──
+  // storage: null turns autosave (and its status) off; left out, it is localStorage, and a
+  // browser without one gets the "Not saved" warning.
+  const autosaveOn = storage !== null;
+  if (storage === undefined) storage = browserStorage();
   const store = runStore(activity.id, storage);
-  const autosave = () => { if (host.runner.run) store.save(host.runner.save()); };
+  let reportSave = () => {}; // the header's save status, once it exists
+  const autosave = () => { if (host.runner.run) reportSave(store.save(host.runner.save())); };
   let restored = false;
   try { restored = host.runner.restore(store.load()); } catch { /* unusable save: new Run */ }
   for (const instance of Object.values(host.instances)) instance.state.onChange(autosave);
@@ -83,6 +88,7 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
   download.hidden = true;
   const completion = completionDialog();
   frame.addAction(student);
+  if (autosaveOn) reportSave = saveStatus(frame);
   frame.addAction(download);
   // Start over and sign-out both discard this Activity's saved Run and reload; on reload the
   // Run starts at once under the stored name, or the Name gate appears when none is stored.

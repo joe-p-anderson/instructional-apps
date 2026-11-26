@@ -5,7 +5,8 @@
 //   The header shows the Tool's title only; its ⋯ menu holds Copy share link and Print.
 //   setups: optional { [modeId]: Setup } passed to each mount.
 //   storage: Storage-like object for autosave (default localStorage; null disables it).
-//   Each Mode's State autosaves on every change and restores on load (persistence.js).
+//   Each Mode's State autosaves on every change and restores on load (persistence.js); the
+//   header shows the save status (saveStatus).
 //   A `#s=` share link in the URL restores that Mode's State and opens its tab.
 //   Returns { instances, modes, activeMode, select(modeId), shareLink() } where instances[i]
 //   belongs to modes[i].
@@ -72,6 +73,32 @@ export function createFrame(root, { title, course, layout = LAYOUTS[0], minDispl
   return frame;
 }
 
+/**
+ * The save status in the header's actions cluster, shared by Standalone mode and the Activity
+ * runner. Returns report(ok): pass it each store.save() result (persistence.js).
+ *   ok: "Saved hh:mm" in muted text. Not a live region, so autosaves aren't announced.
+ *   not ok: "Not saved: download your Report" in the miss colour (data-state="failed"). The
+ *   first failure is announced through an assertive live region; later ones are not.
+ */
+export function saveStatus(frame) {
+  const el = frame.addAction(h('span', { class: 'fw-save-status' }));
+  const alert = frame.addAction(h('span', { class: 'fw-sr-only', 'aria-live': 'assertive' }));
+  const warning = 'Not saved: download your Report';
+  return (ok) => {
+    if (ok) {
+      const now = new Date();
+      el.textContent = `Saved ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      delete el.dataset.state;
+      return;
+    }
+    el.textContent = warning;
+    el.dataset.state = 'failed';
+    if (!alert.textContent) alert.textContent = warning;
+  };
+}
+
+const pad = (n) => String(n).padStart(2, '0');
+
 /** The ⋯ menu's Print item, shared by Standalone mode and the Activity runner. */
 export function printItem() {
   return { id: 'print', label: 'Print', onSelect: () => window.print() };
@@ -107,10 +134,14 @@ export function createTabs(frame, tabs, onSelect = () => {}) {
   return { panels, buttons, select };
 }
 
-export function mountStandalone(definition, root, { setups = {}, storage = browserStorage() } = {}) {
+export function mountStandalone(definition, root, { setups = {}, storage } = {}) {
   const tool = defineTool(definition);
   if (!document.title) document.title = tool.title;
   const frame = createFrame(root, { title: tool.title, layout: tool.layout });
+  // storage: null turns autosave (and its status) off; left out, it is localStorage, and a
+  // browser without one gets the "Not saved" warning.
+  const report = storage === null ? () => {} : saveStatus(frame);
+  if (storage === undefined) storage = browserStorage();
   const host = { tool, modes: tool.modes, instances: [], activeMode: null, select: null, shareLink };
 
   // A share link wins over autosave, once: the hash is then cleared so a reload shows
@@ -131,7 +162,7 @@ export function mountStandalone(definition, root, { setups = {}, storage = brows
     const saved = fromLink ? shared.state : store.load();
     if (saved) { try { instance.restore(saved); } catch { /* unusable save: keep the Setup */ } }
     if (fromLink) store.save(instance.serialize());
-    instance.state.onChange(() => store.save(instance.serialize()));
+    instance.state.onChange(() => report(store.save(instance.serialize())));
     host.instances.push(instance);
   }
   frame.menu.add(shareItem(frame, shareLink));

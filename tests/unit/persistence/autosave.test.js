@@ -62,3 +62,21 @@ test('unavailable or throwing storage never throws', () => {
     assert.doesNotThrow(() => store.clear());
   }
 });
+
+test('save reports whether the write reached storage', () => {
+  assert.equal(createStore('k', memoryStorage()).save({ a: 1 }), true);
+  const full = { getItem: () => null, setItem() { throw new Error('QuotaExceededError'); }, removeItem() {} };
+  assert.equal(createStore('k', full).save({ a: 1 }), false);
+  assert.equal(createStore('k', null).save({ a: 1 }), false);
+});
+
+test('a write that fails and then succeeds reports each outcome', () => {
+  let refuse = true;
+  const backing = memoryStorage();
+  const flaky = { ...backing, setItem(k, v) { if (refuse) throw new Error('denied'); backing.setItem(k, v); } };
+  const store = createStore('k', flaky);
+  assert.equal(store.save({ a: 1 }), false);
+  refuse = false;
+  assert.equal(store.save({ a: 2 }), true);
+  assert.deepEqual(store.load(), { a: 2 });
+});

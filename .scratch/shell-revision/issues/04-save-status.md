@@ -8,7 +8,7 @@ Spec: .scratch/shell-revision/spec.md (Activity runner UI, save status; stories 
 
 **Status:** ready-for-agent
 
-- [ ] The persistence store reports the success or failure of each write to its caller, with unit tests on the store, including a storage stub that throws.
-- [ ] e2e: after changing a Control, "Saved" with a time appears in the header, both on an Activity and on a Standalone page.
-- [ ] e2e: with `localStorage.setItem` stubbed to throw, the warning appears.
-- [ ] Successful saves aren't announced. A failure is announced once through an assertive live region.
+- [x] The persistence store reports the success or failure of each write to its caller, with unit tests on the store, including a storage stub that throws.
+- [x] e2e: after changing a Control, "Saved" with a time appears in the header, both on an Activity and on a Standalone page.
+- [x] e2e: with `localStorage.setItem` stubbed to throw, the warning appears.
+- [x] Successful saves aren't announced. A failure is announced once through an assertive live region.
