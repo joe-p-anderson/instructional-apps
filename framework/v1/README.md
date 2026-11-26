@@ -52,6 +52,19 @@ A Task's `condition` is judged against the State only on Submit (`runner/conditi
 
 `targetLabel` replaces the generated "need …" text. A registered evaluator is `(condition, state, info, { evaluate }) => { pass, feedback? }`; `evaluate(inner)` judges a nested Condition.
 
+## Questions
+
+A Task's `questions` are judged only on Submit (`runner/questions.js`).
+
+| Question | Passes when |
+| --- | --- |
+| `{ id, kind: 'numeric', prompt, answer, tol, modulus? }` | the given value is within `tol` of `answer` |
+| `{ id, kind: 'numeric', prompt, answer, relTol, modulus? }` | the given value is within `relTol × \|answer\|` of `answer` |
+| `{ id, kind: 'choice', prompt, choices: [{ id, text }], correct }` | the chosen id is `correct` |
+| `{ id, kind: 'text', prompt }` | never judged; the answer is recorded |
+
+`modulus` (a positive number) makes a numeric Question periodic: the difference between the given value and `answer` is wrapped into (−`modulus`/2, `modulus`/2] before `tol` or `relTol` is applied. A phase in degrees with `answer: -90, tol: 2, modulus: 360` accepts −90, 270 and −450. Without `modulus`, the difference is used as is.
+
 ## Tool contract in brief
 
 ```js
