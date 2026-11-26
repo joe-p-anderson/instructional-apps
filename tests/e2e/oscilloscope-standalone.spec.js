@@ -36,7 +36,7 @@ test('Standalone mode shows every Control, unlocked', async ({ page }) => {
     }));
   });
   expect(controls.map((c) => c.id).sort()).toEqual(
-    ['Dt', 'Dt-marker', 'Va', 'Va-marker', 'f', 'f-marker'].sort(),
+    ['Dt', 'Dt-marker', 'Va', 'Va-marker', 'f', 'f-marker', 'phi-readout', 'ratio-readout'].sort(),
   );
   for (const c of controls) expect(c, c.id).toMatchObject({ locked: false, hidden: false });
 });
