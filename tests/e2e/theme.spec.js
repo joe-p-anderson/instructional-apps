@@ -155,10 +155,12 @@ test('Question prompts read as text with a blue rule, and the Hint sits in a tin
   expect(label).toEqual({ variant: 'normal', transform: 'uppercase', fontStyle: 'normal' });
 });
 
+const smallCapsText = (page) => page.evaluate(() => [...document.querySelectorAll('body *')]
+  .filter((e) => e.checkVisibility() && e.textContent.trim() && getComputedStyle(e).fontVariantCaps !== 'normal')
+  .map((e) => e.textContent.trim().slice(0, 30)));
+
 test('no text is set in small caps, which Libre Baskerville would have to synthesise', async ({ page }) => {
-  const smallCaps = () => page.evaluate(() => [...document.querySelectorAll('body *')]
-    .filter((e) => e.checkVisibility() && e.textContent.trim() && getComputedStyle(e).fontVariantCaps !== 'normal')
-    .map((e) => e.textContent.trim().slice(0, 30)));
+  const smallCaps = () => smallCapsText(page);
   await open(page);
   expect(await smallCaps(), 'name gate').toEqual([]);
   await enterName(page);
@@ -167,6 +169,44 @@ test('no text is set in small caps, which Libre Baskerville would have to synthe
   await expect(page.getByRole('tab', { name: /Part 1/ })).toBeVisible();
   await expect(part(page, 1).getByRole('heading', { level: 3 }).first()).toBeVisible();
   expect(await smallCaps(), 'Part 1').toEqual([]);
+});
+
+// The app-ports Tools' Standalone pages follow the same rules.
+for (const tool of ['electrostatics', 'spacetime', 'least-squares']) {
+  test(`the ${tool} page has no small caps and no framework text below 4.5:1`, async ({ page }) => {
+    await page.goto(`/tools/${tool}/`);
+    await page.waitForFunction(() => window.toolHost);
+    expect(await smallCapsText(page), 'small caps').toEqual([]);
+    expect(await contrastFailures(page), 'contrast').toEqual([]);
+  });
+}
+
+test('the electrostatics plot takes its font and palette from the --fw-plot-* tokens', async ({ page }) => {
+  await page.addInitScript(() => {
+    const set = (html) => {
+      html.style.setProperty('--fw-plot-bg', '#fffdf0');
+      html.style.setProperty('--fw-plot-grid', '#e0e0e0');
+      html.style.setProperty('--fw-plot-text', '#3a3a3a');
+      html.style.setProperty('--fw-plot-font-size', '12px');
+    };
+    if (document.documentElement) set(document.documentElement);
+    else new MutationObserver((_, obs) => { if (document.documentElement) { set(document.documentElement); obs.disconnect(); } })
+      .observe(document, { childList: true });
+  });
+  await page.goto('/tools/electrostatics/');
+  await page.waitForFunction(() => window.toolHost);
+  const plot = await page.locator('.js-plotly-plot').first().evaluate((div) => ({
+    paper: div.layout.paper_bgcolor,
+    grid: div.layout.xaxis.gridcolor,
+    font: div.layout.font,
+    token: getComputedStyle(document.documentElement).getPropertyValue('--fw-plot-font').trim(),
+  }));
+  expect(plot.paper).toBe('#fffdf0');
+  expect(plot.grid).toBe('#e0e0e0');
+  expect(plot.font.family).toBe(plot.token);
+  expect(plot.font.family).toMatch(/^'?"?Libre Baskerville/);
+  expect(plot.font.size).toBe(12);
+  expect(plot.font.color).toBe('#3a3a3a');
 });
 
 test('locked Task cards stay readable and say they are locked; locked Controls are at 0.55', async ({ page }) => {

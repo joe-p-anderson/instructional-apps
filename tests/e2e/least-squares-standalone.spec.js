@@ -138,3 +138,42 @@ test('the handle\'s starting line is drawn from the seed: the whole class starts
   expect([b.m, b.b]).toEqual([a.m, a.b]);
   await fresh.close();
 });
+
+// The Display never scrolls inside itself: the Fit panel stays on screen while you fit.
+const displayArea = (page) => page.locator('.fw-displays');
+const scrollsInside = (page) => displayArea(page).evaluate((e) => e.scrollHeight > e.clientHeight);
+
+test('at 1366×768 the Fit panel\'s R² is on screen without scrolling, with residuals off and on', async ({ page }) => {
+  await open(page);
+  const r2 = page.getByRole('status', { name: 'R²', exact: true });
+  for (const on of [false, true]) {
+    await page.getByRole('checkbox', { name: 'Show residuals', exact: true }).setChecked(on);
+    expect(await scrollsInside(page), `residuals ${on ? 'on' : 'off'}`).toBe(false);
+    await expect(r2).toBeInViewport({ ratio: 1 });
+    await expect(page.getByText('SSE', { exact: true })).toBeInViewport({ ratio: 1 });
+  }
+});
+
+test('with residuals off no residual frame is shown; with them on the residual plot is', async ({ page }) => {
+  await open(page);
+  const plot = page.getByRole('img', { name: 'Residuals', exact: true });
+  await expect(plot).toBeHidden();
+  await expect(page.getByText(/^Residuals\s+y − \(m x \+ b\)$/)).toBeHidden();
+  await page.getByRole('checkbox', { name: 'Show residuals', exact: true }).check();
+  await expect(plot).toBeVisible();
+  await page.getByRole('checkbox', { name: 'Show residuals', exact: true }).uncheck();
+  await expect(plot).toBeHidden();
+});
+
+test('the residual-pattern guide is a collapsed note that opens and closes', async ({ page }) => {
+  await open(page);
+  await page.getByRole('checkbox', { name: 'Show residuals', exact: true }).check();
+  const guide = page.getByText(/^Random scatter about 0/);
+  const toggle = page.getByText('Reading the residuals', { exact: true });
+  await expect(toggle).toBeVisible();
+  await expect(guide).toBeHidden();
+  await toggle.click();
+  await expect(guide).toBeVisible();
+  await toggle.click();
+  await expect(guide).toBeHidden();
+});
