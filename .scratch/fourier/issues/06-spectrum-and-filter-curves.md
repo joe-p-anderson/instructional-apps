@@ -11,7 +11,7 @@ Each Display has its own id, so Activity show/hide lists can hide and reveal it.
 
 **Blocked by:** 04, 05
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] The spectrum Display shows Aₙ bars and φₙ stems (in degrees) for n from 0 to 10, taken from the engine's tables. A spectrum-source Control (input/output) is published in State.
 - [ ] The filter-curve Display:
@@ -27,3 +27,5 @@ Each Display has its own id, so Activity show/hide lists can hide and reveal it.
   - changing f_c moves the f_c marker.
 
 ## Comments
+
+- 2026-11-26: Implemented on the `fourier` integration branch (merge c6bd64a); code-review fixes in e950af5.

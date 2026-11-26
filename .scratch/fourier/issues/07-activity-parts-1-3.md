@@ -18,7 +18,7 @@ Spec: .scratch/fourier/spec.md (vocabulary from GLOSSARY.md; builds on framework
 
 **Blocked by:** 01, 06
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] The Activity is pure data that names the `fourier` Tool, with course "PHY/EGR 3120", and it has an Activity page. It is listed under PHY/EGR 3120 in the root index and the README.
 - [ ] Setups fix the waveform, shift, f₀ (1 kHz), amplitude (±1 V) and filter (off) for each Part. Part 1 shows the coefficient table for the selected waveform.
@@ -41,3 +41,5 @@ Spec: .scratch/fourier/spec.md (vocabulary from GLOSSARY.md; builds on framework
   - the spectrum appears after Submit.
 
 ## Comments
+
+- 2026-11-26: Implemented on the `fourier` integration branch (merge c22bf28); code-review fixes in e950af5.

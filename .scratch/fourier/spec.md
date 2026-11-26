@@ -1,6 +1,6 @@
 # Spec: the Fourier Tool (synthesis and analysis of periodic signals)
 
-Status: ready-for-agent
+Status: resolved
 
 Vocabulary follows [GLOSSARY.md](../../GLOSSARY.md). Builds on framework v1 ([Spec 0001](../../docs/specs/0001-framework-v1.md)) and the shell revision. Respects [ADR 0001](../../docs/adr/0001-json-report-with-report-viewer.md), [ADR 0002](../../docs/adr/0002-one-tool-per-activity-with-modes.md) and [ADR 0003](../../docs/adr/0003-major-versioned-framework-folder.md).
 

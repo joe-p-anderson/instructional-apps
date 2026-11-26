@@ -11,7 +11,7 @@ Spec: .scratch/fourier/spec.md (vocabulary from GLOSSARY.md; builds on framework
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Filter Controls: type (off, low-pass, high-pass), f_c (Hz), a gain toggle and a phase toggle. They are shared Controls with the same ids in both Modes, and they are published in State.
 - [ ] f_c/f₀ and τ = 1/(2πf_c) are UI-kit metrics, also published in State.
@@ -30,3 +30,5 @@ Spec: .scratch/fourier/spec.md (vocabulary from GLOSSARY.md; builds on framework
   - the readouts update with f_c.
 
 ## Comments
+
+- 2026-11-26: Implemented on the `fourier` integration branch (merge 9def501); code-review fixes in e950af5.

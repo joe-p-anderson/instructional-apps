@@ -12,7 +12,7 @@ This is a compatible change shipped in place in framework v1 (ADR 0003).
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] A numeric Question accepts an optional positive modulus. Validation rejects a modulus that is non-positive or not a number.
 - [ ] With a modulus, judging wraps the difference, then applies tol (or relTol, measured against the answer as before).
@@ -24,3 +24,5 @@ This is a compatible change shipped in place in framework v1 (ADR 0003).
 - [ ] The framework README documents the option alongside tol and relTol.
 
 ## Comments
+
+- 2026-11-26: Implemented on the `fourier` integration branch (merge af810cd); code-review fixes in e950af5.

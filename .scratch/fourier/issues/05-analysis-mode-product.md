@@ -14,7 +14,7 @@ Spec: .scratch/fourier/spec.md (vocabulary from GLOSSARY.md; builds on framework
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] The Tool has an `analysis` Mode alongside `synthesis`, and Standalone mode shows both tabs.
 - [ ] Controls: test function (a cos/sin select) and n (integer, 0 to 10), both published in State. The shared input Controls appear with the same ids as in Synthesis.
@@ -28,3 +28,5 @@ Spec: .scratch/fourier/spec.md (vocabulary from GLOSSARY.md; builds on framework
 - [ ] Playwright: after switching to Analysis, changing cos/sin and changing n each change the shaded product.
 
 ## Comments
+
+- 2026-11-26: Implemented on the `fourier` integration branch (merge 7f98277); code-review fixes in e950af5.

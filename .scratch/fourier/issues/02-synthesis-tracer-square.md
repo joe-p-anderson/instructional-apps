@@ -17,7 +17,7 @@ This ticket lays the end-to-end path that every later ticket builds on: the pure
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] A pure engine module, with no DOM, does three things for the square wave:
   - gives its exact, unsmoothed harmonic table in the cos convention: Aₙ = 4·amp/(πn) for odd n, φₙ = −90°, and zero for even n;
@@ -46,3 +46,5 @@ This ticket lays the end-to-end path that every later ticket builds on: the pure
   - play advances N and pause stops it.
 
 ## Comments
+
+- 2026-11-26: Implemented on the `fourier` integration branch (merge 74c5e0a); code-review fixes in e950af5.

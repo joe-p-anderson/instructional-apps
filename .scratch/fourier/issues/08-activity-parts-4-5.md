@@ -14,7 +14,7 @@ Spec: .scratch/fourier/spec.md (vocabulary from GLOSSARY.md; builds on framework
 
 **Blocked by:** 07
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] The Part 4 and Part 5 Setups fix the square wave, f₀ = 1 kHz, f_c = 3 kHz and the filter type. Tasks unlock the gain and phase toggles as needed.
 - [ ] Where a Task asks the student to set the toggles, encoded Conditions check the toggle states.
@@ -27,3 +27,5 @@ Spec: .scratch/fourier/spec.md (vocabulary from GLOSSARY.md; builds on framework
 - [ ] Playwright: a full Run through to downloading the Report, with the Report including the Display snapshot.
 
 ## Comments
+
+- 2026-11-26: Implemented on the `fourier` integration branch (merge 917b790); code-review fixes in e950af5.

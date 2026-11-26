@@ -14,7 +14,7 @@ These input Controls are the shared Controls that both Modes will use, with the 
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] A waveform select (sine, square, triangle, sawtooth) and sliders for amplitude, f₀ (Hz), DC offset (V) and shift (degrees), all built from the UI kit, registered as Controls and published in State.
 - [ ] The engine gives exact, unsmoothed cos-convention tables for every waveform. The triangle and sawtooth alignments are documented in the engine.
@@ -27,3 +27,5 @@ These input Controls are the shared Controls that both Modes will use, with the 
 - [ ] Playwright: changing the waveform, and each input Control, changes the Display.
 
 ## Comments
+
+- 2026-11-26: Implemented on the `fourier` integration branch (merge 5feca71); code-review fixes in e950af5.
