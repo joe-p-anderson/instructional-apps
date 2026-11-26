@@ -79,15 +79,17 @@ export function createFrame(root, { title, course, layout = LAYOUTS[0], minDispl
 
 /**
  * The save status in the header's actions cluster, shared by Standalone mode and the Activity
- * runner. Returns report(ok): pass it each store.save() result (persistence.js).
+ * runner. saveStatus(frame, { warning }) returns report(ok): pass it each store.save() result
+ * (persistence.js). The status is a note named "Save status".
  *   ok: "Saved hh:mm" in muted text. Not a live region, so autosaves aren't announced.
- *   not ok: "Not saved: download your Report" in the miss colour (data-state="failed"). The
- *   first failure is announced through an assertive live region; later ones are not.
+ *   not ok: `warning` (default "Not saved: download your Report", the Activity's; Standalone
+ *   passes "Not saved: copy the share link to keep your Setup") in the miss colour
+ *   (data-state="failed"). The first failure is announced through an assertive live region;
+ *   later ones are not.
  */
-export function saveStatus(frame) {
-  const el = frame.addAction(h('span', { class: 'fw-save-status' }));
+export function saveStatus(frame, { warning = 'Not saved: download your Report' } = {}) {
+  const el = frame.addAction(h('span', { class: 'fw-save-status', role: 'note', 'aria-label': 'Save status' }));
   const alert = frame.addAction(h('span', { class: 'fw-sr-only', 'aria-live': 'assertive' }));
-  const warning = 'Not saved: download your Report';
   return (ok) => {
     if (ok) {
       const now = new Date();
@@ -144,7 +146,8 @@ export function mountStandalone(definition, root, { setups = {}, storage } = {})
   const frame = createFrame(root, { title: tool.title, layout: tool.layout, maxDisplayWidth: tool.maxDisplayWidth });
   // storage: null turns autosave (and its status) off; left out, it is localStorage, and a
   // browser without one gets the "Not saved" warning.
-  const report = storage === null ? () => {} : saveStatus(frame);
+  const report = storage === null ? () => {}
+    : saveStatus(frame, { warning: 'Not saved: copy the share link to keep your Setup' });
   if (storage === undefined) storage = browserStorage();
   const host = { tool, modes: tool.modes, instances: [], activeMode: null, select: null, shareLink };
 

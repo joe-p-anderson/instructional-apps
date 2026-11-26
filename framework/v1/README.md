@@ -94,8 +94,10 @@ The frame returns `addAction(el)`, which adds to the actions cluster before the 
 keys, moves with the arrow keys, Home and End, and closes with Escape, returning focus to its button.
 
 The save status (`saveStatus(frame)` in `tool-host.js`) shows the autosave: "Saved hh:mm" in muted text after
-each successful write, or "Not saved: download your Report" in the miss colour when the browser refuses it
-(each store's `save()` returns `true` or `false`). Successes are silent; the first failure is announced once
+each successful write, or a warning in the miss colour when the browser refuses it (each store's `save()`
+returns `true` or `false`): "Not saved: download your Report" in an Activity, and "Not saved: copy the share
+link to keep your Setup" in Standalone mode, which has no Report (`saveStatus(frame, { warning })`). It is a
+note named "Save status". Successes are silent; the first failure is announced once
 through an assertive live region. The short notes in the actions (the name, the save status, "Link copied")
 stack two to a column so they don't widen the row. Passing `storage: null` turns autosave and its status off.
 

@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 // Save status in the header (shell revision 04): "Saved hh:mm" after each autosave, and a
-// warning, announced once, when the browser refuses to save.
+// warning, announced once, when the browser refuses to save. An Activity's warning points to
+// the Report; Standalone mode has no Report, so its warning points to the share link.
 
 const ACTIVITY = '/tools/oscilloscope/activities/phase-period-amplitude.html';
 const STANDALONE = '/tools/oscilloscope/';
-const WARNING = 'Not saved: download your Report';
+const MISS_RED = 'rgb(184, 28, 28)'; // --fw-red, the miss colour
 
 async function openActivity(page) {
   await page.goto(ACTIVITY);
@@ -33,28 +34,32 @@ async function refuseStorage(page) {
   });
 }
 
-const status = (page) => page.getByRole('banner').locator('.fw-save-status');
+const status = (page) => page.getByRole('banner').getByRole('note', { name: 'Save status' });
 
-for (const [where, open] of [['an Activity', openActivity], ['a Standalone page', openStandalone]]) {
+const MODES = [
+  ['an Activity', openActivity, 'Not saved: download your Report'],
+  ['a Standalone page', openStandalone, 'Not saved: copy the share link to keep your Setup'],
+];
+
+for (const [where, open, warning] of MODES) {
   test(`changing a Control on ${where} shows "Saved" and the time in the header`, async ({ page }) => {
     await open(page);
     await setNumber(page, 'f (Hz)', 0.3);
     await expect(status(page)).toHaveText(/^Saved \d{2}:\d{2}$/);
     await expect(status(page)).toBeVisible();
     // Successful saves are not announced: the status is no live region.
-    await expect(status(page)).not.toHaveAttribute('role', /./);
     await expect(status(page)).not.toHaveAttribute('aria-live', /./);
   });
 
-  test(`a refused save on ${where} shows the warning, announced once`, async ({ page }) => {
+  test(`a refused save on ${where} shows "${warning}" in the miss colour, announced once`, async ({ page }) => {
     await refuseStorage(page);
     await open(page);
     await setNumber(page, 'f (Hz)', 0.3);
-    await expect(status(page)).toHaveText(WARNING);
-    await expect(status(page)).toHaveAttribute('data-state', 'failed');
+    await expect(status(page)).toHaveText(warning);
+    expect(await status(page).evaluate((el) => getComputedStyle(el).color)).toBe(MISS_RED);
 
     const alert = page.getByRole('banner').locator('[aria-live="assertive"]');
-    await expect(alert).toHaveText(WARNING);
+    await expect(alert).toHaveText(warning);
 
     // Further refused saves leave the live region alone, so the warning isn't repeated.
     await alert.evaluate((el) => {
@@ -64,7 +69,7 @@ for (const [where, open] of [['an Activity', openActivity], ['a Standalone page'
     });
     await setNumber(page, 'f (Hz)', 0.4);
     await setNumber(page, 'f (Hz)', 0.5);
-    await expect(status(page)).toHaveText(WARNING);
+    await expect(status(page)).toHaveText(warning);
     expect(await page.evaluate(() => window.alertChanges)).toBe(0);
   });
 }
