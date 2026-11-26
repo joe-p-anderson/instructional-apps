@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Instructional Apps</title>
+<link rel="stylesheet" href="framework/v1/theme.css">
+<style>
+  body { margin: 0; background: var(--fw-bg); color: var(--fw-text); font-family: var(--fw-font); line-height: 1.5; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 20px 48px; }
+  h1 { font-size: 1.8rem; margin: 0 0 4px; }
+  .lede { color: var(--fw-text-dim); margin: 0 0 28px; }
+  section { background: var(--fw-surface); border: 1px solid var(--fw-border); border-radius: 6px; padding: 16px 20px; margin-bottom: 18px; }
+  h2 { font-size: 1.2rem; margin: 0 0 2px; color: var(--fw-blue-dk); }
+  h2 .name { font-weight: 400; color: var(--fw-text-dim); }
+  h3 { font-size: 0.85rem; font-weight: 400; color: var(--fw-text-muted); margin: 14px 0 4px; letter-spacing: 0.04em; text-transform: uppercase; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { padding: 6px 0; border-top: 1px solid var(--fw-grid); }
+  li:first-child { border-top: 0; }
+  a { color: var(--fw-blue); font-weight: 700; text-decoration: none; }
+  a:hover, a:focus-visible { text-decoration: underline; }
+  .desc { display: block; color: var(--fw-text-dim); font-size: 0.92rem; }
+  footer { color: var(--fw-text-muted); font-size: 0.9rem; margin-top: 28px; }
+  footer a { font-weight: 400; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Instructional Apps</h1>
+  <p class="lede">Interactive simulations for lecture and lab, sorted by course. Each Tool works on its own and saves your work in this browser.</p>
+
+  <section aria-labelledby="phy1200">
+    <h2 id="phy1200">PHY 1200</h2>
+    <h3>Tools</h3>
+    <ul>
+      <li><a href="tools/spacetime/">Spacetime Diagrams</a>
+        <span class="desc">Draw events, worldlines and rods in an Earth frame K and a rocket frame K′, with Lorentz-transformed coordinates, intervals and proper times.</span></li>
+      <li><a href="maxwell-construction/">Maxwell’s Construction</a>
+        <span class="desc">Find the equipotentials of a dipole by adding the potentials of its two point charges.</span></li>
+      <li><a href="cross-product/Cross%20Product%20Practice.html">Cross Product Practice</a>
+        <span class="desc">Right-hand rule, basis vectors and the determinant method.</span></li>
+    </ul>
+    <h3>Activities</h3>
+    <ul>
+      <li><a href="tools/spacetime/activities/lab10.html">Spacetime Diagrams (Lab 10)</a>
+        <span class="desc">Building the diagram and relativity of simultaneity, read by counting the rocket’s tilted grid lines.</span></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="egr3120">
+    <h2 id="egr3120">PHY/EGR 3120</h2>
+    <h3>Tools</h3>
+    <ul>
+      <li><a href="tools/oscilloscope/">Oscilloscope</a>
+        <span class="desc">Sinusoidal signals: amplitude, period and phase shift.</span></li>
+      <li><a href="tools/bench-scope/">Bench Oscilloscope</a>
+        <span class="desc">A virtual front panel for the lab’s TBS2072B and TDS2001C, with a function generator and filters feeding CH1 and CH2.</span></li>
+      <li><a href="Finished/kmap_editor.html">Truth Table &amp; Karnaugh Map Editor</a>
+        <span class="desc">Build truth tables and simplify them with K-maps.</span></li>
+    </ul>
+    <h3>Activities</h3>
+    <ul>
+      <li><a href="tools/oscilloscope/activities/phase-period-amplitude.html">Phase Shift, Period and Amplitude</a>
+        <span class="desc">A guided oscilloscope activity that ends in a Report.</span></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="phy4120">
+    <h2 id="phy4120">PHY 4120 <span class="name">Experimental Physics</span></h2>
+    <h3>Tools</h3>
+    <ul>
+      <li><a href="tools/vernier/">Vernier Caliper</a>
+        <span class="desc">Practise reading a 0.05 mm vernier caliper: outside, inside and depth measurements.</span></li>
+      <li><a href="tools/least-squares/">Least Squares Fitting</a>
+        <span class="desc">Linearize a physical model, fit a straight line by dragging its (m, b) handle, and judge it by SSE, R², residuals and error bars.</span></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="phy4300">
+    <h2 id="phy4300">PHY 4300</h2>
+    <h3>Tools</h3>
+    <ul>
+      <li><a href="tools/electrostatics/">Electrostatics</a>
+        <span class="desc">A charged circular conductor in an applied field, with electric field, potential and Gauss’s law Modes.</span></li>
+    </ul>
+    <h3>Activities</h3>
+    <ul>
+      <li><a href="tools/electrostatics/activities/conductor-properties.html">Conductor Properties</a>
+        <span class="desc">The field, potential and charge of a conductor in electrostatic equilibrium, explained as modus tollens proofs.</span></li>
+    </ul>
+  </section>
+
+  <footer>
+    For instructors: <a href="framework/v1/report-viewer/">Report Viewer</a> (open, score and export student Reports).
+  </footer>
+</main>
+</body>
+</html>
