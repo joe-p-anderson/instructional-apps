@@ -722,5 +722,8 @@ export default defineTool({
   id: 'least-squares',
   title: 'Least Squares Fitting',
   modes: [{ id: 'fit', title: 'Fit' }],
+  // The Graph column sits beside a 360 px Fit panel: below this the scatter plot is too narrow
+  // to read (about 180 px at the default 480).
+  minDisplayWidth: 760,
   mount,
 });

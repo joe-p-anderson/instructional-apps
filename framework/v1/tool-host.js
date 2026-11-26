@@ -12,15 +12,22 @@
 // The same frame/tab helpers are exported for the Activity runner UI, whose Part tabs
 // look the same as Standalone Mode tabs.
 
-import { defineTool, LAYOUTS } from './tool.js';
+import { defineTool, DEFAULT_MIN_DISPLAY_WIDTH, LAYOUTS } from './tool.js';
 import { h } from './ui-kit.js';
 import { browserStorage, standaloneStore, shareHash, readShareHash } from './persistence.js';
 
 /**
  * Header + tab strip + panel area, laid out by the Tool's panel layout (tool.js): .fw-app gets
  * the class fw-layout-<layout> and theme.css does the rest. Returns elements to fill.
+ *
+ * tasks: true when the panels hold Task columns (the Activity runner). In the `side` layout the
+ * frame then decides which form the Tasks take and marks it on .fw-app as data-side-form:
+ * "column" (the 330 px Tasks column) or "drawer" (the Task drawer), the latter whenever the
+ * Tasks column would leave the shown Display narrower than minDisplayWidth. It is recomputed
+ * when the panel area resizes and on updateForm() (call it after showing another panel), and
+ * onFormChange(fn) hears fn(form) on each switch. Nothing is remounted: theme.css restyles.
  */
-export function createFrame(root, { title, subtitle, layout = LAYOUTS[0] }) {
+export function createFrame(root, { title, subtitle, layout = LAYOUTS[0], minDisplayWidth = DEFAULT_MIN_DISPLAY_WIDTH, tasks = false }) {
   document.documentElement.classList.add('fw-root');
   const tablist = h('div', { class: 'fw-tabs', role: 'tablist' });
   const panels = h('div', { class: 'fw-tabpanel-area', style: 'flex:1;min-height:0;display:flex;flex-direction:column' });
@@ -30,7 +37,27 @@ export function createFrame(root, { title, subtitle, layout = LAYOUTS[0] }) {
       subtitle ? h('div', { class: 'fw-subtitle' }, subtitle) : null));
   const app = h('div', { class: `fw-app fw-layout-${layout}` }, header, tablist, panels);
   root.replaceChildren(app);
-  return { app, header, tablist, panels };
+
+  const listeners = new Set();
+  const frame = { app, header, tablist, panels, updateForm() {}, onFormChange: (fn) => (listeners.add(fn), () => listeners.delete(fn)) };
+  if (layout !== 'side' || !tasks) return frame;
+
+  app.dataset.sideForm = 'column';
+  frame.updateForm = () => {
+    const shown = panels.querySelector(':scope > .fw-tabpanel:not([hidden]) .fw-displays');
+    const width = shown?.getBoundingClientRect().width ?? 0;
+    if (!width) return; // nothing laid out yet (name gate, hidden panels)
+    // The Display's width with the Tasks column shown: in drawer form the Tool spans the
+    // column's width as well, and the Display is the Tool's flexible part.
+    const column = parseFloat(getComputedStyle(app).getPropertyValue('--fw-tasks-column')) || 0;
+    const withColumn = app.dataset.sideForm === 'drawer' ? width - column : width;
+    const form = withColumn < minDisplayWidth ? 'drawer' : 'column';
+    if (form === app.dataset.sideForm) return;
+    app.dataset.sideForm = form;
+    for (const fn of [...listeners]) fn(form);
+  };
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => frame.updateForm()).observe(panels);
+  return frame;
 }
 
 /**
