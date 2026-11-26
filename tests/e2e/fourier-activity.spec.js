@@ -73,9 +73,9 @@ test('submitting correct hand-computed coefficients passes, and the spectrum app
   await expect(p2.locator('[data-display="product"]')).toBeVisible();
   await expect(spectrum).toBeHidden();
 
-  await submit(p2, '2.1', { 'a₁ (V)': '-0.5', 'b₁ (V)': '0.866' });
+  await submit(p2, '2.1', { 'a₁ (V)': '0', 'b₁ (V)': '1' });
   await expect(spectrum).toBeHidden();
-  await submit(p2, '2.2', { 'A₁ (V)': '1', 'φ₁ (°)': '240' });
+  await submit(p2, '2.2', { 'A₁ (V)': '1', 'φ₁ (°)': '270' });
   await expect(spectrum).toBeVisible();
 });
 
@@ -104,7 +104,7 @@ const setN = async (scope, n) => {
   await box.press('Enter');
 };
 
-test('a full Run passes every Task through Part 5 and downloads a Report with the Display snapshots', async ({ page }) => {
+test('a full Run passes every Task through Part 4 and downloads a Report with the Display snapshots', async ({ page }) => {
   test.setTimeout(120_000);
   await open(page);
   await enterName(page);
@@ -123,8 +123,8 @@ test('a full Run passes every Task through Part 5 and downloads a Report with th
 
   await page.getByRole('tab', { name: /Part 2/ }).click();
   const p2 = part(page, 2);
-  await submit(p2, '2.1', { 'a₁ (V)': '-0.5', 'b₁ (V)': '0.866' });
-  await submit(p2, '2.2', { 'A₁ (V)': '1', 'φ₁ (°)': '-120' });
+  await submit(p2, '2.1', { 'a₁ (V)': '0', 'b₁ (V)': '1' });
+  await submit(p2, '2.2', { 'A₁ (V)': '1', 'φ₁ (°)': '-90' });
   await choose(p2, /^Their positive and negative areas cancel/);
   await submit(p2, '2.3', {});
 
@@ -137,28 +137,34 @@ test('a full Run passes every Task through Part 5 and downloads a Report with th
   await choose(p3, 'The even terms are zero, and Aₙ ∝ 1/n for odd n.');
   await submit(p3, '3.2', {});
 
-  // Parts 4 and 5: gain only, phase only, both (with the choice), why both, the 3rd harmonic by hand.
-  for (const [n, phi] of [[4, '-135'], [5, '-45']]) {
-    await page.getByRole('tab', { name: new RegExp(`Part ${n}`) }).click();
-    const p = part(page, n);
-    await expect(p.getByRole('combobox', { name: 'Filter', exact: true })).toBeDisabled();
-    await expect(p.getByRole('checkbox', { name: 'Apply gain', exact: true })).not.toBeChecked();
-    await toggles(p, true, false);
-    await submit(p, `${n}.1`, {});
-    await toggles(p, false, true);
-    await submit(p, `${n}.2`, {});
-    await toggles(p, true, true);
-    await choose(p, 'Gain and phase together');
-    await submit(p, `${n}.3`, {});
-    await p.getByRole('textbox', { name: /^Why does the/ }).fill('Each harmonic must be scaled and delayed.');
-    await submit(p, `${n}.4`, {});
-    await submit(p, `${n}.5`, { 'Output A₃ (V)': '0.300', 'Output φ₃ (°)': phi });
-  }
-  const p5 = part(page, 5);
-  await choose(p5, /^The complex gains add to 1/);
+  // Part 4, low-pass: gain only, phase only, both (with the choice), why both, the 3rd harmonic by hand.
+  await page.getByRole('tab', { name: /Part 4/ }).click();
+  const p4 = part(page, 4);
+  const filter = p4.getByRole('combobox', { name: 'Filter', exact: true });
+  await expect(filter).toBeDisabled();
+  await expect(p4.getByRole('checkbox', { name: 'Apply gain', exact: true })).not.toBeChecked();
+  await toggles(p4, true, false);
+  await submit(p4, '4.1', {});
+  await toggles(p4, false, true);
+  await submit(p4, '4.2', {});
+  await toggles(p4, true, true);
+  await choose(p4, 'Gain and phase together');
+  await submit(p4, '4.3', {});
+  await p4.getByRole('textbox', { name: /^Why does the/ }).fill('Each harmonic must be scaled and delayed.');
+  await submit(p4, '4.4', {});
+  await submit(p4, '4.5', { 'Output A₃ (V)': '0.300', 'Output φ₃ (°)': '-135' });
+
+  // Then the switch to high-pass (with the spikes choice), its 3rd harmonic and the two gains.
+  await expect(filter).toBeEnabled();
+  await filter.selectOption('highpass');
+  await choose(p4, 'Gain and phase together');
+  await submit(p4, '4.6', {});
+  await expect(filter).toBeDisabled();
+  await submit(p4, '4.7', { 'Output A₃ (V)': '0.300', 'Output φ₃ (°)': '-45' });
+  await choose(p4, /^The complex gains add to 1/);
   const dialog = page.getByRole('dialog', { name: /Activity complete/ });
   await expect(dialog).toBeHidden();
-  await submit(p5, '5.6', { '|H_LP| + |H_HP| at 3 kHz': '1.414' });
+  await submit(p4, '4.8', { '|H_LP| + |H_HP| at 3 kHz': '1.414' });
 
   await expect(dialog).toBeVisible();
   const [file] = await Promise.all([
@@ -167,7 +173,7 @@ test('a full Run passes every Task through Part 5 and downloads a Report with th
   ]);
   const { report, checksumOk } = readReport(await readFile(await file.path(), 'utf8'));
   expect(checksumOk).toBe(true);
-  expect(report.parts.map((p) => p.id)).toEqual(['synthesis', 'sine', 'square', 'lowpass', 'highpass']);
+  expect(report.parts.map((p) => p.id)).toEqual(['synthesis', 'sine', 'square', 'filters']);
   expect(report.parts.flatMap((p) => p.tasks).every((t) => t.passed)).toBe(true);
   expect(report.earned).toBe(report.possible);
 
@@ -183,6 +189,8 @@ test('a full Run passes every Task through Part 5 and downloads a Report with th
   expect(snapshotIds(1, 'ab-1')).toEqual(['product']);
   expect(snapshotIds(2, 'A-phi-square')).toEqual(['product']);
   expect(snapshotIds(2, 'pattern')).toEqual(['product', 'spectrum']);
-  const why = report.parts[4].tasks.find((t) => t.id === 'why-both').attempts[0];
+  const why = report.parts[3].tasks.find((t) => t.id === 'why-both').attempts[0];
   expect(why.answers['why-both']).toBe('Each harmonic must be scaled and delayed.');
+  const switched = report.parts[3].tasks.find((t) => t.id === 'to-highpass').attempts.find((a) => a.passed);
+  expect(switched.state).toMatchObject({ filter: 'highpass', fc: 3000, applyGain: true, applyPhase: true });
 });

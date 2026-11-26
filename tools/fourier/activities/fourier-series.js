@@ -1,8 +1,9 @@
 // Activity "Frequency Domain: Fourier Series" (PHY/EGR 3120), on the fourier Tool.
 // Part 1 builds the square and triangle waves from their series (Synthesis Mode); Parts 2 and 3
-// take a shifted sine and the square wave apart by hand (Analysis Mode). Parts 4 and 5 pass the
-// square wave through the RC low-pass and high-pass (Synthesis Mode, where the time plot shows
-// the filtered sum and its N = ∞ curve): gain only, phase only, both, then one harmonic by hand.
+// take a sine and the square wave apart by hand (Analysis Mode). Part 4 passes the square wave
+// through the RC low-pass (Synthesis Mode, where the time plot shows the filtered sum and its
+// N = ∞ curve): gain only, phase only, both, then one harmonic by hand; a Task then unlocks the
+// filter type for the switch to high-pass, its spikes, its 3rd harmonic and the two gains' sum.
 //
 // Pure data (no DOM): the runner core and Node tests import it directly. Prompts and Questions
 // may use \( \) math; the ones students answer use Unicode subscripts so they read the same
@@ -20,9 +21,11 @@
 //
 // Every Setup fixes f₀ = 1 kHz, ±1 V and no offset; Parts 1–3 fix the filter off, and the first
 // Task of each locks those Controls (FIXED); the coefficient Tasks hide the spectrum (and the Task
-// after them shows it), and the filter curves stay hidden. Parts 4 and 5 fix the square wave,
-// f_c = 3 kHz and the filter type with both toggles off, lock all but the toggles (FILTER_LOCK)
-// and unlock the toggles (TOGGLES), whose states the toggle Tasks' Conditions check.
+// after them shows it), and the filter curves stay hidden. Part 4 fixes the square wave,
+// f_c = 3 kHz and the low-pass with both toggles off, locks all but the toggles (FILTER_LOCK)
+// and unlocks the toggles (TOGGLES), whose states the toggle Tasks' Conditions check. The
+// switch Task unlocks the filter type (its Condition checks high-pass with both toggles on),
+// and the Task after it locks the filter type again.
 
 const FIXED = ['amp', 'f0', 'offset', 'shift', 'filter', 'fc', 'applyGain', 'applyPhase'];
 const SETUP = { amp: 1, f0: 1000, offset: 0, filter: 'off' };
@@ -112,25 +115,25 @@ export default {
     },
     {
       id: 'sine',
-      title: 'Part 2: A Shifted Sine',
+      title: 'Part 2: A Sine',
       mode: 'analysis',
-      setup: { ...SETUP, waveform: 'sine', shift: 30, testFunction: 'cos', n: 1 },
+      setup: { ...SETUP, waveform: 'sine', shift: 0, testFunction: 'cos', n: 1 },
       tasks: [
         {
           id: 'ab-1',
           title: 'a₁ and b₁ by hand',
-          prompt: 'The input is a 1 V, 1 kHz sine delayed by 30° of its period. The product plot shows the input '
+          prompt: 'The input is a 1 V, 1 kHz sine, v(t) = sin(ω₀t). The product plot shows the input '
             + 'times the test function over one period T, with positive and negative area shaded. The net area '
             + 'gives \\(a_n = \\frac{2}{T}\\int_0^T v(t)\\cos(n\\omega_0 t)\\,dt\\) with the cos test function, and '
             + '\\(b_n = \\frac{2}{T}\\int_0^T v(t)\\sin(n\\omega_0 t)\\,dt\\) with sin. Compute a₁ and b₁ by hand.',
           lock: [...FIXED, 'waveform'],
           hide: ['spectrum', 'filter-curves'],
           questions: [
-            { ...AMP, id: 'a1', prompt: 'a₁ (V)', answer: 'enc1:S0cDQw' },
-            { ...AMP, id: 'b1', prompt: 'b₁ (V)', answer: 'enc1:VlkVQAcQUVRHRVJbFVBRR11E' },
+            { ...ZERO, id: 'a1', prompt: 'a₁ (V)', answer: 'enc1:Vg' },
+            { ...AMP, id: 'b1', prompt: 'b₁ (V)', answer: 'enc1:Vw' },
           ],
           points: 0,
-          hint: { after: 3, text: 'Write the shifted sine as sin(ω₀t − 30°) and expand it with the angle-difference identity: it is a mix of sin(ω₀t) and cos(ω₀t). Over one period, cos² and sin² each average to one half and cos·sin averages to zero.' },
+          hint: { after: 3, text: 'Look at where the shaded areas of each product lie over the period, and which ones cancel. By hand: over one period, sin² averages to one half and cos·sin averages to zero.' },
         },
         {
           id: 'A-phi-1',
@@ -140,10 +143,10 @@ export default {
           hide: ['spectrum'],
           questions: [
             { ...AMP, id: 'A1', prompt: 'A₁ (V)', answer: 'enc1:Vw' },
-            { ...PHASE, id: 'phi1', prompt: 'φ₁ (°)', answer: 'enc1:S0YfRg' },
+            { ...PHASE, id: 'phi1', prompt: 'φ₁ (°)', answer: 'enc1:S04d' },
           ],
           points: 0,
-          hint: { after: 3, text: 'A₁ = √(a₁² + b₁²). For φ₁, cos φ₁ has the sign of a₁ and sin φ₁ the sign of −b₁: use both signs to find the quadrant before you take an arctangent.' },
+          hint: { after: 3, text: 'A₁ = √(a₁² + b₁²). For φ₁, cos φ₁ has the sign of a₁ and sin φ₁ the sign of −b₁. With a₁ zero an arctangent is no help: find the angle whose cosine is zero and whose sine has the sign of −b₁.' },
         },
         {
           id: 'off-harmonic',
@@ -158,7 +161,7 @@ export default {
               { id: 'zero', text: 'Their positive and negative areas cancel, so a₂, b₂, a₃ and b₃ are all zero: the sine has no 2nd or 3rd harmonic.' },
               { id: 'small', text: 'Their net areas are small but not zero, so the sine has weak 2nd and 3rd harmonics.' },
               { id: 'cos-only', text: 'Only the cos products cancel; the sin products leave a net area.' },
-              { id: 'shift', text: 'They cancel only because of the 30° shift.' },
+              { id: 'start', text: 'They cancel only because this sine starts at zero at t = 0.' },
             ],
             correct: 'enc1:RA1IBF4C',
             points: 1,
@@ -221,14 +224,14 @@ export default {
       ],
     },
     {
-      id: 'lowpass',
-      title: 'Part 4: Low-Pass on the Square',
+      id: 'filters',
+      title: 'Part 4: RC Filters on the Square Wave',
       mode: 'synthesis',
       setup: { ...FILTERED, filter: 'lowpass' },
       tasks: [
         {
           id: 'gain-only',
-          title: 'Gain only',
+          title: 'Low-pass: gain only',
           prompt: 'The 1 V, 1 kHz square wave now feeds the first-order RC low-pass filter from the RC Activity, '
             + 'with f_c = 3 kHz. The filter acts on each harmonic in two ways: <b>Apply gain</b> scales its amplitude '
             + 'by the gain |H| at its frequency, and <b>Apply phase shift</b> adds the phase shift ∠H to its phase. Turn on '
@@ -240,7 +243,7 @@ export default {
         },
         {
           id: 'phase-only',
-          title: 'Phase only',
+          title: 'Low-pass: phase only',
           prompt: 'Now turn on Apply phase shift only: every harmonic keeps its amplitude but is delayed by the filter. '
             + 'Compare the shape with the square wave and with the gain-only shape.',
           condition: 'enc1:PQwPBUVBFwRRT0MNXRQJDSITGwtMWAIOFAxaTABHX0YgKCFFHBJEUBQQSAJ9QQEEH1dbTmwUFRgcUhUEBxoABAMfGV1fHkdTNSUmRRIKElAWB0EPYUgCEhZXTU5IFRAVCQFQXxoGVQ5JW09BAQIAVA0lMEVcEgoTJwddGkgAEwkSBgRMXgwMEhFSHQtMCX0',
@@ -248,7 +251,7 @@ export default {
         },
         {
           id: 'both',
-          title: 'Gain and phase',
+          title: 'Low-pass: gain and phase',
           prompt: 'Turn on both Apply gain and Apply phase shift. Try each of the three settings again if you like, and raise N to watch the partial sum approach the N = ∞ curve.',
           condition: 'enc1:PQwPBUVBFwRRT0MNXRQJDSITGwtMWAIOFAxaTABHX1QzMTcMEkRRQwESWTpQQgYNUU9DLV0UCQ1FFRMMAFRPBUcEF1tRFhFBNSFwGhJRQEEKDn0eUFMGQ19XBB1YBQkHR0gGFxsRDEkRGElHFhEpQSMhPgIKEnFBFhtUVkFIAhIWVRIERAIRVAocUBgz',
           questions: [{
@@ -279,8 +282,8 @@ export default {
           points: 0,
         },
         {
-          id: 'harmonic-3',
-          title: 'The output 3rd harmonic',
+          id: 'lowpass-3',
+          title: 'Low-pass: the output 3rd harmonic',
           prompt: 'Hand-compute the filtered output\'s 3rd harmonic, from the input\'s A₃ and φ₃ (Part 3). '
             + 'The first-order RC low-pass filter has gain |H| = 1/√(1 + (f/f_c)²) and phase shift ∠H = −arctan(f/f_c), '
             + 'at the harmonic\'s frequency f. The output harmonic has amplitude A₃·|H| and phase φ₃ + ∠H.',
@@ -291,37 +294,14 @@ export default {
           points: 0,
           hint: { after: 3, text: 'The 3rd harmonic is at f = 3f₀: start from f/f_c there. Multiply the input\'s A₃ by |H|, and add ∠H, in degrees, to the input\'s φ₃.' },
         },
-      ],
-    },
-    {
-      id: 'highpass',
-      title: 'Part 5: High-Pass on the Square',
-      mode: 'synthesis',
-      setup: { ...FILTERED, filter: 'highpass' },
-      tasks: [
         {
-          id: 'gain-only',
-          title: 'Gain only',
-          prompt: 'The same square wave now feeds the first-order RC high-pass filter, f_c = 3 kHz: the output is '
-            + 'the voltage V_R across the resistor. Turn on Apply gain only, and compare the partial sum and the '
-            + 'N = ∞ curve with the square wave.',
-          lock: FILTER_LOCK,
-          show: TOGGLES,
-          condition: 'enc1:PQwPBUVBFwRRT0MNXRQJDSITGwtMWAIOFAxaTABHX1QzMTcMEkRRQwESWTpQQgYNUU9DLV0UCQ1FFRMMAFRPBUcEF1tRFhFBNSFwGhJRQEEKDn0eUFMGQ19XBB1YBQkHR0gUBAIHRUdHDVpSFAARbCAmN0wSChJwFgdBDxFQCwAAEEEfRQ0DAEUdFANMCX0',
-          points: 1,
-        },
-        {
-          id: 'phase-only',
-          title: 'Phase only',
-          prompt: 'Now turn on Apply phase shift only. The high-pass filter shifts each harmonic\'s phase forward rather than back.',
-          condition: 'enc1:PQwPBUVBFwRRT0MNXRQJDSITGwtMWAIOFAxaTABHX0YgKCFFHBJEUBQQSAJ9QQEEH1dbTmwUFRgcUhUEBxoABAMfGV1fHkdTNSUmRRIKElAWB0EPYUgCEhZXTU5IFRAVCQFQXxoGVQ5JW09BAQIAVA0lMEVcEgoTJwddGkgAEwkSBgRMXgwMEhFSHQtMCX0',
-          points: 1,
-        },
-        {
-          id: 'both',
-          title: 'Gain and phase',
-          prompt: 'Turn on both Apply gain and Apply phase shift, and raise N to watch the partial sum approach the N = ∞ curve.',
-          condition: 'enc1:PQwPBUVBFwRRT0MNXRQJDSITGwtMWAIOFAxaTABHX1QzMTcMEkRRQwESWTpQQgYNUU9DLV0UCQ1FFRMMAFRPBUcEF1tRFhFBNSFwGhJRQEEKDn0eUFMGQ19XBB1YBQkHR0gGFxsRDEkRGElHFhEpQSMhPgIKEnFBFhtUVkFIAhIWVRIERAIRVAocUBgz',
+          id: 'to-highpass',
+          title: 'Switch to high-pass',
+          prompt: 'The Filter type is now unlocked. Switch it to <b>High-pass</b>: the output is now the voltage V_R '
+            + 'across the resistor, with the same f_c = 3 kHz. Try gain only and phase only on the high-pass if you '
+            + 'like, then submit with both Apply gain and Apply phase shift on.',
+          show: ['filter'],
+          condition: 'enc1:PQwPBUVBFwRRT0MKRAgRERdQXkcLBVUKCQoZGlENDEcpNDNTQxIcExIWXxFUVC8AERANThdGERwAUhoMCRwNGwQKSAAVDAlUJDZwXRxLEkISFlkTExpBAAMFDRVqBQwaR15QAB8BQQcWWwFUARAADGMwM1JXVUR9BxVIGhMaQSADBQ0VDQMEHQtSHQtMCQwQRwpPQQcARxpjJSJQXElgWQcESFQdAgYQBhQNHw9eEQYQF15HGhVSDAANd0ERAAkCe2YTUEBcSREWH0wFVAAQCRoTFUxCCkcJOA',
           questions: [{
             id: 'spikes',
             kind: 'choice',
@@ -338,29 +318,18 @@ export default {
           points: 1,
         },
         {
-          id: 'why-both',
-          title: 'Why both?',
-          prompt: 'Answer in a few sentences.',
-          questions: [{
-            id: 'why-both',
-            kind: 'text',
-            prompt: 'Why does the high-pass filter need both its gain and its phase shift to produce the decaying spikes? Compare with what you found for the low-pass.',
-            points: 1,
-          }],
-          points: 0,
-        },
-        {
-          id: 'harmonic-3',
-          title: 'The output 3rd harmonic',
+          id: 'highpass-3',
+          title: 'High-pass: the output 3rd harmonic',
           prompt: 'Hand-compute the high-pass output\'s 3rd harmonic, from the input\'s A₃ and φ₃ (Part 3). '
             + 'The first-order RC high-pass filter has gain |H| = 1/√(1 + (f_c/f)²) and phase shift ∠H = arctan(f_c/f), '
             + 'at the harmonic\'s frequency f. The output harmonic has amplitude A₃·|H| and phase φ₃ + ∠H.',
+          lock: ['filter'],
           questions: [
             { ...AMP, id: 'A3out', prompt: 'Output A₃ (V)', answer: 'enc1:VlkeRgERU1RHRllbHF1VR1BG' },
             { ...PHASE, id: 'phi3out', prompt: 'Output φ₃ (°)', answer: 'enc1:S0MY' },
           ],
           points: 0,
-          hint: { after: 3, text: 'The 3rd harmonic is at f = 3f₀: start from f_c/f there. Multiply the input\'s A₃ by |H|, and add ∠H, in degrees, to the input\'s φ₃. The high-pass ∠H is positive.' },
+          hint: { after: 3, text: 'The 3rd harmonic is at f = 3f₀: start from f_c/f there. Multiply the input\'s A₃ by |H|, and add ∠H, in degrees, to the input\'s φ₃. The high-pass ∠H is positive: it shifts the phase forward rather than back.' },
         },
         {
           id: 'gains-add',
