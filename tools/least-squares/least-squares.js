@@ -44,7 +44,7 @@ const STYLE = `
 .ls-residuals { height: 170px; }
 .ls-plane { height: 300px; touch-action: none; cursor: crosshair; }
 .ls-scatter.ls-editing { cursor: ns-resize; touch-action: none; }
-.ls-caption { font-size: 14px; font-variant: small-caps; letter-spacing: 0.12em; color: var(--fw-text-muted); }
+.ls-caption { font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--fw-text-muted); }
 .ls-note { font-size: 13px; color: var(--fw-text-dim); font-style: italic; line-height: 1.4; margin: 0;
   border-left: 3px solid var(--fw-border); padding-left: 8px; }
 .ls-legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 12px; font-size: 13px; color: var(--fw-text-dim); }
