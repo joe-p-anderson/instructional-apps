@@ -362,6 +362,11 @@ html.fw-root, html.fw-root body {
 .fw-share-status { font-size: 14px; font-style: italic; color: var(--fw-text-dim); }
 .fw-share-status:empty { display: none; }
 
+/* Header save status (tool-host.js saveStatus): muted "Saved hh:mm", or the warning in the miss colour */
+.fw-save-status { font-size: 14px; color: var(--fw-text-dim); white-space: nowrap; }
+.fw-save-status:empty { display: none; }
+.fw-save-status[data-state="failed"] { color: var(--fw-red); font-weight: 600; }
+
 /* ── Activity runner UI: name gate, Task cards, Part progress ── */
 .fw-app .fw-tabs[hidden], .fw-app .fw-tabpanel-area[hidden], .fw-student[hidden], .fw-download[hidden], .fw-task-hint[hidden] { display: none !important; }
 .fw-student { font-size: 16px; color: var(--fw-text-dim); font-style: italic; white-space: nowrap; }

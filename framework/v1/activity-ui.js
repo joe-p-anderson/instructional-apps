@@ -7,7 +7,7 @@
 //   The Run autosaves to `storage` (default localStorage; null disables it), keyed by Activity
 //   id, and a saved Run is restored on load in place of the name gate.
 //   The header shows the Activity's title and course, the Part tabs, then the actions: the
-//   student's name, Download Report and the ⋯ menu, which holds Start over (confirmed; discards
+//   student's name, the save status (tool-host.js saveStatus), Download Report and the ⋯ menu, which holds Start over (confirmed; discards
 //   the saved Run and reloads the page for a new one) and Print.
 //   All judging, ordering and Control exposure come from the core; this layer only renders
 //   what runner.parts()/runner.task() report and forwards Start and Submit.
@@ -21,12 +21,12 @@
 import { browserStorage, runStore } from './persistence.js';
 import { createRunner } from './runner/index.js';
 import { reportFilename } from './report.js';
-import { createFrame, createTabs, printItem } from './tool-host.js';
+import { createFrame, createTabs, printItem, saveStatus } from './tool-host.js';
 import { defineTool } from './tool.js';
 import { h } from './ui-kit.js';
 import { typeset } from './vendor.js';
 
-export function mountActivity(definition, activity, root, { conditionTypes, storage = browserStorage() } = {}) {
+export function mountActivity(definition, activity, root, { conditionTypes, storage } = {}) {
   const tool = defineTool(definition);
   if (activity.tool !== tool.id) throw new Error(`Activity "${activity.id}" is for Tool "${activity.tool}", not "${tool.id}".`);
   if (!document.title) document.title = activity.title;
@@ -64,8 +64,11 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
   host.select = tabs.select;
 
   // ── Autosave: the whole Run after every Start, Submit and Tool State change ──
-  const store = runStore(activity.id, storage);
-  const autosave = () => { if (host.runner.run) store.save(host.runner.save()); };
+  // storage: null turns autosave (and its status) off; left out, it is localStorage.
+  const autosaveOn = storage !== null;
+  const store = runStore(activity.id, storage === undefined ? browserStorage() : storage);
+  let reportSave = () => {}; // the header's save status, once it exists
+  const autosave = () => { if (host.runner.run) reportSave(store.save(host.runner.save())); };
   let restored = false;
   try { restored = host.runner.restore(store.load()); } catch { /* unusable save: new Run */ }
   for (const instance of Object.values(host.instances)) instance.state.onChange(autosave);
@@ -74,6 +77,7 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
   const student = h('div', { class: 'fw-student', hidden: true });
   const download = reportButton(host);
   frame.addAction(student);
+  if (autosaveOn) reportSave = saveStatus(frame);
   frame.addAction(download);
   const startOver = frame.menu.add({ id: 'start-over', label: 'Start over', onSelect: () => {
     if (!confirm('Start over? This discards your progress and begins a new Run; you will enter your name again.')) return;
