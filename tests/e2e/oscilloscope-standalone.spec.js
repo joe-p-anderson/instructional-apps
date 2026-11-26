@@ -23,8 +23,7 @@ test('Standalone mode shows every Control, unlocked', async ({ page }) => {
     await expect(page.getByRole('slider', { name, exact: true })).toBeVisible();
     await expect(page.getByRole('slider', { name, exact: true })).toBeEnabled();
     await expect(page.getByRole('spinbutton', { name, exact: true })).toBeEnabled();
-    const reset = page.locator('.fw-slider', { has: page.getByRole('slider', { name, exact: true }) })
-      .getByRole('button', { name: /^Reset to / });
+    const reset = page.getByRole('group', { name, exact: true }).getByRole('button', { name: /^Reset to / });
     await expect(reset).toBeDisabled();
   }
 
