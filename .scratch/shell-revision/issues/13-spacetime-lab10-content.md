@@ -8,6 +8,6 @@ Spec: .scratch/shell-revision/spec.md (Content tickets; stories 79–80).
 
 **Status:** ready-for-agent
 
-- [ ] Spacetime Condition unit tests: miss feedback contains no internal symbols such as u, and names what is missing.
-- [ ] e2e: Lab 10 Part 1 opens with Worldline selected, and each later Part opens on the tool its first Task names.
-- [ ] The existing spacetime Activity e2e spec passes.
+- [x] Spacetime Condition unit tests: miss feedback contains no internal symbols such as u, and names what is missing.
+- [x] e2e: Lab 10 Part 1 opens with Worldline selected, and each later Part opens on the tool its first Task names.
+- [x] The existing spacetime Activity e2e spec passes.
