@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { copyShareLink } from './helpers/share-link.js';
 
 const PAGE = '/tools/electrostatics/';
 
@@ -137,8 +138,7 @@ test('a reload and a share link restore the same setup', async ({ page, browser 
   expect(await snapshot(page)).toEqual(want);
   await expect(page.getByRole('spinbutton', { name: 'Q', exact: true })).toHaveValue('-2.3');
 
-  await page.getByRole('button', { name: 'Copy share link' }).click();
-  const url = await page.getByRole('textbox', { name: 'Share link' }).inputValue();
+  const url = await copyShareLink(page);
   expect(url).toMatch(/#s=/);
   const other = await browser.newContext();
   const theirs = await other.newPage();

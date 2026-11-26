@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { copyShareLink } from './helpers/share-link.js';
 
 const PAGE = '/tools/oscilloscope/';
 
@@ -34,10 +35,8 @@ test('a share link reproduces the State in a fresh browser', async ({ page, brow
   await setNumber(page, 'f', 0.4);
   await setNumber(page, 'Δt', 1.5);
 
-  await page.getByRole('button', { name: 'Copy share link' }).click();
-  const link = page.getByRole('textbox', { name: 'Share link' });
-  await expect(link).toHaveValue(/#s=/);
-  const url = await link.inputValue();
+  const url = await copyShareLink(page);
+  expect(url).toMatch(/#s=/);
 
   // A classmate opens the link: new context, so no autosave to fall back on.
   const other = await browser.newContext();
