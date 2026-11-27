@@ -14,6 +14,7 @@
 import { h } from '../../ui-kit.js';
 import { openActivity } from './core.js';
 import * as folderModule from './folder.js';
+import { loadTool, mountLive } from './tool-info.js';
 import { slugFromTitle, newActivityProblems, createActivity } from './new-activity.js';
 import { TOOLS } from '../../tool-list.js';
 
@@ -29,11 +30,17 @@ let statusNote = null;
 let focusSerial = 0;  // one undo group per visit to a field
 let activities = [];  // the Open screen's list
 const filters = { q: '', course: '', tool: '' };
+let tool = null;      // the open Activity's Tool: { tool, conditionTypes, info } (tool-info.js)
+let toolError = null; // why it couldn't be loaded
+let live = null;      // the live Tool: { p, mode, setup, instance, box } (renderRight)
+let liveUpdaters = []; // the form's readouts of the live State, redrawn on every change of it
 
 window.activityEditor = {
   get folder() { return folder; },
   get editor() { return editor; },
   get path() { return current; },
+  get toolInfo() { return tool?.info; },
+  get live() { return live?.instance ?? null; },
 };
 
 // ───────────────────────── Remembered: the folder handle and the recents (IndexedDB) ──
@@ -291,9 +298,29 @@ async function openPath(path, { discard = false } = {}) {
   current = path;
   sel = { kind: 'activity' };
   statusNote = null;
+  useTool(next);
   await rememberRecent(path);
   show('main');
   render();
+}
+
+// Load the open Activity's Tool and its Tool info; the page redraws when it arrives (the
+// problems list gains the checks against it, the live Tool mounts).
+function useTool(session) {
+  const id = session.doc.tool;
+  if (tool?.tool.id === id) return;
+  destroyLive();
+  tool = null;
+  toolError = null;
+  loadTool(id).then((loaded) => {
+    if (editor !== session) return;
+    tool = loaded;
+    render();
+  }, (err) => {
+    if (editor !== session) return;
+    toolError = `The Tool “${id}” couldn't be loaded: ${err.message}`;
+    refresh();
+  });
 }
 
 // ───────────────────────── Editing ──
@@ -303,6 +330,14 @@ function commit(edit, { group } = {}) {
   editor.edit(edit, { group });
   statusNote = null;
   refresh();
+}
+
+// Apply one edit that changes the form's own shape (a new Mode, a Capture, a cleared value), and
+// redraw the form too.
+function commitAndRender(edit) {
+  editor.edit(edit);
+  statusNote = null;
+  render();
 }
 
 function undo() { if (editor.undo()) { statusNote = null; render(); } }
@@ -350,7 +385,7 @@ function refresh() {
   if (editor.dirty) setStatus('Unsaved changes', 'dirty');
   else setStatus(statusNote ?? 'No unsaved changes');
   document.title = `${title}: Activity editor`;
-  const problems = editor.problems();
+  const problems = editor.problems(tool?.info);
   renderOutline(problems);
   renderProblems(problems);
   renderRight();
@@ -387,8 +422,22 @@ function renderOutline(problems) {
       item(`p${p}`, 'ol-part', `${p + 1}`, escape(part.title || part.id || '(untitled Part)'), { kind: 'part', p }),
       ...(Array.isArray(part.tasks) ? part.tasks : []).map((task, t) =>
         item(`t${p}-${t}`, 'ol-task', `${p + 1}.${t + 1}`, task.title || escape(task.id ?? ''), { kind: 'task', p, t })),
-    ]));
+    ]),
+    h('button', { type: 'button', class: 'ol-add part', 'data-key': 'add-part', onclick: addPart }, '+ Part'));
   if (focused) nav.querySelector(`[data-key="${focused}"]`)?.focus();
+}
+
+// A new Part at the end, in the Tool's first Mode (or the last Part's, before the Tool loads),
+// selected with its title ready to type over.
+function addPart() {
+  const parts = Array.isArray(editor.doc.parts) ? editor.doc.parts : [];
+  const mode = tool?.tool.modes[0]?.id ?? parts.at(-1)?.mode ?? '';
+  editor.edit({ type: 'addPart', title: `Part ${parts.length + 1}: New Part`, mode });
+  statusNote = null;
+  select({ kind: 'part', p: editor.doc.parts.length - 1 });
+  const title = $('form').querySelector(`[data-path="parts.${sel.p}.title"]`);
+  title?.focus();
+  title?.select();
 }
 
 const escape = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -474,13 +523,128 @@ function activityForm() {
   ];
 }
 
+const setPart = (p, field, value) => ({ type: 'setPartField', p, field, value });
+const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+
+// A Setup value as typed: empty clears it (the Tool's default applies); JSON (a number, true or
+// false, a list, an object, a quoted string) is that value; anything else is text.
+function setupValue(text) {
+  const t = text.trim();
+  if (t === '') return undefined;
+  try { return JSON.parse(t); } catch { return t; }
+}
+const setupText = (v) => (v === undefined ? '' : typeof v === 'string' ? v : JSON.stringify(v));
+const fmt = (v) => (typeof v === 'number' ? String(Number(v.toPrecision(6))) : v === undefined ? '' : JSON.stringify(v));
+
+let captureNote = null; // said once in the Setup section after a Capture
+
 function partForm() {
-  const part = editor.doc.parts[sel.p];
-  return [h('h2', { html: escape(part.title ?? '') }), h('div', { class: 'ed-crumb' }, `Part ${sel.p + 1}`),
+  const { doc } = editor;
+  const p = sel.p;
+  const part = doc.parts[p];
+  const base = `parts.${p}`;
+  const parts = doc.parts;
+  const tasks = Array.isArray(part.tasks) ? part.tasks : [];
+  const info = tool && Object.hasOwn(tool.info.modes, part.mode) ? tool.info.modes[part.mode] : null;
+  const setup = isObject(part.setup) ? part.setup : {};
+
+  const heading = h('h2', { html: escape(part.title ?? '') });
+  const [titleLabel, titleInput] = field({ label: 'Title', path: `${base}.title`, value: part.title, class: 't wide', toEdit: (v) => setPart(p, 'title', v) });
+  titleInput.addEventListener('input', () => { heading.innerHTML = escape(titleInput.value); });
+
+  // The Mode picker offers only the Tool's Modes; a Mode the Tool doesn't have shows, unpickable.
+  const modeId = `f-${base}.mode`;
+  const modes = tool ? tool.tool.modes : [];
+  const modeSel = h('select', { class: 't', id: modeId, 'data-path': `${base}.mode`, disabled: !tool },
+    ...modes.map((m) => h('option', { value: m.id }, m.title)),
+    modes.some((m) => m.id === part.mode) ? null
+      : h('option', { value: part.mode ?? '', disabled: true }, tool ? `${part.mode} (not a Mode of the Tool)` : String(part.mode ?? '')));
+  modeSel.value = part.mode ?? '';
+  modeSel.addEventListener('change', () => commitAndRender(setPart(p, 'mode', modeSel.value)));
+
+  const move = (to) => { editor.edit({ type: 'movePart', p, to }); statusNote = null; select({ kind: 'part', p: to }); };
+  const remove = () => {
+    if (tasks.length && !confirm(`Delete Part ${p + 1} “${stripTags(part.title ?? part.id)}” and its ${tasks.length} Task${tasks.length === 1 ? '' : 's'}? (Undo brings it back.)`)) return;
+    editor.edit({ type: 'deletePart', p });
+    statusNote = null;
+    select(editor.doc.parts.length ? { kind: 'part', p: Math.max(0, p - 1) } : { kind: 'activity' });
+  };
+
+  const note = captureNote;
+  captureNote = null;
+  return [heading, h('div', { class: 'ed-crumb' }, `Part ${p + 1} of ${parts.length} · ${tasks.length} Task${tasks.length === 1 ? '' : 's'}`),
     section('Part', null,
-      h('div', { class: 'row' }, h('span', { class: 'flabel' }, 'Id'), h('span', { class: 'idfield', 'data-path': `parts.${sel.p}.id` }, h('code', {}, part.id ?? ''))),
-      h('div', { class: 'row' }, h('span', { class: 'flabel' }, 'Mode'), h('span', { 'data-path': `parts.${sel.p}.mode` }, part.mode ?? '')),
-      h('div', { class: 'row' }, h('span', { class: 'flabel' }, 'Tasks'), h('span', {}, String(part.tasks?.length ?? 0))))];
+      h('div', { class: 'row' }, titleLabel, titleInput),
+      h('div', { class: 'row' }, h('label', { for: modeId }, 'Mode'), modeSel,
+        h('span', { class: 'muted' }, tool ? "from the Tool's Modes" : toolError ? 'the Tool is not loaded' : 'loading the Tool…')),
+      h('div', { class: 'row' }, h('span', { class: 'flabel' }, 'Id'), h('span', { class: 'idfield', 'data-path': `${base}.id` }, h('code', {}, part.id ?? '')),
+        h('span', { class: 'muted' }, 'made from the first title; retitling keeps it')),
+      h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'btn', disabled: p === 0, onclick: () => move(p - 1) }, 'Move up'),
+        h('button', { type: 'button', class: 'btn', disabled: p === parts.length - 1, onclick: () => move(p + 1) }, 'Move down'),
+        h('button', { type: 'button', class: 'btn', onclick: remove }, 'Delete Part'))),
+    setupSection(p, part, setup, info, note),
+    section('Notes', 'not shown to students',
+      ...field({ label: 'Notes', path: `${base}.notes`, value: part.notes, textarea: true, rows: '3', toEdit: (v) => setPart(p, 'notes', v) }))];
+}
+
+const stripTags = (s) => String(s).replace(/<[^>]*>/g, '');
+
+// The Setup: Capture from the live Tool, then one row per Setup key, per Setup option, and per
+// value the Mode doesn't know (a problem, with a Remove).
+function setupSection(p, part, setup, info, note) {
+  const base = `parts.${p}.setup`;
+  const set = (key) => (text) => ({ type: 'setSetupValue', p, key, value: setupValue(text) });
+  const clear = (key, text = 'Clear') => h('button', { type: 'button', class: 'lnk', title: 'Clear: use the Tool default',
+    'aria-label': `${text} ${key}`, onclick: () => commitAndRender({ type: 'setSetupValue', p, key, value: undefined }) }, text.toLowerCase());
+  const rows = [];
+  const keys = info?.setupKeys ?? [];
+  const options = info?.setupOptions ?? [];
+  if (keys.length) rows.push(h('tr', { class: 'grp' }, h('td', { colspan: '4' }, 'Setup keys (State; Capture stores these)')));
+  for (const k of keys) {
+    const st = info.state[k];
+    const [label, input] = field({ label: [st?.label ?? k, h('div', { class: 'cid' }, k)], path: `${base}.${k}`, value: setupText(setup[k]),
+      class: 't num mono', placeholder: 'Tool default', 'aria-label': `Setup ${k}`, toEdit: set(k) });
+    const now = h('td', { class: 'live' });
+    liveUpdaters.push(() => {
+      const s = live?.p === p && live.instance ? live.instance.state.snapshot() : null;
+      now.textContent = s ? `${fmt(s[k])}${st?.unit ? ` ${st.unit}` : ''}` : '';
+    });
+    rows.push(h('tr', {}, h('td', {}, label), h('td', {}, input), now, h('td', {}, clear(k))));
+  }
+  if (options.length) rows.push(h('tr', { class: 'grp' }, h('td', { colspan: '4' }, 'Setup options (typed by hand; JSON for lists and objects)')));
+  for (const k of options) {
+    const [label, input] = field({ label: k, path: `${base}.${k}`, value: setupText(setup[k]), class: 't wide mono', placeholder: 'Tool default',
+      'aria-label': `Setup ${k}`, toEdit: set(k) });
+    rows.push(h('tr', {}, h('td', {}, label), h('td', { colspan: '2' }, input), h('td', {}, clear(k))));
+  }
+  for (const k of Object.keys(setup).filter((key) => info ? !keys.includes(key) && !options.includes(key) : true)) {
+    if (info) {
+      rows.push(h('tr', { class: 'bad', 'data-path': `${base}.${k}` },
+        h('td', {}, h('span', { class: 'sev' }, '⚠ '), k, h('div', { class: 'cid' }, 'not a Setup key or option of this Mode')),
+        h('td', { class: 'mono', colspan: '2' }, setupText(setup[k])), h('td', {}, clear(k, 'Remove'))));
+    } else {
+      const [label, input] = field({ label: k, path: `${base}.${k}`, value: setupText(setup[k]), class: 't wide mono', 'aria-label': `Setup ${k}`, toEdit: set(k) });
+      rows.push(h('tr', {}, h('td', {}, label), h('td', { colspan: '2' }, input), h('td', {}, clear(k))));
+    }
+  }
+  // Capture and Reset need the live Tool mounted at this Part, which happens after the form draws.
+  const mounted = () => Boolean(info && live?.p === p && live.instance);
+  const captureButton = h('button', { type: 'button', class: 'btn primary', disabled: true, onclick: () => {
+    if (!mounted()) return;
+    captureNote = `Captured ${keys.length} Setup key${keys.length === 1 ? '' : 's'} from the live Tool`;
+    commitAndRender({ type: 'captureSetup', p, setupKeys: keys, snapshot: live.instance.state.snapshot() });
+  } }, '⤓ Capture from the live Tool');
+  const resetButton = h('button', { type: 'button', class: 'lnk', disabled: true,
+    onclick: () => { destroyLive(); renderRight(); } }, '↺ Reset the live Tool to this Setup');
+  liveUpdaters.push(() => { captureButton.disabled = resetButton.disabled = !mounted(); });
+  return section('Setup', 'what the student starts from',
+    h('div', { class: 'row' }, captureButton,
+      h('span', { class: 'muted' }, info ? `stores only ${info.title}'s Setup keys, never derived State` : 'needs the Tool and a known Mode')),
+    note ? h('p', { class: 'muted', role: 'status' }, note) : null,
+    h('table', { class: 'grid', 'data-path': base }, h('thead', {}, h('tr', {}, h('th', {}, 'Setup value'), h('th', {}, 'Value'), h('th', {}, 'Live Tool now'), h('th'))),
+      h('tbody', {}, ...rows)),
+    h('div', { class: 'row', style: 'margin-top:8px' }, resetButton));
 }
 
 function taskForm() {
@@ -499,11 +663,78 @@ function renderForm() {
   const { doc } = editor;
   if (sel.kind !== 'activity' && !doc.parts?.[sel.p]) sel = { kind: 'activity' };
   if (sel.kind === 'task' && !doc.parts[sel.p].tasks?.[sel.t]) sel = { kind: 'part', p: sel.p };
+  liveUpdaters = [];
   $('form').replaceChildren(...FORMS[sel.kind]());
 }
 
+// ───────────────────────── The live Tool ──
+//
+// The real Tool, mounted at the selected Part's Mode and Setup (Part 1's with the Activity
+// selected). It is remounted only when the Part, its Mode or its Setup changes (or the Tool
+// arrives); any other edit leaves it, and the instructor's arrangement of it, alone. Operating it
+// never edits the Activity: only Capture (in the Part form) reads it into the Setup.
+
+const livePart = () => {
+  const parts = Array.isArray(editor.doc.parts) ? editor.doc.parts : [];
+  if (!parts.length) return null;
+  const p = sel.kind === 'activity' ? 0 : sel.p;
+  return parts[p] ? { p, part: parts[p] } : null;
+};
+
 function renderRight() {
-  $('right').replaceChildren(h('h3', { class: 'flabel' }, 'Live Tool'), h('p', { class: 'muted' }, 'The Tool for the selected Part shows here.'));
+  const right = $('right');
+  const target = livePart();
+  const part = target?.part;
+  const mode = part && tool && Object.hasOwn(tool.info.modes, part.mode) ? tool.info.modes[part.mode] : null;
+  const same = live && live.session === editor && live.tool === tool && live.p === target?.p
+    && live.mode === part?.mode && live.setup === part?.setup && right.contains(live.box);
+  if (!same) mountRight(right, target, mode);
+  for (const f of liveUpdaters) f();
+}
+
+function mountRight(right, target, mode) {
+  destroyLive();
+  const message = (text, error) => right.replaceChildren(h('h3', { class: 'flabel' }, 'Live Tool'),
+    h('p', { class: error ? 'ed-tool-error' : 'muted', role: error ? 'alert' : null }, text));
+  if (!tool) return message(toolError ?? 'Loading the Tool…', Boolean(toolError));
+  if (!target) return message(`Add a Part to see ${tool.tool.title} here.`);
+  const { p, part } = target;
+  if (!mode) return message(`Part ${p + 1}'s Mode “${part.mode}” is not a Mode of ${tool.tool.title}, so the Tool can't show it.`, true);
+
+  const toolBox = h('div', { class: 'ed-tool' });
+  const stateBody = h('tbody');
+  const box = h('div', { class: 'ed-live' },
+    h('div', { class: 'ed-live-head' }, h('h3', {}, `Live Tool · ${mode.title}`)),
+    h('div', { class: 'muted' }, `Part ${p + 1} at its Setup. Full view: every Control open.`),
+    toolBox,
+    h('div', { class: 'muted' }, 'Operating the Tool never changes the Activity; Capture in the Part form stores its Setup keys.'),
+    h('h4', { class: 'right-h' }, 'State now ', h('span', { class: 'muted' }, '(names for Conditions and expressions)')),
+    h('div', { class: 'state-tbl' }, h('table', { class: 'grid', 'aria-label': 'State now' }, stateBody)));
+  right.replaceChildren(box);
+  live = { session: editor, tool, p, mode: part.mode, setup: part.setup, box, instance: null, unsub: null };
+  try {
+    live.instance = mountLive(toolBox, tool.tool, part.mode, part.setup);
+  } catch (err) {
+    toolBox.replaceChildren(h('p', { class: 'ed-tool-error', role: 'alert' }, `The Tool can't start from this Setup: ${err.message}`));
+    return;
+  }
+  const { instance } = live;
+  const draw = () => {
+    const s = instance.state.snapshot();
+    stateBody.replaceChildren(...Object.entries(mode.state).map(([name, { label, unit }]) => h('tr', {},
+      h('td', { class: 'cid' }, name), h('td', { style: 'font-size:13px' }, label), h('td', { class: 'live' }, `${fmt(s[name])}${unit ? ` ${unit}` : ''}`))));
+    for (const f of liveUpdaters) f();
+  };
+  live.unsub = instance.state.onChange(draw);
+  draw();
+}
+
+function destroyLive() {
+  if (!live) return;
+  const { instance, unsub } = live;
+  live = null;
+  unsub?.();
+  try { instance?.destroy?.(); } catch (err) { console.warn('Activity editor: the live Tool failed to close', err); }
 }
 
 // ───────────────────────── Keys and buttons ──

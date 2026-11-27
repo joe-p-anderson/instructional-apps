@@ -166,6 +166,24 @@ table.grid tr.grp td { font-size: 12px; color: var(--fw-text-dim); font-style: i
 .sev { color: var(--fw-red); }
 .ok { color: var(--fw-green); }
 
+/* Outline: add a Part */
+.ol-add { all: unset; cursor: pointer; display: block; font-size: 13px; color: var(--fw-blue); padding: 3px 12px 3px 26px; }
+.ol-add:hover { text-decoration: underline; }
+.ol-add:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: -2px; }
+.ol-add.part { padding-left: 12px; margin-top: 10px; }
+
+/* The live Tool (right column). The Tool mounts into .ed-tool; its side-by-side Controls and
+   Display are stacked here to fit the column. */
+.ed-live h3 { margin: 0 0 2px; font-size: 15px; flex: 1; }
+.ed-live-head { display: flex; align-items: center; gap: 8px; }
+.ed-tool { border: 1.5px solid var(--fw-border-dk); background: var(--fw-bg); margin: 8px 0; display: flex; flex-direction: column; }
+.ed-tool .fw-tool { display: flex; flex-direction: column; }
+.ed-tool .fw-controls { border-right: none; border-bottom: 2px solid var(--fw-border-dk); overflow: visible; }
+.ed-tool .fw-displays { height: 340px; flex: none; }
+.ed-tool-error { color: var(--fw-red); font-size: 13px; padding: 8px; }
+.right-h { font-size: 14px; margin: 16px 0 6px; }
+.state-tbl { max-height: 260px; overflow: auto; margin-top: 8px; }
+
 /* The Open screen's heading and New Activity button, and the new-Activity form. */
 .ed-open-head { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
 .ed-new { max-width: 46em; margin: 8px 0 16px; }

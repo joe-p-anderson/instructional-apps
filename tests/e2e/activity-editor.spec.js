@@ -253,6 +253,137 @@ test("the problems list shows the runner's validation errors and goes to the fie
   await expect(problems.getByRole('heading')).toContainText('Problems (0)');
 });
 
+// ───────────────────────── Parts, Setup and the live Tool (ticket 08) ──
+
+const outline = (page) => page.getByRole('navigation', { name: 'Activity outline' });
+const liveTool = (page) => page.getByRole('complementary', { name: 'Live Tool' });
+const setupField = (page, key) => page.getByRole('textbox', { name: `Setup ${key}`, exact: true });
+const SPACETIME = 'tools/spacetime/activities/lab10.json';
+
+test('journey: add a Part, choose its Mode, move a Control on the live Tool, Capture, save, and the Setup is in the JSON', async ({ page }) => {
+  await openEditor(page);
+  await openActivity(page, 'Sinusoidal Signals');
+  await outline(page).getByRole('button', { name: '+ Part' }).click();
+
+  const title = page.getByRole('textbox', { name: 'Title' });
+  await expect(title).toHaveValue('Part 3: New Part');
+  await title.fill('Part 3: Beats');
+  await expect(outline(page).getByRole('button', { name: /Part 3: Beats/ })).toBeVisible();
+
+  const mode = page.getByRole('combobox', { name: 'Mode' });
+  await expect(mode.getByRole('option')).toHaveText(['Dual-trace scope']);
+  await mode.selectOption({ label: 'Dual-trace scope' });
+
+  // The live Tool is the real oscilloscope at this Part's (empty) Setup; operating it edits nothing.
+  const tool = liveTool(page);
+  await expect(tool.getByRole('heading', { name: 'Live Tool · Dual-trace scope' })).toBeVisible();
+  await page.keyboard.press('Control+s');
+  await expect(saveStatus(page)).toHaveText('Saved');
+  const va = tool.getByRole('spinbutton', { name: 'Va (V)', exact: true });
+  await va.fill('2.5');
+  await va.press('Enter');
+  await expect(tool.getByRole('table', { name: 'State now' }).getByRole('row').filter({ hasText: /^Va/ })).toContainText('2.5');
+  await expect(saveStatus(page)).toHaveText('Saved');
+  expect(await page.evaluate(() => window.activityEditor.editor.dirty)).toBe(false);
+
+  await page.getByRole('button', { name: /Capture from the live Tool/ }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Captured 3 Setup keys' })).toBeVisible();
+  await expect(setupField(page, 'Va')).toHaveValue('2.5');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(saveStatus(page)).toHaveText('Saved');
+
+  const part = JSON.parse(await written(page, OSC)).parts[2];
+  expect(part.id).toBe('part-3-new-part');
+  expect(part.title).toBe('Part 3: Beats');
+  expect(part.mode).toBe('dual-trace');
+  const live = await page.evaluate(() => window.activityEditor.live.state.snapshot());
+  expect(part.setup).toEqual({ Va: 2.5, f: live.f, Dt: live.Dt });
+});
+
+test('the live Tool remounts at the selected Part and its Setup; other edits leave it alone', async ({ page }) => {
+  await openEditor(page);
+  await openActivity(page, 'Sinusoidal Signals');
+  const tool = liveTool(page);
+  await expect(tool.getByRole('spinbutton', { name: 'Va (V)', exact: true })).toHaveValue('2.00');
+
+  await outline(page).getByRole('button', { name: /Part 2: Period and Amplitude/ }).click();
+  const setup = JSON.parse(read(OSC)).parts[1].setup;
+  await expect(tool.getByText('Part 2 at its Setup')).toBeVisible();
+  await expect(tool.getByRole('spinbutton', { name: 'Va (V)', exact: true })).toHaveValue(setup.Va.toFixed(2));
+
+  // Arrange the Tool, then retitle the Part: the Tool keeps the arrangement.
+  const f = tool.getByRole('spinbutton', { name: 'f (Hz)', exact: true });
+  await f.fill('0.77');
+  await f.press('Enter');
+  await page.getByRole('textbox', { name: 'Title' }).fill('Part 2: Period');
+  await expect(f).toHaveValue('0.77');
+
+  // Typing a Setup value remounts it there.
+  await setupField(page, 'Va').fill('1.25');
+  await expect(tool.getByRole('spinbutton', { name: 'Va (V)', exact: true })).toHaveValue('1.25');
+  await expect(f).toHaveValue(setup.f.toFixed(2));
+});
+
+test('Setup values are typed and cleared one by one; Capture keeps the Setup options', async ({ page }) => {
+  await openEditor(page);
+  await openActivity(page, 'Spacetime Diagrams');
+  await outline(page).getByRole('button', { name: /^1\s/ }).click();
+  const before = JSON.parse(read(SPACETIME)).parts[0].setup;
+
+  await expect(setupField(page, 'tool')).toHaveValue(before.tool);
+  await setupField(page, 'grid').fill('{"K":false,"Kp":true}');
+  await page.getByRole('button', { name: 'Clear v', exact: true }).click();
+  await expect(setupField(page, 'v')).toHaveValue('');
+  await page.getByRole('button', { name: /Capture from the live Tool/ }).click();
+  await expect(setupField(page, 'v')).not.toHaveValue('');
+  await page.keyboard.press('Control+s');
+  await expect(saveStatus(page)).toHaveText('Saved');
+
+  const setup = JSON.parse(await written(page, SPACETIME)).parts[0].setup;
+  const v = await page.evaluate(() => window.activityEditor.live.state.snapshot().v);
+  expect(setup).toEqual({ ...before, v, grid: { K: false, Kp: true } });
+});
+
+test('Parts are reordered and deleted from the Part form; an unknown Mode or Setup value is a problem', async ({ page }) => {
+  await openEditor(page);
+  await openActivity(page, 'Sinusoidal Signals');
+  await outline(page).getByRole('button', { name: /Part 2: Period and Amplitude/ }).click();
+  await page.getByRole('button', { name: 'Move up' }).click();
+  await expect(outline(page).getByRole('button', { name: /Period and Amplitude/ })).toContainText('1');
+  await expect(page.getByRole('button', { name: 'Move up' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Move down' }).click();
+  await expect(outline(page).getByRole('button', { name: /Phase Shift/ })).toContainText('1');
+
+  page.once('dialog', (d) => d.accept());
+  await page.getByRole('button', { name: 'Delete Part' }).click();
+  await expect(outline(page).getByRole('button', { name: /Period and Amplitude/ })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(outline(page).getByRole('button', { name: /Part 2: Period and Amplitude/ })).toBeVisible();
+});
+
+test('a Setup value the Mode does not know, or an unknown Mode, is a problem that links to its field', async ({ page }) => {
+  const doc = JSON.parse(read(OSC));
+  doc.parts[0].setup.seed = 3;
+  doc.parts[1].mode = 'xy';
+  const files = repoFiles();
+  files[OSC].text = `${JSON.stringify(doc, null, 2)}\n`;
+  await openEditor(page, files);
+  await openActivity(page, 'Sinusoidal Signals');
+  const problems = page.getByRole('region', { name: 'Problems' });
+  await expect(problems.getByRole('button', { name: /Setup "seed" is not a Setup key or Setup option/ })).toBeVisible();
+  await problems.getByRole('button', { name: /Mode "xy" is not a Mode of the Tool/ }).click();
+  await expect(page.getByRole('combobox', { name: 'Mode' })).toBeFocused();
+  await expect(liveTool(page).getByRole('alert')).toContainText('not a Mode of Oscilloscope');
+
+  await outline(page).getByRole('button', { name: /Part 1: Phase Shift/ }).click();
+  await page.getByRole('button', { name: 'Remove seed' }).click();
+  await expect(problems.getByRole('button', { name: /Setup "seed"/ })).toHaveCount(0);
+  await page.getByRole('combobox', { name: 'Mode' }).selectOption({ label: 'Dual-trace scope' });
+  await outline(page).getByRole('button', { name: /Part 2/ }).click();
+  await page.getByRole('combobox', { name: 'Mode' }).selectOption({ label: 'Dual-trace scope' });
+  await expect(problems.getByRole('heading')).toContainText('Problems (0)');
+});
+
 // ───────────────────────── A new Activity (ticket 09) ──
 
 const newForm = (page) => page.getByRole('form', { name: 'New Activity' });
