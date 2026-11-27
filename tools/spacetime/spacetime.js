@@ -1226,6 +1226,7 @@ export { conditionTypes };
 export default defineTool({
   id: 'spacetime',
   title: 'Spacetime Diagrams',
-  modes: [{ id: 'diagram', title: 'Spacetime diagram' }],
+  // names, grid, showKp, objs and tool are Setup values but not State, so not Setup keys.
+  modes: [{ id: 'diagram', title: 'Spacetime diagram', setupKeys: ['v'] }],
   mount,
 });

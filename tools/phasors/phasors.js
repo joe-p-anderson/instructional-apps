@@ -21,7 +21,7 @@ function mount(container, modeId = MODES[0].id, setup = {}) {
 export default defineTool({
   id: 'phasors',
   title: 'Phasors and Impedance',
-  modes: MODES.map(({ id, title }) => ({ id, title })),
+  modes: MODES.map(({ id, title, setupKeys }) => ({ id, title, setupKeys })),
   layout: 'side',
   mount,
 });

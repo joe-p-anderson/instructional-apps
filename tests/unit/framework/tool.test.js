@@ -64,3 +64,16 @@ test('a maxDisplayWidth smaller than the minDisplayWidth is rejected', () => {
   // ... including the default minimum of 480 px.
   assert.throws(() => defineTool(tool({ maxDisplayWidth: 400 })), /maxDisplayWidth/);
 });
+
+// Setup keys: each Mode declares the State names its mount accepts as a Setup.
+
+test('a Mode may declare its Setup keys as a list of State names', () => {
+  const defined = defineTool(tool({ modes: [{ id: 'm', setupKeys: ['f', 'amp'] }, { id: 'n', setupKeys: [] }] }));
+  assert.deepEqual(defined.modes.map((m) => m.setupKeys), [['f', 'amp'], []]);
+});
+
+test('Setup keys that are not a list of State names are rejected', () => {
+  for (const setupKeys of ['f', null, {}, [1], ['f', ''], ['f', null], ['f', 'f']]) {
+    assert.throws(() => defineTool(tool({ modes: [{ id: 'm', setupKeys }] })), /modes\[0\]\.setupKeys/);
+  }
+});

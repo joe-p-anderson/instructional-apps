@@ -307,7 +307,17 @@ function mount(container, modeId = 'scope', setup = {}) {
 export default defineTool({
   id: 'bench-scope',
   title: 'Bench Oscilloscope',
-  modes: [{ id: 'scope', title: 'Oscilloscope' }],
+  modes: [{
+    id: 'scope',
+    title: 'Oscilloscope',
+    // seed (the noise seed) is a Setup value but not State, so it is not a Setup key.
+    setupKeys: [
+      'skin',
+      'gen1Wave', 'gen1Freq', 'gen1Vpp', 'gen1Offset',
+      'ch2Source', 'ch2Fc', 'ch2F0', 'ch2Q',
+      'gen2Wave', 'gen2Freq', 'gen2Vpp', 'gen2Offset', 'gen2Phase',
+    ],
+  }],
   layout: 'banner',
   // The screen is drawn at the instrument's native size (800×480 or 320×240) and scaled with the
   // panel, and its readouts sit in fixed slots matched to the softkeys, so their font can't grow
