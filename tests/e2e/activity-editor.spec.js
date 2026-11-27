@@ -252,3 +252,125 @@ test("the problems list shows the runner's validation errors and goes to the fie
   await page.getByRole('textbox', { name: 'Version' }).fill('2');
   await expect(problems.getByRole('heading')).toContainText('Problems (0)');
 });
+
+// ───────────────────────── A new Activity (ticket 09) ──
+
+const newForm = (page) => page.getByRole('form', { name: 'New Activity' });
+const listed = (page, dir) => page.evaluate((d) => window.activityEditor.folder.list(d).then((l) => l.map((e) => e.name), () => 'missing'), dir);
+
+// The new files exist only in the in-memory folder, so the site serves them through a route.
+async function serveNew(page, files) {
+  await page.unrouteAll();
+  await page.route('**/tools/spacetime/activities/lab11.*', (route) => {
+    const name = new URL(route.request().url()).pathname.split('/').at(-1);
+    return route.fulfill({ body: files[name], contentType: name.endsWith('.json') ? 'application/json' : 'text/html' });
+  });
+}
+
+test('journey: a new Activity is made from the Open screen, both its files are written, and its page loads it', async ({ page }) => {
+  await openEditor(page);
+  await openScreen(page).getByRole('button', { name: 'New Activity…' }).click();
+  const form = newForm(page);
+  const tool = form.getByRole('combobox', { name: 'Tool' });
+  await expect(tool.getByRole('option')).toHaveText(['Choose a Tool…', 'Bench Oscilloscope', 'Electrostatics', 'Fourier Series',
+    'Least Squares Fitting', 'Oscilloscope', 'Phasors and Impedance', 'Spacetime Diagrams', 'Vernier Caliper']);
+  await tool.selectOption({ label: 'Spacetime Diagrams' });
+  await form.getByRole('textbox', { name: 'Title' }).fill('Length Contraction');
+  await expect(form.getByRole('textbox', { name: 'Id' })).toHaveValue('length-contraction');
+  await form.getByRole('textbox', { name: 'Id' }).fill('lab11');
+  await form.getByRole('textbox', { name: 'Title' }).fill('Length Contraction and Time Dilation');
+  await expect(form.getByRole('textbox', { name: 'Id' })).toHaveValue('lab11'); // an id typed by hand is kept
+  await form.getByRole('combobox', { name: 'Course' }).fill('PHY 1200');
+  await form.getByRole('button', { name: 'Create' }).click();
+
+  // It opens in the editor, needing its first Part.
+  await expect(page.getByRole('navigation', { name: 'Activity outline' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Title' })).toHaveValue('Length Contraction and Time Dilation');
+  const problems = page.getByRole('region', { name: 'Problems' });
+  await expect(problems.getByRole('listitem')).toHaveText(['Activityneeds at least one Part']);
+  await expect(saveStatus(page)).toHaveText('No unsaved changes');
+
+  const json = await written(page, 'tools/spacetime/activities/lab11.json');
+  const html = await written(page, 'tools/spacetime/activities/lab11.html');
+  expect(JSON.parse(json)).toEqual({ id: 'lab11', version: 1, title: 'Length Contraction and Time Dilation', course: 'PHY 1200',
+    tool: 'spacetime', parts: [] });
+  // The page is the template every other Activity page is made from.
+  const lab10 = read('tools/spacetime/activities/lab10.html');
+  expect(html).toBe(lab10.replaceAll('Spacetime Diagrams', 'Length Contraction and Time Dilation').replaceAll('lab10.json', 'lab11.json'));
+
+  // Served at the same URL shape as every Activity, the page fetches its JSON and hands it to the
+  // runner: as written, the runner refuses it for having no Part; with lab10's Parts, it mounts.
+  await serveNew(page, { 'lab11.html': html, 'lab11.json': json });
+  const refused = page.waitForEvent('pageerror');
+  await page.goto('/tools/spacetime/activities/lab11.html');
+  expect((await refused).message).toContain('Invalid Activity: needs at least one Part');
+
+  const withParts = { ...JSON.parse(json), parts: JSON.parse(read('tools/spacetime/activities/lab10.json')).parts };
+  await serveNew(page, { 'lab11.html': html, 'lab11.json': JSON.stringify(withParts) });
+  await page.goto('/tools/spacetime/activities/lab11.html');
+  await expect(page.getByRole('heading', { name: 'Length Contraction and Time Dilation', level: 2 })).toBeVisible();
+});
+
+test("the new-Activity form needs every field, refuses an id already used in that Tool's folder, and can be cancelled", async ({ page }) => {
+  await openEditor(page);
+  await openScreen(page).getByRole('button', { name: 'New Activity…' }).click();
+  const form = newForm(page);
+  await form.getByRole('button', { name: 'Create' }).click();
+  await expect(form.getByRole('combobox', { name: 'Tool' })).toHaveAccessibleDescription('Choose a Tool');
+  await expect(form.getByRole('textbox', { name: 'Id' })).toHaveAccessibleDescription('Give it an id');
+  await expect(form.getByRole('textbox', { name: 'Title' })).toHaveAccessibleDescription('Give it a title');
+  await expect(form.getByRole('combobox', { name: 'Course' })).toHaveAccessibleDescription('Give it a course');
+
+  await form.getByRole('combobox', { name: 'Tool' }).selectOption('spacetime');
+  await form.getByRole('textbox', { name: 'Title' }).fill('Another lab');
+  await form.getByRole('textbox', { name: 'Id' }).fill('spacetime-lab10');
+  await form.getByRole('combobox', { name: 'Course' }).fill('PHY 1200');
+  await form.getByRole('button', { name: 'Create' }).click();
+  await expect(form.getByRole('textbox', { name: 'Id' })).toHaveAccessibleDescription('That id is already used in tools/spacetime/activities');
+  await expect(form.getByRole('textbox', { name: 'Id' })).toBeFocused();
+  expect(await listed(page, 'tools/spacetime/activities')).toEqual(['lab10.html', 'lab10.json']);
+
+  await form.getByRole('button', { name: 'Cancel' }).click();
+  await expect(form).toBeHidden();
+  await expect(openScreen(page).getByRole('button', { name: 'New Activity…' })).toBeFocused();
+});
+
+test('making a new Activity while one has unsaved changes warns first, and writes nothing if you stay', async ({ page }) => {
+  await openEditor(page);
+  await openActivity(page, 'Sinusoidal Signals');
+  await page.getByRole('textbox', { name: 'Title' }).fill('Sinusoids');
+  await page.keyboard.press('Control+o');
+  await openScreen(page).getByRole('button', { name: 'New Activity…' }).click();
+  const form = newForm(page);
+  await form.getByRole('combobox', { name: 'Tool' }).selectOption('vernier');
+  await form.getByRole('textbox', { name: 'Title' }).fill('Calipers');
+  await form.getByRole('combobox', { name: 'Course' }).fill('EGR 1000');
+  page.once('dialog', (d) => { expect(d.message()).toContain('unsaved changes'); d.dismiss(); });
+  await form.getByRole('button', { name: 'Create' }).click();
+  await expect(form).toBeVisible();
+  expect(await listed(page, 'tools/vernier/activities')).toBe('missing');
+});
+
+test('without the File System Access API, a new Activity downloads both its files', async ({ page }, testInfo) => {
+  const checkout = testInfo.outputPath('checkout');
+  mkdirSync(join(checkout, 'tools/oscilloscope/activities'), { recursive: true });
+  writeFileSync(join(checkout, OSC), read(OSC));
+  await page.addInitScript(() => {
+    delete Window.prototype.showDirectoryPicker;
+    delete window.showDirectoryPicker;
+  });
+  await page.goto(PAGE);
+  await page.getByLabel('Choose folder').setInputFiles(checkout);
+  await openScreen(page).getByRole('button', { name: 'New Activity…' }).click();
+  const form = newForm(page);
+  await form.getByRole('combobox', { name: 'Tool' }).selectOption('oscilloscope');
+  await form.getByRole('textbox', { name: 'Title' }).fill('Lissajous Figures');
+  await form.getByRole('combobox', { name: 'Course' }).fill('EGR 3120');
+
+  const names = [];
+  page.on('download', (d) => names.push(d.suggestedFilename()));
+  await form.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('textbox', { name: 'Title' })).toHaveValue('Lissajous Figures');
+  await expect.poll(() => names).toEqual(['lissajous-figures.json', 'lissajous-figures.html']);
+  await expect(saveStatus(page)).toHaveText('Downloaded lissajous-figures.json and lissajous-figures.html: move them into tools/oscilloscope/activities');
+});

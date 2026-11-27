@@ -165,3 +165,8 @@ table.grid tr.grp td { font-size: 12px; color: var(--fw-text-dim); font-style: i
 .ed-problems .blocks { font: 700 10px/1.6 system-ui, sans-serif; color: var(--fw-red); border: 1px solid var(--fw-red); border-radius: 3px; padding: 0 4px; white-space: nowrap; }
 .sev { color: var(--fw-red); }
 .ok { color: var(--fw-green); }
+
+/* The Open screen's heading and New Activity button, and the new-Activity form. */
+.ed-open-head { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+.ed-new { max-width: 46em; margin: 8px 0 16px; }
+.ed-new .row .sev { font-size: 13px; }
