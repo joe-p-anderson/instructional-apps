@@ -222,7 +222,7 @@ function mount(container, modeId = 'dual-trace', setup = {}) {
 export default defineTool({
   id: 'oscilloscope',
   title: 'Oscilloscope',
-  modes: [{ id: 'dual-trace', title: 'Dual-trace scope' }],
+  modes: [{ id: 'dual-trace', title: 'Dual-trace scope', setupKeys: ['Va', 'f', 'Dt'] }],
   layout: 'side',
   mount,
 });

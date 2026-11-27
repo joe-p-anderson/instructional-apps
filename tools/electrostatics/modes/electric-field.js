@@ -17,6 +17,7 @@ import { PLOT_CONFIG, Plotly, conductorLayout, heatmapTrace, plotDisplay, quiver
 
 export const id = 'electric-field';
 export const title = 'Electric field';
+export const setupKeys = ['Q', 'E0x', 'E0y', 'theta', 'induce', 'showCharges'];
 
 const DEFAULTS = { Q: 0, E0x: 0, E0y: 0, theta: 0, induce: false, showCharges: true };
 

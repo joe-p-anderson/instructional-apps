@@ -22,6 +22,7 @@ import { PLOT_CONFIG, Plotly, boundaryTrace, conductorLayout, heatmapTrace, plot
 
 export const id = 'potential';
 export const title = 'Potential';
+export const setupKeys = ['Q', 'x1', 'y1', 'x2', 'y2', 'lockToSurface', 'measureAtInfinity'];
 
 const DEFAULTS = { Q: 1, x1: -6, y1: -6, x2: 7, y2: 7, lockToSurface: false, measureAtInfinity: false };
 

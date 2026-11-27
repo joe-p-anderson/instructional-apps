@@ -22,6 +22,8 @@ import { PLOT_CONFIG, Plotly, boundaryTrace, conductorLayout, heatmapTrace, plot
 
 export const id = 'gauss';
 export const title = 'Gauss’s law';
+// handleAngle is a Setup value but not State, so it is not a Setup key.
+export const setupKeys = ['lambda', 'E0x', 'E0y', 'xc', 'yc', 'r'];
 
 const DEFAULTS = { lambda: 1, E0x: 0, E0y: 0, xc: 0, yc: 0, r: 2, handleAngle: 0 };
 const R_MIN = 0.3;  // smallest surface radius (cm)
