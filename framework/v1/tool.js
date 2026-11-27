@@ -5,13 +5,19 @@
 //   {
 //     id: 'oscilloscope',                       // stable, used in Activities and storage keys
 //     title: 'Oscilloscope',
-//     modes: [{ id: 'dual-trace', title: 'Dual-trace scope' }],
+//     modes: [{ id: 'dual-trace', title: 'Dual-trace scope',
+//               setupKeys: ['ch1Freq', 'ch1Amp'] }],   // see "Setup keys" below
 //     layout: 'side',                           // optional panel layout, see below
 //     minDisplayWidth: 480,                     // optional, CSS px, see below
 //     maxDisplayWidth: 1100,                    // optional, CSS px, see below
 //     mount(container, modeId, setup) -> ToolInstance
 //   }
 //
+// setupKeys (on each modes entry) are the Mode's Setup keys: the State names its mount accepts
+// as a Setup, as a list of distinct strings. Declared on the definition so they can be read
+// without mounting the Tool (the Activity editor's Capture stores only these). Each one must be
+// a name in that Mode's State (checked for every Tool by tests/e2e/setup-keys.spec.js).
+// defineTool accepts a Mode without them, but every shipped Tool declares them on every Mode.
 // layout (optional, one of LAYOUTS, default the first) is the Tool's panel layout, fixed per
 // Tool. What each layout looks like: framework/v1/README.md, "Panel layouts".
 // minDisplayWidth (optional, a positive number of CSS pixels, default 480) is the narrowest the
@@ -65,7 +71,12 @@ export function defineTool(tool) {
   if (typeof tool.id !== 'string' || !tool.id) problems.push('id');
   if (typeof tool.title !== 'string') problems.push('title');
   if (!Array.isArray(tool.modes) || tool.modes.length === 0) problems.push('modes');
-  else tool.modes.forEach((m, i) => { if (!m || typeof m.id !== 'string') problems.push(`modes[${i}].id`); });
+  else tool.modes.forEach((m, i) => {
+    if (!m || typeof m.id !== 'string') problems.push(`modes[${i}].id`);
+    else if (m.setupKeys !== undefined && !isSetupKeys(m.setupKeys)) {
+      problems.push(`modes[${i}].setupKeys (a list of distinct State names)`);
+    }
+  });
   if (typeof tool.mount !== 'function') problems.push('mount');
   const layout = tool.layout === undefined ? LAYOUTS[0] : tool.layout;
   if (!LAYOUTS.includes(layout)) problems.push(`layout (one of ${LAYOUTS.join(', ')})`);
@@ -81,6 +92,12 @@ export function defineTool(tool) {
 
 /** The minimum Display width a Tool gets when it declares none, in CSS pixels. */
 export const DEFAULT_MIN_DISPLAY_WIDTH = 480;
+
+function isSetupKeys(keys) {
+  return Array.isArray(keys)
+    && keys.every((k) => typeof k === 'string' && k !== '')
+    && new Set(keys).size === keys.length;
+}
 
 function isPositiveNumber(x) {
   return typeof x === 'number' && Number.isFinite(x) && x > 0;

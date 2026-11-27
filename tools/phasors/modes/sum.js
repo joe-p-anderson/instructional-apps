@@ -45,6 +45,7 @@ import { TIME_STATE_INFO, timeControls } from '../time-controls.js';
 
 export const id = 'sum';
 export const title = 'Sum';
+export const setupKeys = ['A1', 'phi1', 'A2', 'phi2', 'omega'];
 
 export const A_MAX = 10; // V
 const DEFAULTS = { A1: 3, phi1: 0, A2: 2, phi2: 90, omega: 1000 };
