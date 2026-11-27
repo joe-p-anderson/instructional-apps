@@ -40,3 +40,5 @@ Waiting on: the instructor's review and approval, which variant to take, and any
 
 **2026-11-27, review: variant B chosen.** The Task form is split into tabs (Prompt / Exposure / Condition / Questions / Hint & notes), each with its problem count. This is written into the spec's "Editor page" layout. Variants A and C are kept in the prototype file for reference only.
 
+**2026-11-27, review: Open screen.** The mockup's header dropdown won't scale with the library. It is replaced by an Open screen: a searchable table filtered by course (first) and Tool, with recents pinned. This is written into the spec ("Editor page", stories 3 and 8) and into ticket 07. It is not mocked.
+

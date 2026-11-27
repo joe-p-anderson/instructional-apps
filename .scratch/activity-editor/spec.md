@@ -20,7 +20,7 @@ Five Activities exist (oscilloscope, electrostatics, spacetime, fourier, phasors
 
 An **Activity editor**: a page on the site that becomes the instructor's main way of building and changing Activities. The instructor still publishes by committing with git.
 
-- **Opening and saving:** the instructor opens the editor in Chrome or Edge and grants it the repo folder once. It lists the Tools and their Activities. Ctrl+S saves an Activity back into the checkout, ready to commit. A new Activity starts by picking a Tool and an id; the editor writes its data file and its page.
+- **Opening and saving:** the instructor opens the editor in Chrome or Edge and grants it the repo folder once. An Open screen lists every Activity, searchable and filterable by course and Tool, with recent ones first. Ctrl+S saves an Activity back into the checkout, ready to commit. A new Activity starts by picking a Tool and an id; the editor writes its data file and its page.
 - **The live Tool:** each Part mounts the real Tool at that Part's Mode and Setup. Control and State pickers come from that live Tool, so names can't be mistyped. The Setup is set by operating the Tool and clicking Capture, or by typing values.
 - **Exposure:** on each Task, every Control is listed with what the student actually gets at that Task: open, locked or hidden. The instructor flips a three-way switch, and the editor writes the show, lock and hide lists.
 - **Conditions:** a builder for target ± tolerance, equals and range, nested inside any-of and all-of groups. Each value can be a State name or a **State expression**.
@@ -36,12 +36,12 @@ Activities are stored as plain JSON instead of JS modules (ADR 0004), so the edi
 
 1. As the instructor, I want to open the Activity editor from the site in Chrome or Edge, so that there's nothing to install or run.
 2. As the instructor, I want to grant the editor my repo folder once and have it remembered between visits, so that I don't pick the folder every time.
-3. As the instructor, I want the editor to list every Tool and the Activities each one hosts, so that I can find the one to edit.
+3. As the instructor, I want an Open screen that lists every Activity in the repo, searchable and filterable by course and Tool, with the ones I opened recently at the top, so that I can find the one to edit however large the library grows.
 4. As the instructor, I want to open an existing Activity and see every Part, Task, Condition, Question and Hint it has, so that the editor is a complete view of the file.
 5. As the instructor, I want to save with Ctrl+S or a Save button, writing the Activity back into the repo folder, so that I can commit it with git straight away.
 6. As the instructor, I want a saved file to be stable, formatted JSON whose unchanged parts don't move between saves, so that my git diffs show only what I changed.
 7. As the instructor, I want the editor to warn me before I close or switch Activities with unsaved changes, so that I don't lose work.
-8. As the instructor, I want to create a new Activity by choosing a Tool and giving it an id, title and course, so that I can start a new lecture exercise in seconds.
+8. As the instructor, I want to create a new Activity from the Open screen by choosing a Tool and giving it an id, title and course, so that I can start a new lecture exercise in seconds.
 9. As the instructor, I want a new Activity to get both its data file and its page in the Tool's activities folder, so that its URL has the same shape as every other Activity and I can link it from Brightspace.
 10. As the instructor, I want every Activity page to come from one fixed template, so that all Activity pages stay identical.
 11. As the instructor in Firefox or Safari, I want the editor to fall back to downloading the file on save, so that I can still use it and move the file in by hand.
@@ -199,6 +199,13 @@ The core provides:
   - In the middle, the form for whatever is selected (Activity, Part or Task), and the problems list.
   - **The Task form is split into tabs** (mockup variant B, chosen at review): Prompt (title, points, id, prompt), Exposure, Condition, Questions, and Hint & notes. Each tab shows how many problems it holds. Clicking a problem switches to its tab before jumping to the field. The editor remembers the open tab when you move between Tasks.
   - On the right, the live Tool mounted at the selected Part's Mode and Setup.
+- **Open screen:** where you choose the Activity to edit, sized for one Activity per lecture across several courses and years.
+  - **When it shows:** first, once the folder is granted; again on Ctrl+O, or by clicking the Activity title in the header. It replaces a dropdown of Tools and Activities, which doesn't scale.
+  - **The table:** one searchable table of every Activity, with title, id, Tool, course, version and last modified. Typing filters on title, id and course together.
+  - **Filters and sort:** filters by course (the main grouping, since the instructor looks for "this lecture in this course") and by Tool. The default sort is most recently modified.
+  - **Recents:** the last few Activities opened are pinned above the table, kept in IndexedDB beside the folder handle.
+  - **New Activity:** starts here (story 8), and the new Activity opens straight away.
+  - **Building the list:** the editor scans `tools/*/activities/*.json` through the folder interface and reads only each file's header fields (id, title, course, version, tool), plus the file's last-modified time. Nothing is added to the Activity format, and nothing is stored beyond the recents.
 - **Folder access:** the File System Access API. The folder handle is kept in IndexedDB, so the folder is remembered, and permission is asked again when the browser requires it. Where the API is missing, save downloads the file. The folder access sits behind a small interface (list folders, read file, write file), so tests can replace it with an in-memory folder.
 - **The live Tool's uses:** Capture for the Setup, "Use current value" for targets, live expression values and the live Condition result. Operating it never changes the Activity unless the instructor clicks one of those.
 - **Student / Full toggle:** a two-way toggle on the live Tool.

@@ -2,7 +2,7 @@
 
 Spec: .scratch/activity-editor/spec.md (vocabulary from GLOSSARY.md; respects ADRs 0001–0005).
 
-**What to build:** From the editor the instructor creates a new Activity: they pick a Tool and give an id, title and course. The editor writes the Activity's JSON and its page from the single template into that Tool's activities folder, then opens it, ready for Parts. The URL has the same shape as every other Activity's, so it can be linked from Brightspace.
+**What to build:** From the Open screen (ticket 07) the instructor creates a new Activity: they pick a Tool and give an id, title and course. The editor writes the Activity's JSON and its page from the single template into that Tool's activities folder, then opens it, ready for Parts. The URL has the same shape as every other Activity's, so it can be linked from Brightspace.
 
 **Blocked by:** 07
 
