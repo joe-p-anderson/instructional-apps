@@ -17,6 +17,7 @@ Static ES modules and CSS, served as-is (no build, no install). Breaking changes
 | `report.js` | **The Report format**: schema (header comment), `sealReport`/`verifyReport`/`checksumOf` (keyed SHA-256 over canonical JSON), `readReport(text)`, `reportFilename`, `createFingerprint`, `REPORT_FORMAT_VERSION`, `FRAMEWORK_VERSION`. No DOM. |
 | `authoring/encode-keys.html` | Authoring helper: paste a Condition, Question key or Hint text (JS expression), copy the `enc1:` string into the Activity in its place. Also exposes `encodeKey()`/`decodeKey()` in the console. Deters casual cheating only (ADR 0001). |
 | `activity-ui.js` | Activity runner UI: `mountActivity(tool, activity, root)`, a thin DOM layer over the core (name gate, Part tabs each with its own Tool instance, Task cards with Submit/feedback/Hint, per-Part progress, Download Report, and Start over, Print and "Not <name>? Sign out" in the ⋯ menu). A reload restores the Run under its sealed name, including Question answers and the last miss feedback. The name entered at the name gate is stored for the whole site: an Activity with no saved Run starts at once under the stored name, Start over begins a new Run under it, and sign-out (confirmed) forgets it and discards only this Activity's Run before showing the name gate. Passing the last Task opens a completion dialog once per Run; a complete Run's Download button reads "Activity complete · Download Report". |
+| `activity-file.js` | The Activity file (ADR 0004): `serializeActivity(activity)`, the saved JSON form (fixed `KEY_ORDER`, two-space indent), and `activityPage({ title, tool, file })`, the one Activity page template. No DOM. See "Opening an Activity". |
 | `report-viewer/` | **The Report Viewer** page, `report-viewer/index.html` (client-side only; no file leaves the browser). The core is DOM-free and tested in Node; every score is recomputed from the Attempts' recorded results with the runner's scoring rules (`earnedFromResults` in `runner/scoring.js`). See the table below. |
 | `vendor.js` | Loaders for the vendored, pinned libraries in `vendor/` (`loadPlotly()`, `loadMathJax()`, `typeset(elements)`). |
 
@@ -32,9 +33,14 @@ Static ES modules and CSS, served as-is (no build, no install). Breaking changes
 
 ## Opening an Activity
 
-Each Activity is a pure-data module plus a tiny HTML page beside it, so the URL identifies one Activity:
-`tools/oscilloscope/activities/phase-period-amplitude.html` loads `phase-period-amplitude.js` and calls
-`mountActivity(oscilloscope, activity, root)`. Prompts may use `\( \)` math (MathJax).
+Each Activity is a JSON file plus a tiny HTML page beside it, so the URL identifies one Activity (ADR 0004):
+`tools/oscilloscope/activities/phase-period-amplitude.html` fetches `phase-period-amplitude.json` and calls
+`mountActivity(oscilloscope, activity, root, { conditionTypes })`. Prompts may use `\( \)` math (MathJax).
+
+- **The file** holds the shape `runner/activity.js` validates (id, version, title, course, tool, parts with their tasks, conditions, questions, points and hints), as plain data only: no function Conditions and no Activity-level `conditionTypes` (a Tool still exports Condition types, and the page passes them on). Conditions, answer keys and answer-revealing Hint texts stay `enc1:` encoded, in the same places as before.
+- **`notes`** (optional, on the Activity, each Part and each Task) is plain text for authors, such as design reasoning. The runner ignores it: it is never shown to students and never in the Report. It is stored unencoded and anyone can read the fetched file, so it must not give an answer away.
+- **`activity-file.js`** (no DOM) holds the format's two writers. `serializeActivity(activity)` is the saved form: a fixed key order (`KEY_ORDER`), two-space indent and a final newline, so diffs stay stable; the editor writes exactly this, and a hand edit is fine but the next save puts it back in this form. `activityPage({ title, tool, file })` is the one page template every Activity page is made from: it imports `../<tool>.js` (its default export and any `conditionTypes` export), fetches `./<file>` and mounts the runner. Activity files are checked out with LF endings (`.gitattributes`), and `tests/unit/framework/activity-files.test.js` checks every `tools/*/activities/*.json` is in the saved form beside a page made from the template.
+- **Migration:** `node scripts/migrate-activity.js tools/<tool>/activities/<name>.js` turns a hand-written Activity module into `<name>.json` and `<name>.html` beside it, with constants and spreads expanded, encoded strings copied as they are and the module's header comment in `notes` (check those by hand). The page's file name is unchanged, so the URL and the Run's storage key are too.
 
 ## Conditions
 

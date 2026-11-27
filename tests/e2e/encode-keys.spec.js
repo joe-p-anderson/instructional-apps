@@ -24,8 +24,8 @@ test('encodeKey and decodeKey are available in the console', async ({ page }) =>
   expect(await page.evaluate(() => window.decodeKey(window.encodeKey('b')))).toBe('b');
 });
 
-test('the oscilloscope Activity page source has no plain Condition targets', async ({ request }) => {
-  const source = await (await request.get('/tools/oscilloscope/activities/phase-period-amplitude.js')).text();
+test('the oscilloscope Activity file has no plain Condition targets', async ({ request }) => {
+  const source = await (await request.get('/tools/oscilloscope/activities/phase-period-amplitude.json')).text();
   expect(source).not.toContain('π/2');
-  expect(source).toContain("condition: 'enc1:");
+  expect(source).toContain('"condition": "enc1:');
 });
