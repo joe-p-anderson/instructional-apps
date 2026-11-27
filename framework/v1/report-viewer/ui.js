@@ -208,15 +208,17 @@ function attemptView(a) {
         a.state.flatMap((s, i) => [i ? ', ' : '', h('span', {}, `${s.name} = ${fmt(s.value)}`)])),
     a.answers.length === 0 ? null
       : h('dl', { class: 'fw-report-answers' },
-        a.answers.map((ans) => meta(ans.id, String(ans.value ?? '')))),
+        a.answers.map((ans) => meta(ans.id, String(ans.value ?? ''),
+          ans.expected === undefined ? null
+            : h('span', { class: 'fw-report-expected' }, ` (expected ${fmt(ans.expected)})`)))),
     a.feedback.length === 0 ? null
       : h('ul', { class: 'fw-report-feedback' }, a.feedback.map((f) => h('li', {}, f))),
     a.snapshots.map((s) => h('figure', { class: 'fw-report-snapshot' },
       h('img', { src: s.png, alt: `Snapshot of ${s.display}` }))));
 }
 
-function meta(label, value) {
-  return h('div', {}, h('dt', {}, label), h('dd', {}, value));
+function meta(label, value, extra = null) {
+  return h('div', {}, h('dt', {}, label), h('dd', {}, value, extra));
 }
 
 const pts = (x) => `${x.earned} / ${x.possible} points`;

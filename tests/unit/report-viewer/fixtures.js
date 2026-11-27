@@ -1,6 +1,7 @@
 // Fixture Reports for the Report Viewer, made by the Activity runner core itself
 // (spec, Testing Decisions) so the fixtures always follow the real Report format.
 import { createRunner } from '../../../framework/v1/runner/index.js';
+import { sealReport } from '../../../framework/v1/report.js';
 import { stubTool } from '../runner/stub-tool.js';
 
 export const activity = {
@@ -70,5 +71,34 @@ export async function quizReport(name = 'Grace Hopper') {
   runner.start(name);
   runner.submit('p1', 'ask', { T: 3, c: 'a', why: '  ' });
   runner.submit('p1', 'ask', { T: 9, c: 'b', why: 'because' });
+  return runner.report();
+}
+
+/** quizReport as framework 1.0.0 wrote it: no expected values on its results. */
+export async function legacyQuizReport(name = 'Grace Hopper') {
+  const report = await quizReport(name);
+  for (const part of report.parts) for (const task of part.tasks) for (const a of task.attempts) {
+    for (const r of a.results) delete r.expected;
+  }
+  return sealReport({ ...report, frameworkVersion: '1.0.0' });
+}
+
+export const expressionActivity = {
+  id: 'expr', version: 1, title: 'Expression Lab', course: 'PHY 1000', tool: 'stub',
+  parts: [{ id: 'p1', title: 'Part 1', mode: 'main', setup: {}, tasks: [
+    { id: 'ask', title: 'Ask', prompt: '', points: 1, questions: [
+      { id: 'I', kind: 'numeric', prompt: 'Current in mA?', answer: { expr: 'I * 1000' }, tol: 0.05, points: 1 },
+    ] },
+  ] }],
+};
+
+/** A Report whose expression key moved: missed at I = 4 mA, then passed at I = 2.5 mA. */
+export async function expressionReport(name = 'Emmy Noether') {
+  const tool = stubTool({ state: { I: { value: 0.004, unit: 'A' } } });
+  const runner = createRunner(expressionActivity, { tools: { p1: tool }, clock: tickingClock() });
+  runner.start(name);
+  runner.submit('p1', 'ask', { I: 3 });
+  tool.setState({ I: 0.0025 });
+  runner.submit('p1', 'ask', { I: 2.5 });
   return runner.report();
 }

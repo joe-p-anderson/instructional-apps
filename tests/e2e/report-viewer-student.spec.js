@@ -67,3 +67,22 @@ test('a file that is not a Report shows a readable error', async ({ page }) => {
   });
   await expect(page.getByRole('alert')).toContainText(/not a Report/i);
 });
+
+test('the student view shows the expected value beside a numeric answer, and an older Report shows none', async ({ page }) => {
+  const { expressionReport, legacyQuizReport } = await import('../unit/report-viewer/fixtures.js');
+  const open = async (report) => page.getByLabel('Open a Report').setInputFiles({
+    name: 'r.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(report)),
+  });
+  await page.goto(VIEWER);
+  await open(await expressionReport());
+  const task = page.getByRole('article', { name: 'Report' }).getByRole('region', { name: /Task 1\.1/ });
+  const attempts = task.getByRole('listitem').filter({ hasText: 'Attempt' });
+  await expect(attempts.nth(0)).toContainText('I3 (expected 4)') // the ': ' is CSS;
+  await expect(attempts.nth(1)).toContainText('I2.5 (expected 2.5)');
+
+  await page.goto(VIEWER);
+  await open(await legacyQuizReport());
+  const quiz = page.getByRole('article', { name: 'Report' });
+  await expect(quiz).toContainText('Grace Hopper');
+  await expect(quiz).not.toContainText('expected');
+});
