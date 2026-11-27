@@ -30,7 +30,7 @@ The spec fixes the three-column layout, so the three variants differ only in the
 - **B, Sectioned tabs:** Prompt / Exposure / Condition / Questions / Hint & notes, with a problem count on each tab.
 - **C, Exposure beside the Tool:** the exposure list sits in the right column, under the live Tool. If C is chosen, the spec's "On the right, the live Tool" needs amending.
 
-Sample problems are seeded on purpose: an unknown Control, a duplicate Question id, an unknown Setup key, a parse error and an unknown State. The first three block preview, the way the runner's validation would.
+Sample problems are seeded on purpose: an unknown Control, a duplicate Question id, a parse error, an unknown Setup key and an unknown State. The first three block preview, the way the runner's validation would.
 
 The mockup assumes one choice that the spec should settle when this is reviewed: tol is a plain number, while target, equals, above and below take a number or a State expression.
 
