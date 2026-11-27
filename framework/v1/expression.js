@@ -8,7 +8,8 @@
 //                             // throws ExpressionError for an unknown or non-numeric State.
 //                             // A non-finite result (1/0, sqrt(-1)) is returned as it is:
 //                             // the caller decides how to judge it.
-//   isExpression(value)       // true for an { expr: string } value, as stored in an Activity
+//   cachedExpression(source)  // parseExpression, parsed once per source
+//   isExpression(value)     // true for an { expr: string } value, as stored in an Activity
 //   ExpressionError           // .position: index into the source of a parse error (else undefined)
 //
 // Syntax:
@@ -59,6 +60,14 @@ const BINARY = {
   '/': (a, b) => a / b,
   '^': (a, b) => a ** b,
 };
+
+// parseExpression, remembered by source: each expression parses once however often it
+// is judged. Throws as parseExpression does (a failed parse isn't remembered).
+const parsed = new Map();
+export function cachedExpression(source) {
+  if (!parsed.has(source)) parsed.set(source, parseExpression(source));
+  return parsed.get(source);
+}
 
 export function parseExpression(source) {
   if (typeof source !== 'string') throw new ExpressionError('An expression must be a string.', 0);

@@ -20,14 +20,7 @@
 // A judged numeric result records `expected`: the key it was judged against, from a number
 // or an expression (omitted when the key couldn't be worked out).
 
-import { parseExpression, isExpression, ExpressionError } from '../expression.js';
-
-// Parsed expressions by source, so each parses once however often it is judged.
-const parsed = new Map();
-function expressionFor(source) {
-  if (!parsed.has(source)) parsed.set(source, parseExpression(source));
-  return parsed.get(source);
-}
+import { cachedExpression as expressionFor, isExpression, ExpressionError } from '../expression.js';
 
 export const questionKinds = {
   numeric: {

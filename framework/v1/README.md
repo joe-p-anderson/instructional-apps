@@ -50,6 +50,7 @@ A Task's `condition` is judged against the State only on Submit (`runner/conditi
 | Condition | Passes when | Miss feedback |
 | --- | --- | --- |
 | `{ state, target, tol, targetLabel? }` | the value is within `tol` of `target` | `T = 2.50 s; need 3.00 ± 0.05 s` |
+| `{ state, target, relTol, targetLabel? }` | the value is within `relTol × \|target\|` of `target` (give exactly one of `tol` and `relTol`) | `\|I\| = 4.1 mA; need 5.00 mA ± 2%` |
 | `{ state, equals, targetLabel? }` | the value is exactly `equals` | `Coupling = DC; need AC` |
 | `{ type: 'range', state, above?, below?, targetLabel? }` | the value is strictly above `above` and/or strictly below `below` (give one or both) | the bound it missed: `\|E₀\| = 0 V/m; need > 0` |
 | `{ type: 'anyOf', conditions: [...] }` | at least one component passes; components may be any Condition, including registered types, functions and lists | each component's feedback: `Any one of: Coupled = false; need true — or — T = 2 s; need < 1` |
@@ -57,7 +58,17 @@ A Task's `condition` is judged against the State only on Submit (`runner/conditi
 | `(state, info) => boolean \| { pass, feedback }` | the function says so (escape hatch; can't be encoded) | its `feedback` |
 | `[condition, ...]` | every component passes; one result is recorded per component | per component |
 
-`targetLabel` replaces the generated "need …" text. A registered evaluator is `(condition, state, info, { evaluate }) => { pass, feedback? }`; `evaluate(inner)` judges a nested Condition.
+`targetLabel` replaces the generated "need …" text.
+
+Any value a built-in Condition tests may be a State expression (see Questions below for the syntax): `state` may be a State name or `{ expr }`, and each of `target`, `equals`, `above` and `below` may be a value or `{ expr }`, worked out against the Part's live State at Submit, at any depth inside `anyOf` and lists. `tol` and `relTol` stay plain numbers.
+
+| Condition | Miss feedback |
+| --- | --- |
+| `{ state: 'w', target: { expr: '1/sqrt(L*C)' }, tol: 0.5 }` | the target's value: `ω = 990.0 rad/s; need 1000.0 ± 0.5 rad/s` |
+| `{ type: 'range', state: { expr: 'abs(V_L - V_C)' }, below: 0.01 }` | the expression and its value (no unit): `abs(V_L - V_C) = 0.5; need < 0.01` |
+| an expression naming unknown State, or a target or bound that isn't finite | `Can't judge this Condition: "1/sqrt(L*R)" has unknown State "R".` |
+
+A State name that the Tool doesn't have is a miss the same way (`Can't judge this Condition: unknown State "R".`). Validation rejects an expression that doesn't parse, and a target Condition with both or neither of `tol` and `relTol`. Encode a Condition, or one of its values, whole like any other key. A registered evaluator is `(condition, state, info, { evaluate }) => { pass, feedback? }`; `evaluate(inner)` judges a nested Condition.
 
 ## Questions
 

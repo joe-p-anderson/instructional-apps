@@ -1,4 +1,5 @@
 import { questionKinds } from './questions.js';
+import { validateCondition } from './conditions.js';
 
 // The Activity definition shape, checked when a runner is created.
 //
@@ -58,6 +59,7 @@ export function validateActivity(activity) {
       if (task.hint !== undefined && (typeof task.hint.after !== 'number' || typeof task.hint.text !== 'string')) {
         fail(`Task "${task.id}" hint needs { after: number, text: string }`);
       }
+      if (task.condition !== undefined) validateCondition(task.condition, (msg) => fail(`Task "${task.id}" Condition ${msg}`));
       if (task.questions !== undefined && !Array.isArray(task.questions)) fail(`Task "${task.id}" questions must be a list`);
       const questionIds = new Set();
       for (const q of task.questions ?? []) {
