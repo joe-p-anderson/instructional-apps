@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TOOLS as TOOL_LIST } from '../../framework/v1/tool-list.js';
 
 // The Tool contract's Setup keys and Setup options (framework/v1/tool.js): every Mode of every
 // Tool declares the State names its mount accepts as a Setup, and each one is a name in that
@@ -9,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 // existing Activity uses is one or the other. Tools need a DOM to mount, so this runs in the
 // browser.
 
-const TOOLS = ['bench-scope', 'electrostatics', 'fourier', 'least-squares', 'oscilloscope', 'phasors', 'spacetime', 'vernier'];
+const TOOLS = TOOL_LIST.map((t) => t.id);
 
 for (const id of TOOLS) {
   test(`${id}: every Mode declares Setup keys that are names in its State`, async ({ page }) => {

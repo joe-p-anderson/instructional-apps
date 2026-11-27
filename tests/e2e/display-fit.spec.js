@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { installCanvasTextRecorder, displayTexts } from './helpers/display-text.js';
+import { TOOLS as TOOL_LIST } from '../../framework/v1/tool-list.js';
 
 // No Display scrolls inside itself: for every Tool and Mode, the Display area (.fw-displays)
 // holds its content without overflow, at 1366×768 and at the Tool's minimum Display width.
@@ -7,7 +8,7 @@ import { installCanvasTextRecorder, displayTexts } from './helpers/display-text.
 // text in the Display area, DOM or canvas, is under 12 px (the token is 13 px), except exempt
 // artwork marked `data-fw-artwork`. Activities are checked in every Part at 1366×768.
 
-const TOOLS = ['bench-scope', 'electrostatics', 'fourier', 'least-squares', 'oscilloscope', 'phasors', 'spacetime', 'vernier'];
+const TOOLS = TOOL_LIST.map((t) => t.id);
 
 /** The Tool's declared minimum Display width (defineTool() defaults it to 480 px). */
 const minDisplayWidth = (page) => page.evaluate(() => window.toolHost.tool.minDisplayWidth);
