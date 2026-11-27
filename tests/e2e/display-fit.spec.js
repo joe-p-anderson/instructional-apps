@@ -7,7 +7,7 @@ import { installCanvasTextRecorder, displayTexts } from './helpers/display-text.
 // text in the Display area, DOM or canvas, is under 12 px (the token is 13 px), except exempt
 // artwork marked `data-fw-artwork`. Activities are checked in every Part at 1366×768.
 
-const TOOLS = ['bench-scope', 'electrostatics', 'fourier', 'least-squares', 'oscilloscope', 'spacetime', 'vernier'];
+const TOOLS = ['bench-scope', 'electrostatics', 'fourier', 'least-squares', 'oscilloscope', 'phasors', 'spacetime', 'vernier'];
 
 /** The Tool's declared minimum Display width (defineTool() defaults it to 480 px). */
 const minDisplayWidth = (page) => page.evaluate(() => window.toolHost.tool.minDisplayWidth);
@@ -18,6 +18,7 @@ const ACTIVITIES = [
   '/tools/electrostatics/activities/conductor-properties.html',
   '/tools/fourier/activities/fourier-series.html',
   '/tools/oscilloscope/activities/phase-period-amplitude.html',
+  '/tools/phasors/activities/phasors-impedance.html',
   '/tools/spacetime/activities/lab10.html',
 ];
 

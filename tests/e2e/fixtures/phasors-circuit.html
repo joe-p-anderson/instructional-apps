@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<!--
+  Test fixture: the Phasors Tool's Circuit Mode (four Displays) in an Activity, for the side
+  layout's fit in both forms (Tasks column and Task drawer). Its one Task has a text Question,
+  so the Task card carries a form.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phasors Circuit fixture</title>
+<link rel="stylesheet" href="../../../framework/v1/theme.css">
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+  import phasors from '../../../tools/phasors/phasors.js';
+  import { mountActivity } from '../../../framework/v1/activity-ui.js';
+
+  const activity = {
+    id: 'phasors-circuit-fixture', version: 1, title: 'Phasors Circuit fixture', course: 'PHY 0000', tool: 'phasors',
+    parts: [{ id: 'circuit', title: 'Part 1: Circuit', mode: 'circuit', setup: {},
+      tasks: [{ id: 'look', title: 'Look', prompt: 'Look at the impedance plane.', points: 0,
+        questions: [{ id: 'why', kind: 'text', prompt: 'Why does Z_C point down?', points: 1 }] }] }],
+  };
+  window.activityHost = mountActivity(phasors, activity, document.getElementById('app'), { storage: null });
+</script>
+</body>
+</html>

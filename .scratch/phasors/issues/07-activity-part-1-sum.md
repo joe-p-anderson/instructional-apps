@@ -11,7 +11,7 @@ Spec: .scratch/phasors/spec.md (vocabulary from GLOSSARY.md; builds on framework
 
 **Blocked by:** 06
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] The Activity is pure data in the Tool's activities, with encoded answer keys, following the Fourier Activity.
 - [ ] Checks:

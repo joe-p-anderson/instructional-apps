@@ -22,7 +22,7 @@ Spec: .scratch/phasors/spec.md (vocabulary from GLOSSARY.md; builds on framework
 
 **Blocked by:** 07
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] The State gains the swept-ω range (min and max ω visited in the Part) for sweep Conditions.
 - [ ] Setup values are the implementer's choice:

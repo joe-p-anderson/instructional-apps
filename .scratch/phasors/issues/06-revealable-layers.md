@@ -11,7 +11,7 @@ Each of these becomes a trace-visibility Control, because the framework's Task `
 
 **Blocked by:** 02, 05
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Each revealable layer is a Control with a stable id. Its hide()/show() hides or shows the toggle, the drawn layer on every Display, and the matching readouts.
 - [ ] Hiding I also hides i(t) on the time plot and the I scale.

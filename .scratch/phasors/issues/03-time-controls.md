@@ -14,7 +14,7 @@ These Controls have the same ids in both Modes, so that the Circuit Mode reuses 
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Play/pause, the t-scrubber and the time cursor are Controls whose state is shared within one mounted instance.
 - [ ] Play is cancelled on destroy, following the Fourier Tool.

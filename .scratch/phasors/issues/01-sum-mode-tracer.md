@@ -15,7 +15,7 @@ This ticket lays the end-to-end path that every later ticket builds on: the pure
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] A pure engine module, with no DOM, does four things:
   - complex add, multiply and divide;
