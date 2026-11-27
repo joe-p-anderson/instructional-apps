@@ -7,8 +7,10 @@
 // Fourier link (V_C/V_in = 1/(1 + jωRC), its cutoff f_c = ω_c/2π, and a sweep of ω across ω_c);
 // Part 3 on resonance (sweep to ∠Z = 0, compare ω₀ with 1/√(LC)) and a free-text why.
 //
-// Pure data (no DOM): the runner core and Node tests import it directly. Prompts may use \( \)
-// math; Question prompts use Unicode subscripts so they read the same either way.
+// Pure data (no DOM): the runner core and Node tests import it directly. Task prompts and Hints
+// are HTML prose, with subscripts as <sub> (V<sub>R</sub>, Z<sub>total</sub>) or Unicode digits
+// (V₀, φ₂), and may use \( \) math. Question prompts and choices name each quantity as the
+// Tool's Controls and readouts do (V_R, f_c, ω₀), since a Question prompt is its field's name.
 //
 // Conditions, numeric and choice keys are encoded answer keys (framework/v1/authoring/
 // encode-keys.html, or encodeKey() from framework/v1/runner/keys.js); decode one with decodeKey().
@@ -31,6 +33,8 @@
 // beyond ω_c = 1333 rad/s each way, from the omegaMin/omegaMax State); the resonance Condition
 // is ∠Z = 0 ± 2°.
 
+import { LAYERS } from '../layers.js';
+
 const AMP = { kind: 'numeric', relTol: 0.02, points: 1 };
 const PHASE = { kind: 'numeric', tol: 2, modulus: 360, points: 1 };
 
@@ -51,7 +55,7 @@ const sumPart = {
         + 'sinusoid A cos(ωt + φ), and its phasor A∠φ is the vector sum of the two. The resultant is hidden: '
         + 'compute A and φ by hand, then submit to see it.',
       lock: [...SUM_INPUTS, 'omega'],
-      hide: ['sum'],
+      hide: [...LAYERS.sum],
       questions: [
         { ...AMP, id: 'A', prompt: 'A (V)', answer: 'enc1:Uw' },
         { ...PHASE, id: 'phi', prompt: 'φ (°)', answer: 'enc1:U0QDRwIQUlFBRlRYHFFQTV0' },
@@ -64,7 +68,7 @@ const sumPart = {
       title: 'Check against the resultant',
       prompt: 'The resultant v₁ + v₂ is now drawn on both Displays: check your A and φ against its readout. '
         + 'Then press Play, or drag the time cursor, and watch each phasor\'s projection on the real axis.',
-      show: ['sum'],
+      show: [...LAYERS.sum],
       questions: [{
         id: 'curve',
         kind: 'choice',
@@ -88,7 +92,7 @@ const sumPart = {
         + 'and φ from the components: add the real parts and the imaginary parts of v₁ and v₂. '
         + 'Submit with φ₂ at 120°.',
       show: ['phi2'],
-      hide: ['sum'],
+      hide: [...LAYERS.sum],
       condition: 'enc1:HVVeAlBUBkNJVxEERFZHWEcGExcJEVRJX0gJEF9HEU8tZmgQHgVN',
       questions: [
         { ...AMP, id: 'A', prompt: 'A (V)', answer: 'enc1:VVkbRgQVVlBBQlRYG1dcTFw' },
@@ -102,7 +106,7 @@ const sumPart = {
       title: 'In phase and out of phase',
       prompt: 'The resultant is shown again, and the sinusoids are unlocked: drag the phasor tips or the crests, '
         + 'or type in the boxes. Try φ₂ = φ₁ (in phase) and φ₂ = φ₁ + 180° (out of phase).',
-      show: ['sum', ...SUM_INPUTS],
+      show: [...LAYERS.sum, ...SUM_INPUTS],
       questions: [{
         id: 'extremes',
         kind: 'choice',
@@ -136,8 +140,8 @@ const sumPart = {
 // Circuit Mode: the Setup Controls each Circuit Part's first Task locks, and every revealable
 // layer, all hidden until the Task that asks for it has been submitted.
 const CIRCUIT_SETUP = ['includeR', 'includeL', 'includeC', 'V0', 'R', 'L', 'C', 'omega'];
-const CIRCUIT_LAYERS = ['Ztotal', 'I', 'VR', 'VL', 'VC', 'kvl'];
-const DEVICE_LAYERS = ['VR', 'VL', 'VC', 'kvl'];
+const CIRCUIT_LAYERS = [...LAYERS.circuit];
+const DEVICE_LAYERS = CIRCUIT_LAYERS.filter((layer) => layer !== 'Ztotal' && layer !== 'I');
 
 const IMPEDANCES = 'Z<sub>R</sub> = R, Z<sub>L</sub> = jωL and Z<sub>C</sub> = 1/(jωC) = −j/(ωC)';
 
@@ -152,8 +156,8 @@ const rcPart = {
       title: 'The impedance Z',
       prompt: 'The loop is V₀ = 10 V at ω = 1000 rad/s driving R = 300 Ω in series with C = 2.5 µF (L is off). '
         + `Each element has an impedance: ${IMPEDANCES}. In series they add, Z = Z<sub>R</sub> + Z<sub>C</sub>. `
-        + 'Z_total, the current and the device voltages are hidden: compute Z in rectangular form (real and '
-        + 'imaginary parts) and in polar form (magnitude and angle), then submit to see Z_total.',
+        + 'Z<sub>total</sub>, the current and the device voltages are hidden: compute Z in rectangular form (real and '
+        + 'imaginary parts) and in polar form (magnitude and angle), then submit to see Z<sub>total</sub>.',
       lock: CIRCUIT_SETUP,
       hide: CIRCUIT_LAYERS,
       questions: [
@@ -163,13 +167,13 @@ const rcPart = {
         { ...PHASE, id: 'phiZ', prompt: '∠Z (°)', answer: 'enc1:S0IeWAATU1BDR1JZGVVQQVxK' },
       ],
       points: 0,
-      hint: { after: 3, text: 'The capacitor\'s reactance is 1/(ωC), with ω in rad/s and C in farads (1 µF = 10⁻⁶ F). Z_C points down the imaginary axis, so Im Z is negative and ∠Z is below 0°.' },
+      hint: { after: 3, text: 'The capacitor\'s reactance is 1/(ωC), with ω in rad/s and C in farads (1 µF = 10⁻⁶ F). Z<sub>C</sub> points down the imaginary axis, so Im Z is negative and ∠Z is below 0°.' },
     },
     {
       id: 'rc-current',
       title: 'The current I',
-      prompt: 'Z_total is now drawn on the impedance plane: check your Z against its readout. The source is the '
-        + 'phase reference, V_in = 10∠0° V. Compute the current I = V_in / Z: divide the magnitudes and subtract '
+      prompt: 'Z<sub>total</sub> is now drawn on the impedance plane: check your Z against its readout. The source is the '
+        + 'phase reference, V<sub>in</sub> = 10∠0° V. Compute the current I = V<sub>in</sub> / Z: divide the magnitudes and subtract '
         + 'the angles. Submit to see I.',
       show: ['Ztotal'],
       hide: ['I'],
@@ -184,8 +188,8 @@ const rcPart = {
       id: 'rc-voltages',
       title: 'The device voltages',
       prompt: 'I is now drawn on the phasor plane. Each device\'s voltage is V<sub>k</sub> = I·Z<sub>k</sub>: '
-        + 'multiply the magnitudes and add the angles. Compute V_R and V_C, then submit to see them, head to tail '
-        + 'with the KVL closure V_R + V_C = V_in.',
+        + 'multiply the magnitudes and add the angles. Compute V<sub>R</sub> and V<sub>C</sub>, then submit to see them, head to tail '
+        + 'with the KVL closure V<sub>R</sub> + V<sub>C</sub> = V<sub>in</sub>.',
       show: ['I'],
       hide: DEVICE_LAYERS,
       questions: [
@@ -195,13 +199,13 @@ const rcPart = {
         { ...PHASE, id: 'phiVC', prompt: '∠V_C (°)', answer: 'enc1:S0QbWAkWWllKQldYGFxRQFVD' },
       ],
       points: 0,
-      hint: { after: 3, text: 'Z_R = 300∠0° Ω and Z_C = 400∠−90° Ω. Use I in amps when you multiply, so the voltages come out in volts.' },
+      hint: { after: 3, text: 'Z<sub>R</sub> = 300∠0° Ω and Z<sub>C</sub> = 400∠−90° Ω. Use I in amps when you multiply, so the voltages come out in volts.' },
     },
     {
       id: 'rc-phase',
       title: 'Phase against the current',
-      prompt: 'V_R and V_C are now drawn, closing on V_in. Compare each one\'s angle with ∠I, and press Play to '
-        + 'watch v_R(t) and v_C(t) against i(t).',
+      prompt: 'V<sub>R</sub> and V<sub>C</sub> are now drawn, closing on V<sub>in</sub>. Compare each one\'s angle with ∠I, and press Play to '
+        + 'watch v<sub>R</sub>(t) and v<sub>C</sub>(t) against i(t).',
       show: DEVICE_LAYERS,
       questions: [{
         id: 'phase',
@@ -222,15 +226,15 @@ const rcPart = {
       id: 'rc-ratio',
       title: 'The low-pass filter',
       prompt: 'Taking the output across the capacitor makes this loop the low-pass filter of the Fourier Activity, '
-        + 'where each harmonic at f was scaled and shifted by H = 1/(1 + jf/f<sub>c</sub>). Here V_C / V_in = '
+        + 'where each harmonic at f was scaled and shifted by H = 1/(1 + jf/f<sub>c</sub>). Here V<sub>C</sub> / V<sub>in</sub> = '
         + 'Z<sub>C</sub> / (Z<sub>R</sub> + Z<sub>C</sub>); multiply top and bottom by jωC to get 1/(1 + jωRC). '
-        + 'Compute V_C / V_in at ω = 1000 rad/s, as a magnitude and an angle.',
+        + 'Compute V<sub>C</sub> / V<sub>in</sub> at ω = 1000 rad/s, as a magnitude and an angle.',
       questions: [
         { ...AMP, id: 'H', prompt: '|V_C / V_in|', answer: 'enc1:VlkV' },
         { ...PHASE, id: 'phiH', prompt: '∠(V_C / V_in) (°)', answer: 'enc1:S0QbWAkWWllKQldYGFxRQFVA' },
       ],
       points: 0,
-      hint: { after: 3, text: 'ωRC is a plain number here. Or use your answers: divide V_C by V_in = 10∠0° V.' },
+      hint: { after: 3, text: 'ωRC is a plain number here. Or use your answers: divide V<sub>C</sub> by V<sub>in</sub> = 10∠0° V.' },
     },
     {
       id: 'rc-cutoff',
@@ -256,7 +260,7 @@ const rcPart = {
       id: 'rc-sweep',
       title: 'Sweep ω',
       prompt: 'ω is now unlocked. Sweep it from below 400 rad/s to above 4000 rad/s, a factor of 3 or more on '
-        + 'each side of ω<sub>c</sub>, and watch |V_C| against V₀ and the angle of V_C.',
+        + 'each side of ω<sub>c</sub>, and watch |V<sub>C</sub>| against V₀ and the angle of V<sub>C</sub>.',
       show: ['omega'],
       condition: 'enc1:PQwPAkhQBkNJVxMNQwMAVklQAREPAEVJX1tUTRYCBG0oKnAMElJVXQkAD0wFEFMcXw5DGFQUAFZfUAAEABNFSUlbSFQSEQACe2Y9TVVXUXwHDw9aE0EBDgUQQ1YZVFVEGC8',
       questions: [{
@@ -288,8 +292,8 @@ const rlcPart = {
       title: 'The impedance Z',
       prompt: 'The loop is now V₀ = 6.5 V at ω = 1000 rad/s driving R = 50 Ω, L = 200 mH and C = 12.5 µF in series. '
         + `As before, ${IMPEDANCES}, and in series they add: Z = Z<sub>R</sub> + Z<sub>L</sub> + Z<sub>C</sub>. `
-        + 'Z_total, the current and the device voltages are hidden: compute Z in rectangular form and in polar '
-        + 'form, then submit to see Z_total.',
+        + 'Z<sub>total</sub>, the current and the device voltages are hidden: compute Z in rectangular form and in polar '
+        + 'form, then submit to see Z<sub>total</sub>.',
       lock: CIRCUIT_SETUP,
       hide: CIRCUIT_LAYERS,
       questions: [
@@ -299,12 +303,12 @@ const rlcPart = {
         { ...PHASE, id: 'phiZ', prompt: '∠Z (°)', answer: 'enc1:UEADRQkQUlJGRVRdFFFcQV0' },
       ],
       points: 0,
-      hint: { after: 3, text: 'Z_L points up the imaginary axis and Z_C points down it, so their reactances subtract: Im Z = ωL − 1/(ωC). Use L in henries (1 mH = 10⁻³ H) and C in farads.' },
+      hint: { after: 3, text: 'Z<sub>L</sub> points up the imaginary axis and Z<sub>C</sub> points down it, so their reactances subtract: Im Z = ωL − 1/(ωC). Use L in henries (1 mH = 10⁻³ H) and C in farads.' },
     },
     {
       id: 'rlc-current',
       title: 'The current I',
-      prompt: 'Z_total is now drawn: check your Z against its readout. With V_in = 6.5∠0° V, compute I = V_in / Z. '
+      prompt: 'Z<sub>total</sub> is now drawn: check your Z against its readout. With V<sub>in</sub> = 6.5∠0° V, compute I = V<sub>in</sub> / Z. '
         + 'Submit to see I.',
       show: ['Ztotal'],
       hide: ['I'],
@@ -319,7 +323,7 @@ const rlcPart = {
       id: 'rlc-voltages',
       title: 'The device voltages',
       prompt: 'I is now drawn. Compute V<sub>k</sub> = I·Z<sub>k</sub> for the resistor, the inductor and the '
-        + 'capacitor, then submit to see them head to tail with the KVL closure V_R + V_L + V_C = V_in.',
+        + 'capacitor, then submit to see them head to tail with the KVL closure V<sub>R</sub> + V<sub>L</sub> + V<sub>C</sub> = V<sub>in</sub>.',
       show: ['I'],
       hide: DEVICE_LAYERS,
       questions: [
@@ -331,12 +335,12 @@ const rlcPart = {
         { ...PHASE, id: 'phiVC', prompt: '∠V_C (°)', answer: 'enc1:S0YYQR8TW1FCRlRcGFVcQVxHRQ' },
       ],
       points: 0,
-      hint: { after: 3, text: 'Z_L has angle +90° and Z_C has angle −90°, so add 90° to ∠I for V_L and subtract 90° for V_C. Use I in amps.' },
+      hint: { after: 3, text: 'Z<sub>L</sub> has angle +90° and Z<sub>C</sub> has angle −90°, so add 90° to ∠I for V<sub>L</sub> and subtract 90° for V<sub>C</sub>. Use I in amps.' },
     },
     {
       id: 'rlc-phase',
       title: 'Phase against the current',
-      prompt: 'V_R, V_L and V_C are now drawn, closing on V_in. Compare each one\'s angle with ∠I.',
+      prompt: 'V<sub>R</sub>, V<sub>L</sub> and V<sub>C</sub> are now drawn, closing on V<sub>in</sub>. Compare each one\'s angle with ∠I.',
       show: DEVICE_LAYERS,
       questions: [{
         id: 'phase',
@@ -356,7 +360,7 @@ const rlcPart = {
     {
       id: 'rlc-resonance',
       title: 'Resonance',
-      prompt: 'ω is now unlocked. Sweep it until ∠Z = 0, so Z is purely resistive and I is in phase with V_in. '
+      prompt: 'ω is now unlocked. Sweep it until ∠Z = 0, so Z is purely resistive and I is in phase with V<sub>in</sub>. '
         + 'That ω is the resonance ω₀, where the reactances cancel: ωL = 1/(ωC). Compare it with 1/√(LC) and '
         + 'the ω₀ readout, and submit with ∠Z at 0°.',
       show: ['omega'],
@@ -369,7 +373,7 @@ const rlcPart = {
     {
       id: 'rlc-why',
       title: 'Why can they exceed the source?',
-      prompt: 'Stay at ω₀ and look at the phasor plane and the V_L and V_C readouts. Answer in a few sentences.',
+      prompt: 'Stay at ω₀ and look at the phasor plane and the V<sub>L</sub> and V<sub>C</sub> readouts. Answer in a few sentences.',
       questions: [{
         id: 'why',
         kind: 'text',
