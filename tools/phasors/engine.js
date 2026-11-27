@@ -9,6 +9,7 @@
 //   fromPolar(A, phi) -> { re, im }   polar to rectangular
 //   sum(p1, p2) -> { A, phi }         the resultant of two same-frequency phasors
 //   evaluate(p, omega, t)             A cos(ωt + φ) at time t (s), ω in rad/s
+//   rotate(p, omega, t) -> { re, im } the rotating phasor A∠(ωt + φ) at time t
 //   wrapDeg(deg)                      an angle wrapped into (−180, 180]
 
 const RAD = Math.PI / 180;
@@ -36,6 +37,9 @@ const rect = (p) => fromPolar(p.A, p.phi);
 export const sum = (p1, p2) => toPolar(add(rect(p1), rect(p2)));
 
 export const evaluate = (p, omega, t) => p.A * Math.cos(omega * t + p.phi * RAD);
+
+/** The phasor rotated to time t: the complex value A∠(ωt + φ), whose real part is evaluate(). */
+export const rotate = (p, omega, t) => fromPolar(p.A, p.phi + (omega * t) / RAD);
 
 /** An angle in degrees wrapped into (−180, 180]. */
 export const wrapDeg = (deg) => 180 - ((((180 - deg) % 360) + 360) % 360);

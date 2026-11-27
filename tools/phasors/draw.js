@@ -13,6 +13,8 @@
 //   label(ctx, text, at, color, colors, align)        text at a canvas point
 //   sideLabel(ctx, text, a, b, away, color, colors)   text beside segment a → b, away from `away`
 //   niceStep(span, ticks)                             a 1-2-5 tick step
+//   line(ctx, from, to, color, { width, dashed })     a plain line between canvas points
+//   angleArc(ctx, at, r, a0, a1, color, width)        an arc marking the angle a0 → a1 (degrees)
 
 const PAD = { l: 54, r: 12, t: 12, b: 44 };
 
@@ -111,6 +113,29 @@ export function arrow(ctx, from, to, color, { width = 2.5, dashed = false, head 
   ctx.lineTo(base.x - uy * h * 0.45, base.y + ux * h * 0.45);
   ctx.lineTo(base.x + uy * h * 0.45, base.y - ux * h * 0.45);
   ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+/** A straight line between canvas points, solid or dashed. */
+export function line(ctx, from, to, color, { width = 1.5, dashed = false } = {}) {
+  ctx.save();
+  ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineCap = 'round';
+  if (dashed) ctx.setLineDash([5, 4]);
+  ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * An arc of radius r (px) about canvas point `at`, from angle a0 to a1 (degrees, counter-clockwise
+ * as on a complex plane), the shorter way round: it marks the angle between two phasors.
+ */
+export function angleArc(ctx, at, r, a0, a1, color, width = 1.5) {
+  const d = ((((a1 - a0) % 360) + 540) % 360) - 180; // signed, in [−180, 180)
+  ctx.save();
+  ctx.strokeStyle = color; ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.arc(at.x, at.y, r, (-a0 * Math.PI) / 180, (-(a0 + d) * Math.PI) / 180, d > 0);
+  ctx.stroke();
   ctx.restore();
 }
 

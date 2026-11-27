@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { add, div, evaluate, fromPolar, mul, sum, toPolar, wrapDeg } from '../../../tools/phasors/engine.js';
+import { add, div, evaluate, fromPolar, mul, rotate, sum, toPolar, wrapDeg } from '../../../tools/phasors/engine.js';
 
 const close = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg ?? ''} ${a} vs ${b}`);
 const wrap = (d) => ((((d + 180) % 360) + 360) % 360) - 180; // into [−180, 180)
@@ -82,6 +82,28 @@ test('the time-domain sum equals v₁(t) + v₂(t) at many t', () => {
       const t = (i / 100) * 0.04;
       close(evaluate(s, omega, t), evaluate(p1, omega, t) + evaluate(p2, omega, t), 1e-9, `t = ${t}`);
     }
+  }
+});
+
+test('a rotated phasor A∠(ωt + φ) has real part A cos(ωt + φ) and keeps its amplitude, at many t', () => {
+  const omega = 2 * Math.PI * 60;
+  for (const p of [{ A: 2, phi: 0 }, { A: 3, phi: 60 }, { A: 1.5, phi: -135 }, { A: 4, phi: 180 }]) {
+    for (let i = 0; i <= 100; i += 1) {
+      const t = (i / 100) * (2 / 60);
+      const z = rotate(p, omega, t);
+      close(z.re, p.A * Math.cos(omega * t + (p.phi * Math.PI) / 180), 1e-12, `re at t = ${t}`);
+      close(Math.hypot(z.re, z.im), p.A, 1e-12, 'amplitude');
+    }
+  }
+  const q = rotate({ A: 2, phi: 30 }, 1000, Math.PI / 2000); // a quarter period on: 2∠120°
+  close(q.re, -1, 1e-12, 're'); close(q.im, Math.sqrt(3), 1e-12, 'im');
+});
+
+test('rotation keeps the angle between two phasors fixed', () => {
+  const p1 = { A: 3, phi: 10 }; const p2 = { A: 2, phi: 85 };
+  for (const t of [0, 1e-4, 7e-4, 3e-3]) {
+    const a = toPolar(rotate(p1, 1000, t)); const b = toPolar(rotate(p2, 1000, t));
+    closeDeg(b.phi - a.phi, 75, 1e-9, `at t = ${t}`);
   }
 });
 

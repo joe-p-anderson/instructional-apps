@@ -38,7 +38,7 @@ test('the Standalone page opens on the Sum Mode with its inputs shown and unlock
     const i = window.toolHost.instances[0];
     return i.controls.ids().map((id) => ({ id, locked: i.controls.get(id).isLocked(), hidden: i.controls.get(id).isHidden() }));
   });
-  expect(controls.map((c) => c.id).sort()).toEqual(['A1', 'A2', 'phi1', 'phi2']);
+  expect(controls.map((c) => c.id).sort()).toEqual(['A1', 'A2', 'cursor', 'omega', 'phi1', 'phi2', 'play', 't']);
   for (const c of controls) expect(c, c.id).toMatchObject({ locked: false, hidden: false });
   const shots = await page.evaluate(() => Promise.all(window.toolHost.instances[0].displays.map(async (d) => [d.id, await d.snapshot()])));
   expect(shots.map(([id]) => id)).toEqual(['plane', 'time']);
@@ -61,6 +61,9 @@ test('State publishes the Mode, both sinusoids, ω and the resultant, with units
   expect(info.A.unit).toBe('V');
   expect(info.phi.unit).toBe('°');
   expect(info.f.unit).toBe('Hz');
+  expect(s).toMatchObject({ t: 0, playing: false });
+  expect(info.t.unit).toBe('s');
+  expect(info.playing).toBeTruthy();
   for (const k of Object.keys(s)) expect(info[k], k).toBeTruthy();
 });
 
@@ -97,31 +100,166 @@ test('changing an input moves the phasor and its curve', async ({ page }) => {
   expect(near(await colourAt(page, 'time', ...crest(90)), red), 'nothing left at the old crest').toBe(false);
 });
 
+test('the Tool starts paused at t = 0; play advances t and pause stops it', async ({ page }) => {
+  await open(page);
+  const play = page.getByRole('button', { name: 'Play' });
+  await expect(play).toHaveAttribute('aria-pressed', 'false');
+  expect(await state(page)).toMatchObject({ t: 0, playing: false });
+  await play.click();
+  await expect(play).toHaveAttribute('aria-pressed', 'true');
+  expect((await state(page)).playing).toBe(true);
+  await expect.poll(async () => (await state(page)).t).toBeGreaterThan(0);
+  await play.click();
+  await expect(play).toHaveAttribute('aria-pressed', 'false');
+  const paused = await state(page);
+  expect(paused.playing).toBe(false);
+  await page.waitForTimeout(300);
+  expect((await state(page)).t).toBe(paused.t);
+});
+
+test('play loops t within one period, which takes a few seconds whatever ω is', async ({ page }) => {
+  await open(page);
+  const out = await page.evaluate(async () => {
+    const i = window.toolHost.instances[0];
+    i.controls.get('omega').set(1e5);
+    const T = (2 * Math.PI) / 1e5;
+    let max = 0;
+    i.state.onChange((s) => { max = Math.max(max, s.t); });
+    i.controls.get('play').set(true);
+    const t0 = i.state.snapshot().t;
+    await new Promise((r) => setTimeout(r, 500));
+    const t1 = i.state.snapshot().t;
+    i.controls.get('play').set(false);
+    return { T, max, advanced: (t1 - t0 + T) % T };
+  });
+  expect(out.max).toBeLessThanOrEqual(out.T);
+  // half a second of play moves t by between a twentieth and a half of a period
+  expect(out.advanced / out.T).toBeGreaterThan(0.05);
+  expect(out.advanced / out.T).toBeLessThan(0.5);
+});
+
+test('the t-scrubber and the time cursor set the same t', async ({ page }) => {
+  await open(page);
+  const omega = 1000;
+  // the scrubber is ωt in degrees: 90° is a quarter period
+  await enter(page, 'ωt (°)', 90);
+  expect((await state(page)).t).toBeCloseTo(Math.PI / 2 / omega, 9);
+  const cursor = page.getByRole('slider', { name: 'Time cursor' });
+  await expect(cursor).toHaveAttribute('aria-valuenow', '90');
+  // keyboard moves the cursor, and the scrubber follows
+  await cursor.focus();
+  await cursor.press('ArrowRight');
+  const t = (await state(page)).t;
+  expect(t).toBeGreaterThan(Math.PI / 2 / omega);
+  await expect(box(page, 'ωt (°)')).not.toHaveValue('90');
+});
+
+test('dragging the time cursor changes t', async ({ page }) => {
+  await open(page);
+  await settle(page);
+  const cursor = page.getByRole('slider', { name: 'Time cursor' });
+  const b = await cursor.boundingBox();
+  const T = (2 * Math.PI) / 1000;
+  const target = await page.evaluate((T) => window.toolHost.instances[0].displays
+    .find((d) => d.id === 'time').toScreen(T / 2, 0), T);
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(target.x, b.y + b.height / 2, { steps: 4 });
+  await page.mouse.up();
+  const s = await state(page);
+  expect(s.t / T).toBeGreaterThan(0.45);
+  expect(s.t / T).toBeLessThan(0.55);
+});
+
+test('changing ω updates the f readout', async ({ page }) => {
+  await open(page);
+  const f = page.getByRole('status', { name: 'f', exact: true });
+  await expect(f).toHaveText('159.2 Hz');
+  await enter(page, 'ω (rad/s)', 2000);
+  await expect(f).toHaveText('318.3 Hz');
+  const s = await state(page);
+  expect(s.omega).toBe(2000);
+  expect(s.f).toBeCloseTo(2000 / (2 * Math.PI), 9);
+});
+
+test('the phasors rotate to ωt + φ, and each projection meets its curve at the cursor', async ({ page }) => {
+  await open(page);
+  const omega = 1000;
+  await settle(page);
+  const red = await colourAt(page, 'plane', 3, 2); // v₂'s static tip, head-to-tail from v₁ = (3, 0)
+  await enter(page, 'ωt (°)', 60);
+  await settle(page);
+  const t = (await state(page)).t;
+  const blue = await colourAt(page, 'time', -Math.PI / omega, -3); // v₁ = 3 cos(ωt), its trough at t = −T/2
+  const rad = Math.PI / 180;
+  // v₁ = 3∠0 is now at 3∠60°; its tip and its real-axis projection 3 cos 60° = 1.5
+  expect(near(await colourAt(page, 'plane', 3 * Math.cos(60 * rad), 3 * Math.sin(60 * rad)), blue), 'v₁ tip rotated').toBe(true);
+  expect(near(await colourAt(page, 'plane', 1.5, 0), blue), 'v₁ projection on the real axis').toBe(true);
+  expect(near(await colourAt(page, 'time', t, 1.5), blue), 'v₁ curve at the cursor').toBe(true);
+  // the relative angle stays put: v₂ (2∠90°) is now 2∠150°, still 90° ahead of v₁
+  const tip = [1.5 + 2 * Math.cos(150 * rad), 3 * Math.sin(60 * rad) + 2 * Math.sin(150 * rad)];
+  expect(near(await colourAt(page, 'plane', ...tip), red), 'v₂ tip rotated with v₁').toBe(true);
+  expect(near(await colourAt(page, 'plane', 3, 2), red), 'nothing left at v₂’s static tip').toBe(false);
+  expect(near(await colourAt(page, 'time', t, 2 * Math.cos(150 * rad)), red), 'v₂ curve at the cursor').toBe(true);
+});
+
 test('serialize and restore round-trip the inputs, ignoring bad values and clamping out-of-range ones', async ({ page }) => {
   await open(page);
   const out = await page.evaluate(() => {
     const i = window.toolHost.instances[0];
     let fired = 0;
     i.state.onChange(() => { fired += 1; });
-    i.restore({ A1: 1.5, phi1: 'nope', A2: 999, phi2: 270 });
-    return { s: i.state.snapshot(), saved: i.serialize(), fired };
+    i.restore({ A1: 1.5, phi1: 'nope', A2: 999, phi2: 270, omega: 5e7, t: 'later' });
+    const first = { s: i.state.snapshot(), saved: i.serialize(), fired };
+    i.controls.get('play').set(true);
+    i.restore({ omega: 2000, t: 0.001 });
+    return { ...first, after: i.state.snapshot(), saved2: i.serialize() };
   });
   expect(out.fired).toBe(1);
-  expect(out.s).toMatchObject({ A1: 1.5, phi1: 0, A2: 10, phi2: -90 });
-  expect(out.saved).toEqual({ A1: 1.5, phi1: 0, A2: 10, phi2: -90 });
+  expect(out.s).toMatchObject({ A1: 1.5, phi1: 0, A2: 10, phi2: -90, omega: 1e6, t: 0 });
+  expect(out.saved).toEqual({ A1: 1.5, phi1: 0, A2: 10, phi2: -90, omega: 1e6, t: 0 });
+  // restore stops play, and t comes back within one period
+  expect(out.after).toMatchObject({ omega: 2000, playing: false });
+  expect(out.after.t).toBeCloseTo(0.001, 9);
+  expect(out.saved2.t).toBeCloseTo(0.001, 9);
 });
 
-test('the Tool mounts several times on one page, each instance on its own State', async ({ page }) => {
+test('the Tool mounts several times on one page, each instance on its own State, and destroy cancels play', async ({ page }) => {
   await open(page);
   const out = await page.evaluate(async () => {
     const { default: tool } = await import('/tools/phasors/phasors.js');
     const a = tool.mount(document.body.appendChild(document.createElement('div')), 'sum', { A1: 1 });
     const b = tool.mount(document.body.appendChild(document.createElement('div')), 'sum', { A1: 2 });
+    let bChanges = 0;
+    b.state.onChange(() => { bChanges += 1; });
     a.controls.get('A2').set(5);
+    a.controls.get('t').set(0.002);
     const r = { a: a.state.snapshot(), b: b.state.snapshot() };
-    a.destroy(); b.destroy();
-    return r;
+    a.controls.get('play').set(true);
+    a.destroy();
+    let aChanges = 0;
+    a.state.onChange(() => { aChanges += 1; });
+    await new Promise((res) => setTimeout(res, 400));
+    b.destroy();
+    return { ...r, aChanges, bChanges };
   });
   expect(out.a).toMatchObject({ A1: 1, A2: 5 });
-  expect(out.b).toMatchObject({ A1: 2, A2: 2 });
+  expect(out.a.t).toBeCloseTo(0.002, 9);
+  expect(out.b).toMatchObject({ A1: 2, A2: 2, t: 0 });
+  expect(out.aChanges).toBe(0);
+  expect(out.bChanges).toBe(0);
+});
+
+test('locking play pauses it', async ({ page }) => {
+  await open(page);
+  const out = await page.evaluate(() => {
+    const i = window.toolHost.instances[0];
+    i.controls.get('play').set(true);
+    const on = i.state.snapshot().playing;
+    i.controls.get('play').lock();
+    const locked = i.state.snapshot().playing;
+    i.controls.get('play').set(true);
+    return { on, locked, still: i.state.snapshot().playing };
+  });
+  expect(out).toEqual({ on: true, locked: false, still: false });
 });
