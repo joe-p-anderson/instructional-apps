@@ -33,7 +33,7 @@ import { decodeActivity, decodeHint } from './keys.js';
 import { isGraded } from './questions.js';
 
 export { builtinConditionTypes, createConditionRegistry, evaluateCondition, validateCondition } from './conditions.js';
-export { validateActivity } from './activity.js';
+export { validateActivity, activityProblems } from './activity.js';
 export { evaluateQuestions } from './questions.js';
 export { judgeTask, scoreActivity } from './scoring.js';
 export { encodeKey, decodeKey, decodeActivity, isEncodedKey } from './keys.js';
