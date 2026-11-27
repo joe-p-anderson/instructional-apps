@@ -20,7 +20,7 @@ function mount(container, modeId = MODES[0].id, setup = {}) {
 export default defineTool({
   id: 'fourier',
   title: 'Fourier Series',
-  modes: MODES.map(({ id, title, setupKeys }) => ({ id, title, setupKeys })),
+  modes: MODES.map(({ id, title, setupKeys, setupOptions }) => ({ id, title, setupKeys, setupOptions })),
   layout: 'side',
   mount,
 });

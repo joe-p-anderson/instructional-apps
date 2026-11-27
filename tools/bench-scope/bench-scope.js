@@ -310,7 +310,8 @@ export default defineTool({
   modes: [{
     id: 'scope',
     title: 'Oscilloscope',
-    // seed (the noise seed) is a Setup value but not State, so it is not a Setup key.
+    // seed (the noise seed) is a Setup value but not State, so it is a Setup option.
+    setupOptions: ['seed'],
     setupKeys: [
       'skin',
       'gen1Wave', 'gen1Freq', 'gen1Vpp', 'gen1Offset',

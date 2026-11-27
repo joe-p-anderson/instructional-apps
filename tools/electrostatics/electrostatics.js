@@ -23,7 +23,7 @@ function mount(container, modeId = MODES[0].id, setup = {}) {
 export default defineTool({
   id: 'electrostatics',
   title: 'Electrostatics',
-  modes: MODES.map(({ id, title, setupKeys }) => ({ id, title, setupKeys })),
+  modes: MODES.map(({ id, title, setupKeys, setupOptions }) => ({ id, title, setupKeys, setupOptions })),
   // The plot is square: on a wider Display the colour bar drifts far from it at the right edge.
   maxDisplayWidth: 1200,
   mount,
