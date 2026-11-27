@@ -1226,7 +1226,13 @@ export { conditionTypes };
 export default defineTool({
   id: 'spacetime',
   title: 'Spacetime Diagrams',
-  // names, grid, showKp, objs and tool are Setup values but not State, so not Setup keys.
-  modes: [{ id: 'diagram', title: 'Spacetime diagram', setupKeys: ['v'] }],
+  // The other Setup values are not State, so they are Setup options. view (the starting pan and
+  // zoom, as in the saved diagram format) is read too, though the header's Setup leaves it out.
+  modes: [{
+    id: 'diagram',
+    title: 'Spacetime diagram',
+    setupKeys: ['v'],
+    setupOptions: ['names', 'grid', 'showKp', 'objs', 'tool', 'view'],
+  }],
   mount,
 });

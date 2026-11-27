@@ -156,6 +156,8 @@ Activities are stored as plain JSON instead of JS modules (ADR 0004), so the edi
 - Each Mode declares its Setup keys: a list of State names that its mount accepts as a Setup. This is declared on the Tool's `modes` entries, so it can be read without mounting the Tool, and `defineTool` checks that it is a list of strings.
 - All 8 Tools declare them, taken from the Setups each Mode reads today (the header comments and the mount code).
 - A Mode's Setup keys must be names in that Mode's State. A contract test checks this for every Tool and Mode.
+- **Setup options** (added after ticket 03): each Mode also declares `setupOptions`, the Setup values its mount reads that are not State, such as bench-scope's noise `seed`, the fourier synthesis `coefficientTable`, and spacetime's `names`, `grid`, `showKp`, `objs`, `tool` and `view`. `defineTool` checks it the same way (an optional list of distinct non-empty strings) and rejects a name that is in both lists. The contract test also checks that no Setup option is a State name, and that every Setup value each existing Activity uses is a Setup key or a Setup option of its Mode.
+- **How the editor treats them:** Capture stores only the Setup keys and leaves any Setup option values already in the Setup untouched. Setup options are typed by hand. The problems list flags a Setup value only if it is in neither list.
 
 ### State expressions (ADR 0005)
 
@@ -195,7 +197,7 @@ Activities are stored as plain JSON instead of JS modules (ADR 0004), so the edi
 
 ### Editor core (new, DOM-free)
 
-A deep module behind one interface, the main new seam. It knows nothing about the page, the file system or a live Tool. It works from an Activity document and, for each Mode, its **Tool info**: Mode ids and titles, Setup keys, Control ids and labels, State names with labels and units. The page collects Tool info by mounting each Mode once in a hidden container.
+A deep module behind one interface, the main new seam. It knows nothing about the page, the file system or a live Tool. It works from an Activity document and, for each Mode, its **Tool info**: Mode ids and titles, Setup keys and Setup options, Control ids and labels, State names with labels and units. The page collects Tool info by mounting each Mode once in a hidden container.
 
 The core provides:
 
@@ -203,7 +205,7 @@ The core provides:
 - **Edit:** apply edits to Parts, Tasks, Conditions, Questions, Hints, Setup, notes, ids and version. Each edit returns a new document, so undo and redo come from keeping the history. New ids are made from titles, as a slug unique within their scope. Retitling never changes an id.
 - **Effective exposure:** for a Part and Task, each Control's state after carry-over (open, locked or hidden), and whether this Task set it or inherited it. This follows exactly the runner's rule: show opens, lock shows and locks, hide hides, applied in Task order.
 - **Set exposure:** set a Control's effective state at a Task; the core rewrites that Task's show, lock and hide lists minimally. Setting a Control back to its inherited state removes it from them.
-- **Problems:** the runner's own validation, plus checks against Tool info (unknown Modes, Controls, State names and Setup keys), expression parse errors, and duplicate or missing ids. Each problem carries a path to the field that causes it.
+- **Problems:** the runner's own validation, plus checks against Tool info (unknown Modes, Controls and State names, and Setup values that are neither a Setup key nor a Setup option), expression parse errors, and duplicate or missing ids. Each problem carries a path to the field that causes it.
 - **Save:** produce the JSON text in its saved form, encoding every field that must be encoded.
 - **Preview:** produce the Activity object for the runner.
 
@@ -257,7 +259,7 @@ A good test drives a module through its public interface and checks observable r
 - **Runner core (existing seam, Node):** createRunner judges Questions and Conditions whose values are State expressions against the State at Submit. The cases cover a correct and a wrong answer, the expected value recorded in the Attempt, an unknown State name, and a non-finite result. Encoded expressions are decoded. Validation rejects an expression that doesn't parse. A target Condition with `relTol` passes and misses at the right bounds, including against an expression target. Validation rejects one with both `tol` and `relTol`, or neither. Prior art: the existing runner tests in the unit runner folder.
 - **Expression evaluator (Node):** a table of expressions and snapshots with their values, covering operator precedence, the right associativity of `^`, unary minus, every function, and deg and rad. Parse errors give a position. It reports the State names an expression uses. Inputs that would need `eval` are refused.
 - **Report and Report Viewer (Node):** a sealed Report with expected values verifies, opens, and shows the values in the student view. An older fixture without them opens unchanged, and its scores are unchanged. Prior art: the report and report-viewer unit tests and their fixtures.
-- **Tool contract (Node):** `defineTool` rejects bad Setup key declarations. A contract test mounts every Tool and Mode and checks that each Setup key is a State name. Prior art: the framework unit tests.
+- **Tool contract (Node, plus a Playwright contract test since Tools need a DOM):** `defineTool` rejects bad Setup key and Setup option declarations. A contract test mounts every Tool and Mode and checks that each Setup key is a State name and no Setup option is, and that every existing Activity's Setup values are declared. Prior art: the framework unit tests.
 - **Migration (existing specs):** every Activity's existing unit test, switched to read the JSON, passes with no other change to its assertions, including the keys-agree-with-the-engine checks. Every existing Activity e2e spec passes unchanged, which checks the page, staging, judging and Report.
 - **Editor core (new seam, Node):** open each migrated Activity, save it unchanged, and require output byte-identical to the file. Other cases:
   - every edit kind;

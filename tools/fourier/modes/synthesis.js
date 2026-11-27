@@ -41,8 +41,8 @@ import { signalState, toCount } from '../signal.js';
 
 export const id = 'synthesis';
 export const title = 'Synthesis';
-// coefficientTable is a Setup value but not State, so it is not a Setup key.
 export const setupKeys = ['waveform', 'amp', 'f0', 'offset', 'shift', 'filter', 'fc', 'applyGain', 'applyPhase', 'N'];
+export const setupOptions = ['coefficientTable']; // a Setup value that is not State
 
 export const PLAY_MS = 250; // how often play steps N up
 const PERIODS = 2; // periods of f0 shown on the time axis

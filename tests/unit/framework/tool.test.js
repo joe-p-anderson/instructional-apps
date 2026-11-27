@@ -77,3 +77,23 @@ test('Setup keys that are not a list of State names are rejected', () => {
     assert.throws(() => defineTool(tool({ modes: [{ id: 'm', setupKeys }] })), /modes\[0\]\.setupKeys/);
   }
 });
+
+// Setup options: Setup values a Mode's mount reads that are not State.
+
+test('a Mode may declare its Setup options as a list of names', () => {
+  const defined = defineTool(tool({ modes: [{ id: 'm', setupKeys: ['f'], setupOptions: ['seed', 'skin'] }] }));
+  assert.deepEqual(defined.modes[0].setupOptions, ['seed', 'skin']);
+});
+
+test('Setup options that are not a list of distinct names are rejected', () => {
+  for (const setupOptions of ['seed', null, {}, [1], ['seed', ''], ['seed', 'seed']]) {
+    assert.throws(() => defineTool(tool({ modes: [{ id: 'm', setupOptions }] })), /modes\[0\]\.setupOptions/);
+  }
+});
+
+test('a name that is both a Setup key and a Setup option is rejected', () => {
+  assert.throws(
+    () => defineTool(tool({ modes: [{ id: 'm', setupKeys: ['f', 'seed'], setupOptions: ['seed'] }] })),
+    /modes\[0\].*seed/,
+  );
+});
