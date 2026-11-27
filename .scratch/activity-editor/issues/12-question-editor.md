@@ -5,7 +5,7 @@ Spec: .scratch/activity-editor/spec.md (vocabulary from GLOSSARY.md; respects AD
 **What to build:** On a Task the instructor adds, edits, reorders and removes Questions:
 - **Kinds:** numeric, choice and free text, each with a prompt and points.
 - **Numeric answers:** a typed number or a State expression (ticket 02). An expression shows its value at the live Tool's current State.
-- **Tolerances:** tol, relTol and modulus can be set by hand. The editor's tolerance presets ("Amplitude 2%", "Phase ±2° mod 360", and others) stamp plain values onto the Question.
+- **Tolerances:** the tolerance (one number with a unit / % switch that writes `tol` or `relTol`, as in the condition builder) and the modulus can be set by hand. The editor's tolerance presets ("Amplitude 2%", "Phase ±2° mod 360", and others) stamp plain values onto the Question.
 - **Choices:** choice Questions have editable, reorderable choices, with the correct one marked.
 
 Keys are stored encoded and shown in plain text.

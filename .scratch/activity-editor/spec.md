@@ -23,7 +23,7 @@ An **Activity editor**: a page on the site that becomes the instructor's main wa
 - **Opening and saving:** the instructor opens the editor in Chrome or Edge and grants it the repo folder once. An Open screen lists every Activity, searchable and filterable by course and Tool, with recent ones first. Ctrl+S saves an Activity back into the checkout, ready to commit. A new Activity starts by picking a Tool and an id; the editor writes its data file and its page.
 - **The live Tool:** each Part mounts the real Tool at that Part's Mode and Setup. Control and State pickers come from that live Tool, so names can't be mistyped. The Setup is set by operating the Tool and clicking Capture, or by typing values.
 - **Exposure:** on each Task, every Control is listed with what the student actually gets at that Task: open, locked or hidden. The instructor flips a three-way switch, and the editor writes the show, lock and hide lists.
-- **Conditions:** a builder for target ± tolerance, equals and range, nested inside any-of and all-of groups. Each value can be a State name or a **State expression**.
+- **Conditions:** a builder for target ± tolerance, equals and range, nested inside any-of and all-of groups. The State tested and the target, equals and range values can each be a State name or a **State expression**. A tolerance is a plain number, either absolute or a percentage of the target.
 - **Question answers:** a numeric answer can be a typed number or a State expression such as `I * 1000` or `1/sqrt(L*C)`. The runner works it out from the live State on Submit, so the key can't disagree with what the Tool shows.
 - **Prose:** prompts and Hints are written as source, with a rendered preview beside them. An info hover explains the allowed tags and the `\( \)` math.
 - **Problems and preview:** a live problems list catches unknown Controls and State, bad expressions and duplicate ids. A throwaway preview runs the unsaved Activity in the real runner, starting at any Task.
@@ -78,6 +78,8 @@ Activities are stored as plain JSON instead of JS modules (ADR 0004), so the edi
 
 29. As the instructor, I want to give a Task a Condition, or none, so that some Tasks just ask Questions.
 30. As the instructor, I want to build a target ± tolerance, equals or range Condition on a State name chosen from the live Tool's State, with its unit shown, so that I can't name State that doesn't exist.
+
+    (Added after the mockup review: the tolerance can be given in the State's unit or as a percentage of the target; see "Tolerances".)
 31. As the instructor, I want a "Use current value" button that fills a target from the live Tool, so that I can set a target by arranging the Tool.
 32. As the instructor, I want to group Conditions in any-of and all-of groups nested to any depth, so that every Condition the framework supports can be built.
 33. As the instructor, I want to set an optional target label, so that the miss feedback reads the way I want.
@@ -90,7 +92,7 @@ Activities are stored as plain JSON instead of JS modules (ADR 0004), so the edi
 37. As the instructor, I want a numeric answer to be either a typed number or a State expression, so that keys the Tool computes can't disagree with it.
 38. As the instructor, I want to see what a State expression works out to at the live Tool's current State, so that I can check it while writing it.
 39. As the instructor, I want tolerance presets such as "Amplitude 2%" and "Phase ±2° mod 360" that stamp plain values onto a Question, so that I set tolerances consistently without shared constants.
-40. As the instructor, I want to set tol, relTol and modulus by hand as well, so that unusual Questions still fit.
+40. As the instructor, I want to set the tolerance (in the unit or as a percentage) and the modulus by hand as well, so that unusual Questions still fit.
 41. As the instructor, I want to add, reorder and remove the choices of a choice Question and mark the correct one, so that multiple choice is quick to write.
 
 ### Prose
@@ -168,6 +170,20 @@ Activities are stored as plain JSON instead of JS modules (ADR 0004), so the edi
   - functions: sqrt, abs, exp, ln, log10, sin, cos, tan, asin, acos, atan, atan2, min, max, deg and rad.
   - Trig works in radians; `deg(x)` and `rad(x)` convert. The result is always a number, and a non-finite result fails the judgement with feedback naming the expression's value.
 - **Where it appears:** a numeric Question's `answer` may be a number or `{ expr }`. In a Condition, `state` may be a State name or `{ expr }`, and each of `target`, `equals`, `above` and `below` may be a number or `{ expr }`. The Condition miss feedback names the expression's value where it today names the State's value or target.
+- **Tolerances stay plain numbers.** `tol`, `relTol` and `modulus` are never expressions.
+
+### Tolerances (added after the mockup review)
+
+- **Two kinds of tolerance:** a tolerance is either absolute or relative.
+  - Absolute: `tol`, in the State's or the answer's unit.
+  - Relative: `relTol`, a fraction of |target| or |answer|.
+- **Questions:** numeric Questions already take either one.
+- **target Conditions gain `relTol`:** a target Condition, `{ state, target, relTol }`, now accepts `relTol` as an alternative to `tol`. It passes when the value is within `relTol × |target|` of the target, where the target may be an expression worked out at Submit. Exactly one of `tol` and `relTol` is given; validation rejects both or neither. The miss feedback shows the percentage, for example `|I| = 4.1 mA; need 5.00 mA ± 2%`.
+- **The editor's tolerance field:** in the builder and on numeric Questions, the tolerance is one number with a unit / % switch.
+  - The unit side writes `tol`.
+  - The % side writes `relTol` as the percentage ÷ 100, so typing 2 % stores `relTol: 0.02`.
+  - Switching sides clears the other key.
+  - The file keeps the plain fraction, as today.
 - **Encoding:** an `{ expr }` value is encoded as a whole like any other key. The runner decodes it, then evaluates it at Submit against the Part's State at that moment.
 - **Validation:** an Activity naming an expression that doesn't parse is rejected by the runner's validation, the same as a malformed Condition. Unknown State names can't be caught there, because State is known only once the Tool is mounted. They are reported by the editor's problems list, and at Submit as a miss with feedback naming the unknown State.
 
@@ -238,7 +254,7 @@ The editor's look and feel are checked before any editor UI is built:
 
 A good test drives a module through its public interface and checks observable results: a judgement and its feedback, a saved JSON text, a list of problems, what the page shows. It never checks internal structure, so the implementation can change freely.
 
-- **Runner core (existing seam, Node):** createRunner judges Questions and Conditions whose values are State expressions against the State at Submit. The cases cover a correct and a wrong answer, the expected value recorded in the Attempt, an unknown State name, and a non-finite result. Encoded expressions are decoded. Validation rejects an expression that doesn't parse. Prior art: the existing runner tests in the unit runner folder.
+- **Runner core (existing seam, Node):** createRunner judges Questions and Conditions whose values are State expressions against the State at Submit. The cases cover a correct and a wrong answer, the expected value recorded in the Attempt, an unknown State name, and a non-finite result. Encoded expressions are decoded. Validation rejects an expression that doesn't parse. A target Condition with `relTol` passes and misses at the right bounds, including against an expression target. Validation rejects one with both `tol` and `relTol`, or neither. Prior art: the existing runner tests in the unit runner folder.
 - **Expression evaluator (Node):** a table of expressions and snapshots with their values, covering operator precedence, the right associativity of `^`, unary minus, every function, and deg and rad. Parse errors give a position. It reports the State names an expression uses. Inputs that would need `eval` are refused.
 - **Report and Report Viewer (Node):** a sealed Report with expected values verifies, opens, and shows the values in the student view. An older fixture without them opens unchanged, and its scores are unchanged. Prior art: the report and report-viewer unit tests and their fixtures.
 - **Tool contract (Node):** `defineTool` rejects bad Setup key declarations. A contract test mounts every Tool and Mode and checks that each Setup key is a State name. Prior art: the framework unit tests.
