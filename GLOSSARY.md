@@ -48,6 +48,10 @@ _Avoid_: theme, skin, template
 The narrow-screen home of a `side` layout's Tasks: a bar above the Display with the current Task's title, Submit and last result, which opens over the Display to show the whole current Task.
 _Avoid_: tasks panel, sidebar
 
+**Revealable layer**:
+A part of a Display that a Task can hide while it asks the student for that quantity and a later Task shows again (e.g. the resultant phasor, or Z_total). It is a Control, so Task hide and show lists act on it; hiding it hides its drawing and its readouts, while State keeps publishing its values.
+_Avoid_: overlay, reveal, mask
+
 **State**:
 The named values a simulation exposes for tasks to read and record.
 _Avoid_: params, sim variables

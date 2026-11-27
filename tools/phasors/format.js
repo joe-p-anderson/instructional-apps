@@ -4,6 +4,8 @@
 //   num(v, decimals)        a number with a true minus sign, and no "−0.00"
 //   rectText(z, unit)       'a + jb unit', e.g. '3.00 − j2.00 V'
 //   polarText(p, unit)      'A∠φ° unit', e.g. '3.61∠33.7° V'
+//   timeUnit(T)             the unit to show times in for a period T (s): { unit, scale }, t × scale
+//                           in 's', 'ms' or 'µs'
 //   prefix(v)               the SI prefix to show a magnitude v in: { prefix, scale }, v × scale
 //                           in [1, 1000) where it can ('M', 'k', '', 'm', 'µ', 'n')
 //   siRectText(z, unit)     rectText with an SI prefix for |z|, e.g. '1.20 − j4.50 kΩ'

@@ -9,7 +9,7 @@ Static instructional apps, served as-is (no build). Tools are built on [framewor
 - [Electrostatics](tools/electrostatics/): a charged circular conductor in an applied field, with electric field, potential (probes P1/P2) and Gauss's law Modes.
 - [Spacetime diagrams](tools/spacetime/): draw events, worldlines and rods in an Earth frame K and a rocket frame K′, with Lorentz-transformed coordinates, intervals and proper times.
 - [Fourier Series](tools/fourier/) (PHY/EGR 3120): a Synthesis Mode that builds a periodic signal from its harmonics and watches the partial sum approach it as N grows, and an Analysis Mode that finds each coefficient as the net area of the signal times a test function, with its spectrum; an RC low-pass or high-pass filter can act on each harmonic's gain and phase in either Mode.
-- [Phasors and Impedance](tools/phasors/) (PHY/EGR 3120): a Sum Mode that adds two same-frequency sinusoids A cos(ωt + φ) as phasors, drawn head-to-tail on the complex plane beside their curves in time, with each phasor in a + jb and A∠φ° form.
+- [Phasors and Impedance](tools/phasors/) (PHY/EGR 3120): a Sum Mode that adds two same-frequency sinusoids A cos(ωt + φ) as phasors, drawn head-to-tail on the complex plane beside their curves in time, and a Circuit Mode for a series R, L and/or C loop: its impedance plane, rotating phasor plane with the KVL closure, time plot and schematic, with ω swept to the RC corner or the LC resonance. Every phasor and impedance reads out in a + jb and A∠φ° form.
 
 ## Activities
 
