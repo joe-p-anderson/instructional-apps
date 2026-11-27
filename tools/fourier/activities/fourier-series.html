@@ -8,12 +8,19 @@
 </head>
 <body>
 <div id="app"></div>
+<!-- Made from the Activity page template (framework/v1/activity-file.js); the Activity is fourier-series.json. -->
 <script type="module">
-  import fourier from '../fourier.js';
-  import activity from './fourier-series.js';
+  import * as tool from '../fourier.js';
   import { mountActivity } from '../../../framework/v1/activity-ui.js';
 
-  window.activityHost = mountActivity(fourier, activity, document.getElementById('app'));
+  const app = document.getElementById('app');
+  const response = await fetch('./fourier-series.json');
+  if (!response.ok) {
+    app.textContent = `This Activity could not be loaded (${response.status}). Try reloading the page.`;
+    throw new Error(`Activity file: HTTP ${response.status}`);
+  }
+  const activity = await response.json();
+  window.activityHost = mountActivity(tool.default, activity, app, { conditionTypes: tool.conditionTypes });
 </script>
 </body>
 </html>
