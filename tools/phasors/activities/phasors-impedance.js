@@ -2,6 +2,10 @@
 // Part 1 adds two same-frequency sinusoids as phasors (Sum Mode): the resultant of two phasors
 // 90° apart by Pythagoras, a check against the drawn resultant, the resultant of two 120° apart
 // by the law of cosines, a choice on the in-phase and out-of-phase extremes, and a free-text why.
+// Part 2 (Circuit Mode, series RC) and Part 3 (series RLC) each work the chain Z → I → V_k by hand,
+// revealing Z_total, then I, then the device voltages with the KVL closure. Part 2 closes on the
+// Fourier link (V_C/V_in = 1/(1 + jωRC), its cutoff f_c = ω_c/2π, and a sweep of ω across ω_c);
+// Part 3 on resonance (sweep to ∠Z = 0, compare ω₀ with 1/√(LC)) and a free-text why.
 //
 // Pure data (no DOM): the runner core and Node tests import it directly. Prompts may use \( \)
 // math; Question prompts use Unicode subscripts so they read the same either way.
@@ -17,6 +21,15 @@
 // them (SUM_INPUTS, and ω). The 120° Task opens φ₂ alone and its Condition checks φ₂ = 120°, so
 // every student works the same second sum. Each compute Task hides the resultant layer ('sum',
 // ../layers.js), and the Task after it shows it; the extremes Task opens the sinusoids for dragging.
+//
+// Parts 2 and 3 fix every circuit value; their first Task locks CIRCUIT_SETUP and hides every
+// circuit layer, the next Tasks show Z_total, then I, then V_R, V_L, V_C and the KVL closure, each
+// right after the Task that computes it. The sweep and resonance Tasks open ω alone. Setups give
+// right triangles: RC Z = 300 − j400 Ω (3-4-5) at ω/ω_c = 0.75; RLC Z = 50 + j120 Ω (5-12-13) at
+// ω/ω₀ ≈ 1.6, with ωL and 1/(ωC) > R near ω₀ so V_L and V_C exceed V₀ at resonance. |I| is
+// entered in mA. The RC sweep Condition needs ω below 400 and above 4000 rad/s (a factor of 3
+// beyond ω_c = 1333 rad/s each way, from the omegaMin/omegaMax State); the resonance Condition
+// is ∠Z = 0 ± 2°.
 
 const AMP = { kind: 'numeric', relTol: 0.02, points: 1 };
 const PHASE = { kind: 'numeric', tol: 2, modulus: 360, points: 1 };
@@ -120,11 +133,259 @@ const sumPart = {
   ],
 };
 
+// Circuit Mode: the Setup Controls each Circuit Part's first Task locks, and every revealable
+// layer, all hidden until the Task that asks for it has been submitted.
+const CIRCUIT_SETUP = ['includeR', 'includeL', 'includeC', 'V0', 'R', 'L', 'C', 'omega'];
+const CIRCUIT_LAYERS = ['Ztotal', 'I', 'VR', 'VL', 'VC', 'kvl'];
+const DEVICE_LAYERS = ['VR', 'VL', 'VC', 'kvl'];
+
+const IMPEDANCES = 'Z<sub>R</sub> = R, Z<sub>L</sub> = jωL and Z<sub>C</sub> = 1/(jωC) = −j/(ωC)';
+
+const rcPart = {
+  id: 'rc',
+  title: 'Part 2: Series RC',
+  mode: 'circuit',
+  setup: { includeR: true, includeL: false, includeC: true, V0: 10, R: 300, C: 2.5, omega: 1000 },
+  tasks: [
+    {
+      id: 'rc-impedance',
+      title: 'The impedance Z',
+      prompt: 'The loop is V₀ = 10 V at ω = 1000 rad/s driving R = 300 Ω in series with C = 2.5 µF (L is off). '
+        + `Each element has an impedance: ${IMPEDANCES}. In series they add, Z = Z<sub>R</sub> + Z<sub>C</sub>. `
+        + 'Z_total, the current and the device voltages are hidden: compute Z in rectangular form (real and '
+        + 'imaginary parts) and in polar form (magnitude and angle), then submit to see Z_total.',
+      lock: CIRCUIT_SETUP,
+      hide: CIRCUIT_LAYERS,
+      questions: [
+        { ...AMP, id: 'ZRe', prompt: 'Re Z (Ω)', answer: 'enc1:VUcd' },
+        { ...AMP, id: 'ZIm', prompt: 'Im Z (Ω)', answer: 'enc1:S0MdRg' },
+        { ...AMP, id: 'Z', prompt: '|Z| (Ω)', answer: 'enc1:U0cd' },
+        { ...PHASE, id: 'phiZ', prompt: '∠Z (°)', answer: 'enc1:S0IeWAATU1BDR1JZGVVQQVxK' },
+      ],
+      points: 0,
+      hint: { after: 3, text: 'The capacitor\'s reactance is 1/(ωC), with ω in rad/s and C in farads (1 µF = 10⁻⁶ F). Z_C points down the imaginary axis, so Im Z is negative and ∠Z is below 0°.' },
+    },
+    {
+      id: 'rc-current',
+      title: 'The current I',
+      prompt: 'Z_total is now drawn on the impedance plane: check your Z against its readout. The source is the '
+        + 'phase reference, V_in = 10∠0° V. Compute the current I = V_in / Z: divide the magnitudes and subtract '
+        + 'the angles. Submit to see I.',
+      show: ['Ztotal'],
+      hide: ['I'],
+      questions: [
+        { ...AMP, id: 'I', prompt: '|I| (mA)', answer: 'enc1:VEc' },
+        { ...PHASE, id: 'phiI', prompt: '∠I (°)', answer: 'enc1:U0QDRwIQUlFBRlRYHFFQTV0' },
+      ],
+      points: 0,
+      hint: { after: 3, text: 'Dividing by Z subtracts ∠Z, so a negative ∠Z gives the current a positive angle: it leads the source. Give |I| in milliamps (1 A = 1000 mA).' },
+    },
+    {
+      id: 'rc-voltages',
+      title: 'The device voltages',
+      prompt: 'I is now drawn on the phasor plane. Each device\'s voltage is V<sub>k</sub> = I·Z<sub>k</sub>: '
+        + 'multiply the magnitudes and add the angles. Compute V_R and V_C, then submit to see them, head to tail '
+        + 'with the KVL closure V_R + V_C = V_in.',
+      show: ['I'],
+      hide: DEVICE_LAYERS,
+      questions: [
+        { ...AMP, id: 'VR', prompt: '|V_R| (V)', answer: 'enc1:UA' },
+        { ...PHASE, id: 'phiVR', prompt: '∠V_R (°)', answer: 'enc1:U0QDRwIQUlFBRlRYHFFQTV0' },
+        { ...AMP, id: 'VC', prompt: '|V_C| (V)', answer: 'enc1:Xg' },
+        { ...PHASE, id: 'phiVC', prompt: '∠V_C (°)', answer: 'enc1:S0QbWAkWWllKQldYGFxRQFVD' },
+      ],
+      points: 0,
+      hint: { after: 3, text: 'Z_R = 300∠0° Ω and Z_C = 400∠−90° Ω. Use I in amps when you multiply, so the voltages come out in volts.' },
+    },
+    {
+      id: 'rc-phase',
+      title: 'Phase against the current',
+      prompt: 'V_R and V_C are now drawn, closing on V_in. Compare each one\'s angle with ∠I, and press Play to '
+        + 'watch v_R(t) and v_C(t) against i(t).',
+      show: DEVICE_LAYERS,
+      questions: [{
+        id: 'phase',
+        kind: 'choice',
+        prompt: 'How do V_R and V_C sit against the current I?',
+        choices: [
+          { id: 'in-phase-lags', text: 'V_R is in phase with I, and V_C lags I by 90°.' },
+          { id: 'in-phase-leads', text: 'V_R is in phase with I, and V_C leads I by 90°.' },
+          { id: 'source', text: 'V_R is in phase with V_in, and V_C is 180° from V_in.' },
+          { id: 'both-lag', text: 'Both lag I by ∠Z.' },
+        ],
+        correct: 'enc1:RB5DW0FIAhIWWA0NShdH',
+        points: 1,
+      }],
+      points: 0,
+    },
+    {
+      id: 'rc-ratio',
+      title: 'The low-pass filter',
+      prompt: 'Taking the output across the capacitor makes this loop the low-pass filter of the Fourier Activity, '
+        + 'where each harmonic at f was scaled and shifted by H = 1/(1 + jf/f<sub>c</sub>). Here V_C / V_in = '
+        + 'Z<sub>C</sub> / (Z<sub>R</sub> + Z<sub>C</sub>); multiply top and bottom by jωC to get 1/(1 + jωRC). '
+        + 'Compute V_C / V_in at ω = 1000 rad/s, as a magnitude and an angle.',
+      questions: [
+        { ...AMP, id: 'H', prompt: '|V_C / V_in|', answer: 'enc1:VlkV' },
+        { ...PHASE, id: 'phiH', prompt: '∠(V_C / V_in) (°)', answer: 'enc1:S0QbWAkWWllKQldYGFxRQFVA' },
+      ],
+      points: 0,
+      hint: { after: 3, text: 'ωRC is a plain number here. Or use your answers: divide V_C by V_in = 10∠0° V.' },
+    },
+    {
+      id: 'rc-cutoff',
+      title: 'The cutoff frequency',
+      prompt: 'Writing 1/(1 + jωRC) as 1/(1 + jω/ω<sub>c</sub>) gives the corner ω<sub>c</sub> = 1/(RC), shown '
+        + 'in the ω<sub>c</sub> readout. The Fourier Tool works in hertz.',
+      questions: [{
+        id: 'fc',
+        kind: 'choice',
+        prompt: 'Which Fourier cutoff f_c matches this circuit?',
+        choices: [
+          { id: 'over-2pi', text: 'f_c = ω_c/2π ≈ 212 Hz.' },
+          { id: 'same', text: 'f_c = ω_c ≈ 1333 Hz, since rad/s and Hz are the same unit.' },
+          { id: 'times-2pi', text: 'f_c = 2π·ω_c ≈ 8378 Hz.' },
+          { id: 'source', text: 'f_c = ω/2π ≈ 159 Hz, the source frequency.' },
+        ],
+        correct: 'enc1:RBhbE0MNUREaVw',
+        points: 1,
+      }],
+      points: 0,
+    },
+    {
+      id: 'rc-sweep',
+      title: 'Sweep ω',
+      prompt: 'ω is now unlocked. Sweep it from below 400 rad/s to above 4000 rad/s, a factor of 3 or more on '
+        + 'each side of ω<sub>c</sub>, and watch |V_C| against V₀ and the angle of V_C.',
+      show: ['omega'],
+      condition: 'enc1:PQwPAkhQBkNJVxMNQwMAVklQAREPAEVJX1tUTRYCBG0oKnAMElJVXQkAD0wFEFMcXw5DGFQUAFZfUAAEABNFSUlbSFQSEQACe2Y9TVVXUXwHDw9aE0EBDgUQQ1YZVFVEGC8',
+      questions: [{
+        id: 'sweep',
+        kind: 'choice',
+        prompt: 'As ω rises through ω_c, what does V_C / V_in do?',
+        choices: [
+          { id: 'falls', text: 'Its magnitude falls from about 1 toward 0, and its angle goes from about 0° toward −90°.' },
+          { id: 'rises', text: 'Its magnitude rises from about 0 toward 1, and its angle goes from about −90° toward 0°.' },
+          { id: 'flat', text: 'Its magnitude stays the same; only its angle changes.' },
+          { id: 'peak', text: 'Its magnitude peaks at ω_c and falls on both sides.' },
+        ],
+        correct: 'enc1:RBFMGl1TQQ',
+        points: 1,
+      }],
+      points: 1,
+    },
+  ],
+};
+
+const rlcPart = {
+  id: 'rlc',
+  title: 'Part 3: Series RLC',
+  mode: 'circuit',
+  setup: { includeR: true, includeL: true, includeC: true, V0: 6.5, R: 50, L: 200, C: 12.5, omega: 1000 },
+  tasks: [
+    {
+      id: 'rlc-impedance',
+      title: 'The impedance Z',
+      prompt: 'The loop is now V₀ = 6.5 V at ω = 1000 rad/s driving R = 50 Ω, L = 200 mH and C = 12.5 µF in series. '
+        + `As before, ${IMPEDANCES}, and in series they add: Z = Z<sub>R</sub> + Z<sub>L</sub> + Z<sub>C</sub>. `
+        + 'Z_total, the current and the device voltages are hidden: compute Z in rectangular form and in polar '
+        + 'form, then submit to see Z_total.',
+      lock: CIRCUIT_SETUP,
+      hide: CIRCUIT_LAYERS,
+      questions: [
+        { ...AMP, id: 'ZRe', prompt: 'Re Z (Ω)', answer: 'enc1:U0c' },
+        { ...AMP, id: 'ZIm', prompt: 'Im Z (Ω)', answer: 'enc1:V0Ud' },
+        { ...AMP, id: 'Z', prompt: '|Z| (Ω)', answer: 'enc1:V0Qd' },
+        { ...PHASE, id: 'phiZ', prompt: '∠Z (°)', answer: 'enc1:UEADRQkQUlJGRVRdFFFcQV0' },
+      ],
+      points: 0,
+      hint: { after: 3, text: 'Z_L points up the imaginary axis and Z_C points down it, so their reactances subtract: Im Z = ωL − 1/(ωC). Use L in henries (1 mH = 10⁻³ H) and C in farads.' },
+    },
+    {
+      id: 'rlc-current',
+      title: 'The current I',
+      prompt: 'Z_total is now drawn: check your Z against its readout. With V_in = 6.5∠0° V, compute I = V_in / Z. '
+        + 'Submit to see I.',
+      show: ['Ztotal'],
+      hide: ['I'],
+      questions: [
+        { ...AMP, id: 'I', prompt: '|I| (mA)', answer: 'enc1:U0c' },
+        { ...PHASE, id: 'phiI', prompt: '∠I (°)', answer: 'enc1:S0EaWAIYU1BAQFFZHF1QTVBK' },
+      ],
+      points: 0,
+      hint: { after: 3, text: 'This time Z is inductive (∠Z above 0°), so subtracting ∠Z makes the current lag the source.' },
+    },
+    {
+      id: 'rlc-voltages',
+      title: 'The device voltages',
+      prompt: 'I is now drawn. Compute V<sub>k</sub> = I·Z<sub>k</sub> for the resistor, the inductor and the '
+        + 'capacitor, then submit to see them head to tail with the KVL closure V_R + V_L + V_C = V_in.',
+      show: ['I'],
+      hide: DEVICE_LAYERS,
+      questions: [
+        { ...AMP, id: 'VR', prompt: '|V_R| (V)', answer: 'enc1:VFkY' },
+        { ...PHASE, id: 'phiVR', prompt: '∠V_R (°)', answer: 'enc1:S0EaWAIYU1BAQFFZHF1QTVBK' },
+        { ...AMP, id: 'VL', prompt: '|V_L| (V)', answer: 'enc1:V0c' },
+        { ...PHASE, id: 'phiVL', prompt: '∠V_L (°)', answer: 'enc1:VEUDQAAZW1dHTFVUHVBVQFdB' },
+        { ...AMP, id: 'VC', prompt: '|V_C| (V)', answer: 'enc1:Ug' },
+        { ...PHASE, id: 'phiVC', prompt: '∠V_C (°)', answer: 'enc1:S0YYQR8TW1FCRlRcGFVcQVxHRQ' },
+      ],
+      points: 0,
+      hint: { after: 3, text: 'Z_L has angle +90° and Z_C has angle −90°, so add 90° to ∠I for V_L and subtract 90° for V_C. Use I in amps.' },
+    },
+    {
+      id: 'rlc-phase',
+      title: 'Phase against the current',
+      prompt: 'V_R, V_L and V_C are now drawn, closing on V_in. Compare each one\'s angle with ∠I.',
+      show: DEVICE_LAYERS,
+      questions: [{
+        id: 'phase',
+        kind: 'choice',
+        prompt: 'How do V_L and V_C sit against the current I?',
+        choices: [
+          { id: 'lead-lag', text: 'V_L leads I by 90° and V_C lags I by 90°, so they point opposite ways.' },
+          { id: 'lag-lead', text: 'V_L lags I by 90° and V_C leads I by 90°, so they point opposite ways.' },
+          { id: 'both-lead', text: 'Both lead I by 90°, so they point the same way.' },
+          { id: 'in-phase', text: 'Both are in phase with I, like V_R.' },
+        ],
+        correct: 'enc1:RBtIF1UNDwAUVw',
+        points: 1,
+      }],
+      points: 0,
+    },
+    {
+      id: 'rlc-resonance',
+      title: 'Resonance',
+      prompt: 'ω is now unlocked. Sweep it until ∠Z = 0, so Z is purely resistive and I is in phase with V_in. '
+        + 'That ω is the resonance ω₀, where the reactances cancel: ωL = 1/(ωC). Compare it with 1/√(LC) and '
+        + 'the ω₀ readout, and submit with ∠Z at 0°.',
+      show: ['omega'],
+      condition: 'enc1:HVVeAlBUBkNJVwACSggALkdeUBEPBkcOEVsBEF9HEU8tZmgSTQ',
+      questions: [
+        { ...AMP, id: 'omega0', prompt: 'ω₀ (rad/s)', answer: 'enc1:UEQfWAUVVlRAR1FfHlJSQV0' },
+      ],
+      points: 1,
+    },
+    {
+      id: 'rlc-why',
+      title: 'Why can they exceed the source?',
+      prompt: 'Stay at ω₀ and look at the phasor plane and the V_L and V_C readouts. Answer in a few sentences.',
+      questions: [{
+        id: 'why',
+        kind: 'text',
+        prompt: 'At resonance, why do V_L and V_C cancel, and why can each be larger than V₀?',
+        points: 1,
+      }],
+      points: 0,
+    },
+  ],
+};
+
 export default {
   id: 'phasors-impedance',
   version: 1,
   title: 'Phasors and Impedance',
   course: 'PHY/EGR 3120',
   tool: 'phasors',
-  parts: [sumPart],
+  parts: [sumPart, rcPart, rlcPart],
 };

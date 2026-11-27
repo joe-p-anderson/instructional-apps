@@ -114,3 +114,24 @@ test('a full Run of Part 1 passes every Task and downloads a Report with the Dis
   ]);
   expect(passed('why').answers.why).toBe('The phasors add to one phasor rotating at ω.');
 });
+
+test('in Part 2, submitting Z reveals Z_total and submitting I reveals I', async ({ page }) => {
+  await open(page);
+  await enterName(page);
+  await page.getByRole('tab', { name: /Part 2/ }).click();
+  const p2 = part(page, 2);
+  const zTotal = p2.getByRole('status', { name: 'Z_total polar', exact: true });
+  const current = p2.getByRole('status', { name: 'I', exact: true });
+  await expect(p2.getByRole('spinbutton', { name: 'R (Ω)', exact: true })).toBeDisabled();
+  await expect(zTotal).toBeHidden();
+  await expect(current).toBeHidden();
+
+  await submit(p2, '2.1', { 'Re Z (Ω)': '300', 'Im Z (Ω)': '-400', '|Z| (Ω)': '500', '∠Z (°)': '306.87' });
+  await expect(zTotal).toBeVisible();
+  await expect(zTotal).toHaveText(/∠−53\.1° Ω$/);
+  await expect(current).toBeHidden();
+
+  await submit(p2, '2.2', { '|I| (mA)': '20', '∠I (°)': '53.13' });
+  await expect(current).toBeVisible();
+  await expect(current).toHaveText(/∠53\.1°/);
+});
