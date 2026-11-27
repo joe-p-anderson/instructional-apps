@@ -42,6 +42,8 @@ import { filterCurveDisplay, spectrumDisplay } from '../spectrum-displays.js';
 
 export const id = 'analysis';
 export const title = 'Analysis';
+export const setupKeys = ['waveform', 'amp', 'f0', 'offset', 'shift', 'filter', 'fc', 'applyGain', 'applyPhase',
+  'testFunction', 'n', 'spectrumSource'];
 
 export const MAX_TEST_N = 10;
 const SAMPLES = 1201; // time samples across one period (about 120 per cycle of the 10th harmonic)
