@@ -36,3 +36,28 @@ test('malformed Activity definitions are rejected with a clear message', () => {
 test('every Part needs a Tool instance', () => {
   assert.throws(() => createRunner(valid(), { tools: {} }), /tool instance/i);
 });
+
+test('notes on the Activity, its Parts and its Tasks are accepted, and must be text', () => {
+  const a = valid();
+  a.notes = 'Design: why this Activity exists.';
+  a.parts[0].notes = 'Part design.';
+  a.parts[0].tasks[0].notes = 'Task design.';
+  assert.doesNotThrow(() => createRunner(a, { tools: tools() }));
+  for (const where of [(x) => x, (x) => x.parts[0], (x) => x.parts[0].tasks[0]]) {
+    const b = valid();
+    where(b).notes = 42;
+    assert.throws(() => createRunner(b, { tools: tools() }), /notes/);
+  }
+});
+
+test('notes never reach the Report', async () => {
+  const a = valid();
+  a.notes = 'SECRET-ACTIVITY-NOTE';
+  a.parts[0].notes = 'SECRET-PART-NOTE';
+  a.parts[0].tasks[0].notes = 'SECRET-TASK-NOTE';
+  const runner = createRunner(a, { tools: tools() });
+  runner.start('Ada');
+  runner.submit('p1', 't1');
+  const report = JSON.stringify(await runner.report());
+  assert.doesNotMatch(report, /SECRET|notes/);
+});

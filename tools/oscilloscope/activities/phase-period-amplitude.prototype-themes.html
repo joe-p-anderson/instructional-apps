@@ -101,7 +101,7 @@
   }
 
   const { default: oscilloscope } = await import('../oscilloscope.js');
-  const { default: activity } = await import('./phase-period-amplitude.js');
+  const activity = await (await fetch('./phase-period-amplitude.json')).json();
   const { mountActivity } = await import('../../../framework/v1/activity-ui.js');
   window.activityHost = mountActivity(oscilloscope, activity, document.getElementById('app'));
 
