@@ -35,6 +35,19 @@ const colourAt = (page, id, x, y) => page.evaluate(({ i, id, x, y }) => {
   return [px[0], px[1], px[2]];
 }, { i: CIRCUIT, id, x, y });
 const near = (a, b) => a.every((v, i) => Math.abs(v - b[i]) <= 40);
+// For an arrow drawn along an axis at a fractional pixel position: is the colour anywhere in
+// the 3×3 block of device pixels around the point?
+const colourNear = async (page, id, x, y, colour) => (await page.evaluate(({ i, id, x, y }) => {
+  const d = window.toolHost.instances[i].displays.find((e) => e.id === id);
+  const p = d.toScreen(x, y);
+  const cv = document.querySelector(`[data-mode="circuit"] [data-display="${id}"] canvas`);
+  const r = cv.getBoundingClientRect();
+  const k = cv.width / r.width;
+  const px = cv.getContext('2d').getImageData(Math.round((p.x - r.left) * k) - 1, Math.round((p.y - r.top) * k) - 1, 3, 3).data;
+  const out = [];
+  for (let j = 0; j < px.length; j += 4) out.push([px[j], px[j + 1], px[j + 2]]);
+  return out;
+}, { i: CIRCUIT, id, x, y })).some((c) => near(c, colour));
 const hex = (s) => [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16));
 const colourOf = (page, key) => page.locator(`[data-mode="circuit"] .ph-swatch[data-color="${key}"]`)
   .evaluate((el) => getComputedStyle(el).backgroundColor.match(/\d+/g).slice(0, 3).map(Number));
@@ -173,20 +186,20 @@ test('toggling an element updates the schematic and the impedance plane', async 
   await settle(page);
   await expect(schematic(page)).toHaveAccessibleName('Series loop: the source, R, L and C');
   const red = await colourOf(page, 'L'); const gold = await colourOf(page, 'C');
-  expect(near(await colourAt(page, 'impedance', 0, -300), gold), 'Z_C drawn').toBe(true);
+  expect(await colourNear(page, 'impedance', 0, -300, gold), 'Z_C drawn').toBe(true);
   await include(page, 'C').uncheck();
   await settle(page);
   await expect(schematic(page)).toHaveAccessibleName('Series loop: the source, R and L');
-  expect(near(await colourAt(page, 'impedance', 0, -300), gold), 'Z_C gone').toBe(false);
-  expect(near(await colourAt(page, 'impedance', 0, 30), red), 'Z_L drawn').toBe(true);
+  expect(await colourNear(page, 'impedance', 0, -300, gold), 'Z_C gone').toBe(false);
+  expect(await colourNear(page, 'impedance', 0, 30, red), 'Z_L drawn').toBe(true);
   await include(page, 'L').uncheck();
   await settle(page);
   await expect(schematic(page)).toHaveAccessibleName('Series loop: the source, R');
-  expect(near(await colourAt(page, 'impedance', 0, 30), red), 'Z_L gone').toBe(false);
+  expect(await colourNear(page, 'impedance', 0, 30, red), 'Z_L gone').toBe(false);
   await include(page, 'C').check();
   await settle(page);
   await expect(schematic(page)).toHaveAccessibleName('Series loop: the source, R and C');
-  expect(near(await colourAt(page, 'impedance', 0, -300), gold), 'Z_C back').toBe(true);
+  expect(await colourNear(page, 'impedance', 0, -300, gold), 'Z_C back').toBe(true);
 });
 
 test('raising ω lengthens Z_L and shortens Z_C on the impedance plane', async ({ page }) => {
@@ -195,14 +208,14 @@ test('raising ω lengthens Z_L and shortens Z_C on the impedance plane', async (
   const red = await colourOf(page, 'L'); const gold = await colourOf(page, 'C');
   // ω = 1000: Z_L = j50 stops below j150 (its label sits just past the tip), and Z_C = −j500
   // reaches down past −j300
-  expect(near(await colourAt(page, 'impedance', 0, 40), red)).toBe(true);
-  expect(near(await colourAt(page, 'impedance', 0, 150), red)).toBe(false);
-  expect(near(await colourAt(page, 'impedance', 0, -300), gold)).toBe(true);
+  expect(await colourNear(page, 'impedance', 0, 40, red)).toBe(true);
+  expect(await colourNear(page, 'impedance', 0, 150, red)).toBe(false);
+  expect(await colourNear(page, 'impedance', 0, -300, gold)).toBe(true);
   await enter(page, 'ω (rad/s)', 2000);
   await settle(page);
   // ω = 2000: Z_L = j100 reaches past j90, and Z_C = −j250 stops above −j300
-  expect(near(await colourAt(page, 'impedance', 0, 90), red)).toBe(true);
-  expect(near(await colourAt(page, 'impedance', 0, -300), gold)).toBe(false);
+  expect(await colourNear(page, 'impedance', 0, 90, red)).toBe(true);
+  expect(await colourNear(page, 'impedance', 0, -300, gold)).toBe(false);
 });
 
 test('the impedance plane scales to fit the whole chain, with its axes in Ω, kΩ or MΩ', async ({ page }) => {
