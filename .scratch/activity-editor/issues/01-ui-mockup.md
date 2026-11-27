@@ -38,3 +38,5 @@ Waiting on: the instructor's review and approval, which variant to take, and any
 
 **2026-11-27, review: Student / Full toggle.** The instructor asked for the live Tool to show the student's view of the selected Task by default, with a Student / Full toggle. The mockup now has one, replacing the old opt-in checkbox. Written into the spec under "Editor page", and added to ticket 10's checklist.
 
+**2026-11-27, review: variant B chosen.** The Task form is split into tabs (Prompt / Exposure / Condition / Questions / Hint & notes), each with its problem count. This is written into the spec's "Editor page" layout. Variants A and C are kept in the prototype file for reference only.
+

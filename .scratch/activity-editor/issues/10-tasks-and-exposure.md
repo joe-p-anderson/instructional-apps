@@ -8,6 +8,7 @@ Spec: .scratch/activity-editor/spec.md (vocabulary from GLOSSARY.md; respects AD
 
 **Status:** ready-for-agent
 
+- [ ] The Task form uses the tabs from the spec's "Editor page" layout (Prompt, Exposure, Condition, Questions, Hint & notes). Each tab shows its problem count, and the open tab is remembered between Tasks. Tickets 11 to 13 fill the Condition, Questions and prose tabs
 - [ ] Tasks can be added, retitled, reordered, duplicated and deleted; ids come from the title, unique within the Part, and stay frozen on retitle
 - [ ] Renaming an id by hand warns that it drops student progress on that Task
 - [ ] Points, the Hint and notes can be edited

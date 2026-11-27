@@ -197,6 +197,7 @@ The core provides:
 - **Layout:**
   - On the left, an outline of the Activity, with its Parts and their Tasks.
   - In the middle, the form for whatever is selected (Activity, Part or Task), and the problems list.
+  - **The Task form is split into tabs** (mockup variant B, chosen at review): Prompt (title, points, id, prompt), Exposure, Condition, Questions, and Hint & notes. Each tab shows how many problems it holds. Clicking a problem switches to its tab before jumping to the field. The editor remembers the open tab when you move between Tasks.
   - On the right, the live Tool mounted at the selected Part's Mode and Setup.
 - **Folder access:** the File System Access API. The folder handle is kept in IndexedDB, so the folder is remembered, and permission is asked again when the browser requires it. Where the API is missing, save downloads the file. The folder access sits behind a small interface (list folders, read file, write file), so tests can replace it with an in-memory folder.
 - **The live Tool's uses:** Capture for the Setup, "Use current value" for targets, live expression values and the live Condition result. Operating it never changes the Activity unless the instructor clicks one of those.
