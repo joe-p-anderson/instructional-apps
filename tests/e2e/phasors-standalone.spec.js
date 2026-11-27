@@ -38,7 +38,7 @@ test('the Standalone page opens on the Sum Mode with its inputs shown and unlock
     const i = window.toolHost.instances[0];
     return i.controls.ids().map((id) => ({ id, locked: i.controls.get(id).isLocked(), hidden: i.controls.get(id).isHidden() }));
   });
-  expect(controls.map((c) => c.id).sort()).toEqual(['A1', 'A2', 'crest1', 'crest2', 'cursor', 'omega', 'phi1', 'phi2', 'play', 't', 'tip1', 'tip2']);
+  expect(controls.map((c) => c.id).sort()).toEqual(['A1', 'A2', 'crest1', 'crest2', 'cursor', 'omega', 'phi1', 'phi2', 'play', 'sum', 't', 'tip1', 'tip2']);
   for (const c of controls) expect(c, c.id).toMatchObject({ locked: false, hidden: false });
   const shots = await page.evaluate(() => Promise.all(window.toolHost.instances[0].displays.map(async (d) => [d.id, await d.snapshot()])));
   expect(shots.map(([id]) => id)).toEqual(['plane', 'time']);
@@ -209,15 +209,15 @@ test('serialize and restore round-trip the inputs, ignoring bad values and clamp
     const i = window.toolHost.instances[0];
     let fired = 0;
     i.state.onChange(() => { fired += 1; });
-    i.restore({ A1: 1.5, phi1: 'nope', A2: 999, phi2: 270, omega: 5e7, t: 'later' });
+    i.restore({ A1: 1.5, phi1: 'nope', A2: 999, phi2: 270, omega: 5e7, t: 'later', showSum: false });
     const first = { s: i.state.snapshot(), saved: i.serialize(), fired };
     i.controls.get('play').set(true);
     i.restore({ omega: 2000, t: 0.001 });
     return { ...first, after: i.state.snapshot(), saved2: i.serialize() };
   });
   expect(out.fired).toBe(1);
-  expect(out.s).toMatchObject({ A1: 1.5, phi1: 0, A2: 10, phi2: -90, omega: 1e6, t: 0 });
-  expect(out.saved).toEqual({ A1: 1.5, phi1: 0, A2: 10, phi2: -90, omega: 1e6, t: 0 });
+  expect(out.s).toMatchObject({ A1: 1.5, phi1: 0, A2: 10, phi2: -90, omega: 1e6, t: 0, showSum: false });
+  expect(out.saved).toEqual({ A1: 1.5, phi1: 0, A2: 10, phi2: -90, omega: 1e6, t: 0, showSum: false });
   // restore stops play, and t comes back within one period
   expect(out.after).toMatchObject({ omega: 2000, playing: false });
   expect(out.after.t).toBeCloseTo(0.001, 9);
@@ -387,4 +387,37 @@ test('handles lock and hide like any Control', async ({ page }) => {
   await page.keyboard.press('ArrowRight');
   expect((await state(page)).A1).toBeCloseTo(3.1, 9);
   await expect(handleEl(page, 'v₂ crest')).toBeVisible();
+});
+
+test('the resultant is a layer: hiding it removes it from both Displays and hides its readouts', async ({ page }) => {
+  await open(page);
+  await settle(page);
+  const green = await page.locator('[data-mode="sum"] .ph-swatch[data-color="sum"]').first()
+    .evaluate((el) => getComputedStyle(el).backgroundColor.match(/\d+/g).slice(0, 3).map(Number));
+  const s = await state(page);
+  const mid = [1.5, 1]; // halfway along v₁ + v₂ = 3 + j2 V
+  const crestT = -((s.phi * Math.PI) / 180) / s.omega; // the sum's crest, above v₁'s and v₂'s
+  const toggle = page.locator('[data-mode="sum"]').getByRole('checkbox', { name: 'Show v₁ + v₂', exact: true });
+  await expect(toggle).toBeChecked(); // Standalone shows every layer
+  expect(near(await colourAt(page, 'plane', ...mid), green), 'resultant drawn').toBe(true);
+  expect(near(await colourAt(page, 'time', crestT, s.A), green), 'sum curve drawn').toBe(true);
+
+  await page.evaluate(() => window.toolHost.instances[0].controls.get('sum').hide());
+  await settle(page);
+  await expect(toggle).toBeHidden();
+  expect(near(await colourAt(page, 'plane', ...mid), green), 'resultant hidden').toBe(false);
+  expect(near(await colourAt(page, 'time', crestT, s.A), green), 'sum curve hidden').toBe(false);
+  await expect(page.getByRole('status', { name: 'v₁ + v₂ rectangular', exact: true })).toBeHidden();
+  await expect(page.getByRole('status', { name: 'v₁ + v₂ polar', exact: true })).toBeHidden();
+  await expect(page.getByRole('status', { name: 'v₁ polar', exact: true })).toBeVisible();
+
+  await page.evaluate(() => window.toolHost.instances[0].controls.get('sum').show());
+  await settle(page);
+  expect(near(await colourAt(page, 'plane', ...mid), green), 'resultant back').toBe(true);
+  await expect(page.getByRole('status', { name: 'v₁ + v₂ polar', exact: true })).toBeVisible();
+  // unticking the toggle hides it too, and the State says so
+  await toggle.uncheck();
+  await settle(page);
+  expect((await state(page)).showSum).toBe(false);
+  expect(near(await colourAt(page, 'plane', ...mid), green), 'unticked').toBe(false);
 });

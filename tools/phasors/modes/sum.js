@@ -2,11 +2,15 @@
 //
 // Setup: { A1, phi1, A2, phi2, omega } (any subset; DEFAULTS below).
 // State (state.snapshot(), each with a label and unit in describe()): mode ('sum'), A1 (V),
-//   phi1 (°), A2 (V), phi2 (°), the resultant A (V), phi (°), and the time State omega (rad/s),
-//   f (Hz, ω/2π), t (s), playing (../time-controls.js).
+//   phi1 (°), A2 (V), phi2 (°), the resultant A (V), phi (°) (published even while its layer is
+//   hidden), showSum (the resultant's toggle), and the time State omega (rad/s), f (Hz, ω/2π),
+//   t (s), playing (../time-controls.js).
 // Controls: number inputs 'A1', 'A2' (V, 0 to A_MAX) and 'phi1', 'phi2' (°, any number, wrapped
 //   into (−180, 180]). Each also has update(v), which sets and shows it without reporting.
 //   The shared time Controls 'omega', 'play', 't' and 'cursor' (../time-controls.js).
+//   Revealable layer (ids in ../layers.js, for Activity Task hide/show lists): 'sum', the toggle
+//   "Show v₁ + v₂". Unticked, the resultant is not drawn on either Display; hide() also hides
+//   the toggle and the v₁ + v₂ readouts, so a Task can ask for the sum before showing it.
 //   Drag handles (kit 2-D handles, keyboard-operable): 'tip1', 'tip2' ("v₁ tip", "v₂ tip") on the
 //   plane, value { x: Re, y: Im } in V of that (static) phasor, drawn at its tip rotated to
 //   ωt + φ (v₂'s from v₁'s tip); 'crest1',
@@ -19,14 +23,14 @@
 //   each curve's value is its phasor's projection; toScreen(t, v) with t in s and v in V). Both
 //   share one amplitude scale, and each quantity has one colour in both. The Tool starts paused
 //   at t = 0, where every phasor sits at its static angle φ.
-// serialize() is { A1, phi1, A2, phi2, omega, t }; restore() pauses, ignores non-numbers, clamps
+// serialize() is { A1, phi1, A2, phi2, showSum, omega, t }; restore() pauses, ignores non-numbers, clamps
 //   A and ω, wraps φ and t, and reports once.
 //
 // All phasor maths is the engine's (../engine.js); drawing helpers are ../draw.js.
 
 import { controlRegistry } from '../../../framework/v1/control.js';
 import { createEmitter } from '../../../framework/v1/tool.js';
-import { h, handle, metric, section, themeVars } from '../../../framework/v1/ui-kit.js';
+import { h, handle, metric, section, themeVars, toggle } from '../../../framework/v1/ui-kit.js';
 import { plotTheme } from '../../../framework/v1/plot-theme.js';
 import { crest, evaluate, fromCrest, fromPolar, rotate, sum, toPolar, wrapDeg } from '../engine.js';
 import { angleArc, arrow, curve, dot, line, niceStep, plotFrame, prepCanvas, sideLabel } from '../draw.js';
@@ -50,6 +54,7 @@ const STATE_INFO = {
   phi2: { label: 'Phase φ₂ of v₂', unit: '°' },
   A: { label: 'Amplitude A of v₁ + v₂', unit: 'V' },
   phi: { label: 'Phase φ of v₁ + v₂', unit: '°' },
+  showSum: { label: 'v₁ + v₂ shown', unit: '' },
   ...TIME_STATE_INFO,
 };
 
@@ -75,12 +80,18 @@ export function mount(container, setup = {}) {
     A2: amp('A2', SUB[2]), phi2: phase('phi2', SUB[2]),
   };
 
+  // The resultant is a revealable layer.
+  const resultant = toggle({ id: 'sum', name: 'Show v₁ + v₂', value: true,
+    label: '<span class="fw-legend-line ph-swatch" data-color="sum"></span>Show v<sub>1</sub> + v<sub>2</sub>',
+    onChange: changed, onHide: (hidden) => { sumBlock.hidden = hidden; draw(); } });
+  const sumShown = () => !resultant.isHidden() && resultant.get();
+
   const p1 = () => ({ A: ctl.A1.get(), phi: ctl.phi1.get() });
   const p2 = () => ({ A: ctl.A2.get(), phi: ctl.phi2.get() });
   const getState = () => {
     const s = sum(p1(), p2());
     return { mode: id, A1: ctl.A1.get(), phi1: ctl.phi1.get(), A2: ctl.A2.get(), phi2: ctl.phi2.get(),
-      A: s.A, phi: s.phi, ...time.state() };
+      A: s.A, phi: s.phi, showSum: resultant.get(), ...time.state() };
   };
 
   // ── Readouts ──
@@ -183,6 +194,7 @@ export function mount(container, setup = {}) {
   const phasorBlock = (key, html) => h('div', { class: 'ph-phasor' },
     h('div', { class: 'fw-legend-row' }, swatch(key), h('span', { html })),
     readouts[key].rect.el, readouts[key].polar.el);
+  const sumBlock = phasorBlock('sum', 'v<sub>1</sub> + v<sub>2</sub>');
 
   const root = h('div', { class: 'fw-tool ph-tool', 'data-tool': 'phasors', 'data-mode': id },
     toolStyles(),
@@ -196,7 +208,8 @@ export function mount(container, setup = {}) {
       section('Phasors',
         phasorBlock('v1', 'v<sub>1</sub>'),
         phasorBlock('v2', 'v<sub>2</sub>'),
-        phasorBlock('sum', 'v<sub>1</sub> + v<sub>2</sub>'))),
+        sumBlock,
+        resultant.el)),
     h('div', { class: 'fw-displays' },
       h('div', { class: 'ph-displays' },
         h('div', { class: 'fw-display', 'data-display': 'plane' }, planeCv,
@@ -241,24 +254,24 @@ export function mount(container, setup = {}) {
     const foot = (z) => at({ re: z.re, im: 0 });
     const nudge = (p, dy) => ({ x: p.x, y: p.y + dy });
     line(ctx, at(z1), foot(z1), colors.v1, { dashed: true });
-    line(ctx, at(tip), foot(tip), colors.sum, { dashed: true });
+    if (sumShown()) line(ctx, at(tip), foot(tip), colors.sum, { dashed: true });
     line(ctx, nudge(at(o), -4), nudge(foot(z1), -4), colors.v1, { width: 3 });
     line(ctx, nudge(foot(z1), 4), nudge(foot(tip), 4), colors.v2, { width: 3 });
-    arrow(ctx, at(o), at(tip), colors.sum, { width: 3 });
+    if (sumShown()) arrow(ctx, at(o), at(tip), colors.sum, { width: 3 });
     arrow(ctx, at(o), at(z1), colors.v1);
     arrow(ctx, at(z1), at(tip), colors.v2);
     // The angle from v₁ to v₂, fixed while they rotate together.
     if (ctl.A1.get() > 0 && ctl.A2.get() > 0) {
       angleArc(ctx, at(z1), 22, toPolar(z1).phi, toPolar(z2).phi, colors.muted);
     }
-    dot(ctx, foot(tip), colors.sum, 4);
+    if (sumShown()) dot(ctx, foot(tip), colors.sum, 4);
     dot(ctx, foot(z1), colors.v1);
     dot(ctx, at(z1), colors.v1);
     dot(ctx, at(tip), colors.v2);
     // each side of the triangle is labelled outside it
     sideLabel(ctx, 'v₁', at(o), at(z1), at(tip), colors.v1, colors);
     sideLabel(ctx, 'v₂', at(z1), at(tip), at(o), colors.v2, colors);
-    sideLabel(ctx, 'v₁ + v₂', at(o), at(tip), at(z1), colors.sum, colors);
+    if (sumShown()) sideLabel(ctx, 'v₁ + v₂', at(o), at(tip), at(z1), colors.sum, colors);
     frames.plane = laidOut ? f : null;
   }
 
@@ -274,7 +287,7 @@ export function mount(container, setup = {}) {
     });
     const s = sum(p1(), p2());
     // The resultant goes underneath, as on the plane, so v₁ and v₂ stay visible where they meet it.
-    curve(ctx, f, -T, T, (t) => evaluate(s, omega, t), colors.sum, 3);
+    if (sumShown()) curve(ctx, f, -T, T, (t) => evaluate(s, omega, t), colors.sum, 3);
     curve(ctx, f, -T, T, (t) => evaluate(p1(), omega, t), colors.v1);
     curve(ctx, f, -T, T, (t) => evaluate(p2(), omega, t), colors.v2);
     for (const n of [1, 2]) {
@@ -286,7 +299,7 @@ export function mount(container, setup = {}) {
     const t = time.t();
     line(ctx, { x: f.X(t), y: f.rect.T }, { x: f.X(t), y: f.rect.B }, colors.ink, { width: 1.5 });
     dot(ctx, { x: f.X(t), y: f.rect.T }, colors.ink, 6);
-    dot(ctx, { x: f.X(t), y: f.Y(evaluate(s, omega, t)) }, colors.sum);
+    if (sumShown()) dot(ctx, { x: f.X(t), y: f.Y(evaluate(s, omega, t)) }, colors.sum);
     dot(ctx, { x: f.X(t), y: f.Y(evaluate(p2(), omega, t)) }, colors.v2);
     dot(ctx, { x: f.X(t), y: f.Y(evaluate(p1(), omega, t)) }, colors.v1);
     frames.time = laidOut ? f : null;
@@ -346,17 +359,19 @@ export function mount(container, setup = {}) {
       describe: () => structuredClone(STATE_INFO),
       onChange: (fn) => changes.on(fn),
     },
-    controls: controlRegistry({ ...ctl, tip1: tips[1], tip2: tips[2], crest1: crests[1], crest2: crests[2],
+    controls: controlRegistry({ ...ctl, sum: resultant, tip1: tips[1], tip2: tips[2], crest1: crests[1], crest2: crests[2],
       ...time.controls }),
     displays: [
       { id: 'plane', label: 'Complex plane', snapshot: snap(planeCv), toScreen: planeToScreen },
       { id: 'time', label: 'Time plot', snapshot: snap(timeCv), toScreen: timeToScreen },
     ],
-    serialize: () => ({ ...Object.fromEntries(INPUTS.map((k) => [k, ctl[k].get()])), ...time.serialize() }),
+    serialize: () => ({ ...Object.fromEntries(INPUTS.map((k) => [k, ctl[k].get()])), showSum: resultant.get(),
+      ...time.serialize() }),
     restore(saved = {}) {
       quiet = true;
       try {
         for (const k of INPUTS) if (finite(saved?.[k])) ctl[k].set(saved[k]);
+        if (typeof saved?.showSum === 'boolean') resultant.set(saved.showSum);
         time.restore(saved ?? {});
       } finally {
         quiet = false;

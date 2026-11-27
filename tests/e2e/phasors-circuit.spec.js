@@ -56,7 +56,7 @@ test('the Circuit tab loads with its Controls shown and unlocked, and four Displ
   }, CIRCUIT);
   // the shared time Controls keep the Sum Mode's ids
   for (const id of ['omega', 'play', 't', 'cursor', 'includeR', 'includeL', 'includeC', 'V0', 'R', 'L', 'C',
-    'vin', 'I', 'VR', 'VL', 'VC']) expect(out.ids, id).toContain(id);
+    'vin', 'I', 'VR', 'VL', 'VC', 'Ztotal', 'kvl']) expect(out.ids, id).toContain(id);
   expect(out.open).toBe(true);
   expect(out.shots.map(([id]) => id)).toEqual(['impedance', 'phasor', 'time', 'schematic']);
   for (const [, png] of out.shots) expect(png).toMatch(/^data:image\/png;base64,/);
@@ -281,6 +281,103 @@ test('a trace toggle hides that quantity on the phasor plane and the time plot',
   expect((await state(page)).showVC).toBe(false);
   expect(near(await colourAt(page, 'phasor', ...vcMid), gold), 'V_C hidden on the plane').toBe(false);
   expect(near(await colourAt(page, 'time', crestC, s.VCmag), gold), 'v_C(t) hidden').toBe(false);
+});
+
+// ── Revealable layers: the Controls an Activity's Task hide/show lists act on ──
+const layer = (page, id, how) => page.evaluate(({ i, id, how }) => {
+  window.toolHost.instances[i].controls.get(id)[how]();
+}, { i: CIRCUIT, id, how });
+const texts = async (page) => (await displayTexts(page)).map((t) => t.text);
+
+test('every layer is shown by default in Standalone, each with its toggle', async ({ page }) => {
+  await open(page);
+  for (const name of ['Show Z_total', 'Show I', 'Show V_R', 'Show V_L', 'Show V_C', 'Show KVL closure']) {
+    await expect(panel(page).getByRole('checkbox', { name, exact: true }), name).toBeChecked();
+  }
+  expect(await state(page)).toMatchObject({ showZtotal: true, showKVL: true });
+});
+
+test('hiding Z_total hides its arrow, ∠Z and its readout, but not Z_R, Z_L or Z_C', async ({ page }) => {
+  await installCanvasTextRecorder(page);
+  await open(page);
+  await settle(page);
+  const ink = await colourOf(page, 'vin');
+  const mid = [50, -225]; // halfway along Z_total = 100 − j450 Ω
+  expect(near(await colourAt(page, 'impedance', ...mid), ink), 'Z_total drawn').toBe(true);
+  expect(await texts(page)).toContain('∠Z');
+  await layer(page, 'Ztotal', 'hide');
+  await settle(page);
+  await expect(panel(page).getByRole('checkbox', { name: 'Show Z_total', exact: true })).toBeHidden();
+  expect(near(await colourAt(page, 'impedance', ...mid), ink), 'Z_total hidden').toBe(false);
+  expect(await texts(page)).not.toContain('∠Z');
+  await expect(readout(page, 'Z_total rectangular')).toBeHidden();
+  await expect(readout(page, 'Z_total polar')).toBeHidden();
+  for (const k of ['R', 'L', 'C']) await expect(readout(page, `Z_${k} polar`)).toBeVisible();
+  const blue = await colourOf(page, 'R');
+  const zr = await Promise.all([20, 40, 60, 80].map((re) => colourAt(page, 'impedance', re, 0)));
+  expect(zr.some((c) => near(c, blue)), `Z_R still drawn: ${JSON.stringify(zr)}`).toBe(true);
+  await layer(page, 'Ztotal', 'show');
+  await settle(page);
+  expect(near(await colourAt(page, 'impedance', ...mid), ink), 'Z_total back').toBe(true);
+  await expect(readout(page, 'Z_total polar')).toBeVisible();
+});
+
+test('hiding I hides I on the phasor plane, i(t) and its axis, the I scale and the I readout', async ({ page }) => {
+  await installCanvasTextRecorder(page);
+  await open(page);
+  await settle(page);
+  const s = await state(page);
+  const iTexts = (all) => all.filter((t) => t === 'I' || t.startsWith('I scale') || t.startsWith('i ('));
+  expect(iTexts(await texts(page)).length).toBeGreaterThanOrEqual(3);
+  await layer(page, 'I', 'hide');
+  await settle(page);
+  expect(iTexts(await texts(page))).toEqual([]);
+  await expect(readout(page, 'I')).toBeHidden();
+  await expect(panel(page).getByRole('checkbox', { name: 'Show I', exact: true })).toBeHidden();
+  expect((await state(page)).Imag).toBeCloseTo(s.Imag, 12); // State still publishes it
+  await layer(page, 'I', 'show');
+  await settle(page);
+  expect(iTexts(await texts(page)).length).toBeGreaterThanOrEqual(3);
+  await expect(readout(page, 'I')).toBeVisible();
+});
+
+test('hiding a device voltage hides it on both plots and its readout', async ({ page }) => {
+  await open(page);
+  await settle(page);
+  const s = await state(page);
+  const gold = await colourOf(page, 'C');
+  const vr = rect(s.VRmag, s.angleVR); const vl = rect(s.VLmag, s.angleVL); const vc = rect(s.VCmag, s.angleVC);
+  const vcMid = [vr[0] + vl[0] + vc[0] / 2, vr[1] + vl[1] + vc[1] / 2];
+  await layer(page, 'VC', 'hide');
+  await settle(page);
+  expect(near(await colourAt(page, 'phasor', ...vcMid), gold), 'V_C hidden on the plane').toBe(false);
+  expect(near(await colourAt(page, 'time', -rad(s.angleVC) / s.omega, s.VCmag), gold), 'v_C(t) hidden').toBe(false);
+  await expect(readout(page, 'V_C')).toBeHidden();
+  await layer(page, 'VC', 'show');
+  await settle(page);
+  expect(near(await colourAt(page, 'phasor', ...vcMid), gold), 'V_C back').toBe(true);
+  await expect(readout(page, 'V_C')).toBeVisible();
+});
+
+test('hiding the KVL closure draws each device voltage from the origin instead of head to tail', async ({ page }) => {
+  await open(page);
+  await settle(page);
+  const s = await state(page);
+  const gold = await colourOf(page, 'C');
+  const vr = rect(s.VRmag, s.angleVR); const vl = rect(s.VLmag, s.angleVL); const vc = rect(s.VCmag, s.angleVC);
+  const chained = [vr[0] + vl[0] + vc[0] / 2, vr[1] + vl[1] + vc[1] / 2];
+  const fromOrigin = [vc[0] / 2, vc[1] / 2];
+  expect(near(await colourAt(page, 'phasor', ...chained), gold), 'head to tail').toBe(true);
+  await layer(page, 'kvl', 'hide');
+  await settle(page);
+  await expect(panel(page).getByRole('checkbox', { name: 'Show KVL closure', exact: true })).toBeHidden();
+  expect(near(await colourAt(page, 'phasor', ...chained), gold), 'no longer head to tail').toBe(false);
+  expect(near(await colourAt(page, 'phasor', ...fromOrigin), gold), 'from the origin').toBe(true);
+  await layer(page, 'kvl', 'show');
+  await panel(page).getByRole('checkbox', { name: 'Show KVL closure', exact: true }).uncheck();
+  await settle(page);
+  expect((await state(page)).showKVL).toBe(false);
+  expect(near(await colourAt(page, 'phasor', ...fromOrigin), gold), 'unticked: from the origin').toBe(true);
 });
 
 test('at least one element stays in the loop', async ({ page }) => {

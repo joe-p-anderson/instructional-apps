@@ -5,7 +5,7 @@
 //   (any subset; DEFAULTS below).
 // State (state.snapshot(), each with a label and unit in describe()):
 //   mode ('circuit'); the Controls includeR, includeL, includeC, V0 (V), R (Ω), L (mH), C (µF),
-//   showVin, showI, showVR, showVL, showVC (trace visibility); the solved circuit ZtotRe, ZtotIm,
+//   showVin, showI, showVR, showVL, showVC, showZtotal, showKVL (the toggles); the solved circuit ZtotRe, ZtotIm,
 //   ZtotMag (Ω), angleZ (°), Imag (A), angleI (°), VRmag, VLmag, VCmag (V), angleVR, angleVL,
 //   angleVC (°) — null for an excluded element, and I and every V_k null when Z = 0 (L and C alone
 //   exactly at ω₀); omega0 (rad/s, ω₀ = 1/√(LC), null unless L and C are both on), omegaC (rad/s,
@@ -18,7 +18,15 @@
 //                                       "C (µF)" (R, L and C on log scales)
 //   'vin', 'I', 'VR', 'VL', 'VC'        trace toggles "Show V_in", "Show I", ...: each shows or
 //                                       hides that quantity on the phasor plane and the time plot
-//                                       (hide() hides it too)
+//   'Ztotal'                            toggle "Show Z_total": Z_total and ∠Z on the impedance plane
+//   'kvl'                               toggle "Show KVL closure": on, V_R, V_L and V_C are drawn
+//                                       head to tail, closing on V_in; off, each from the origin
+//   Revealable layers (ids in ../layers.js, for Activity Task hide/show lists): 'Ztotal', 'I',
+//   'VR', 'VL', 'VC', 'kvl'. hide() on one hides its toggle, its drawing on every Display and its
+//   readouts, whatever the toggle says: hiding I also hides i(t), the time plot's A axis and the
+//   I scale; hiding Z_total also hides the Z_total readouts, never Z_R, Z_L or Z_C. 'vin' hides
+//   the same way, but V_in is the given source, not a layer to reveal. State keeps publishing
+//   every solved value while its layer is hidden.
 //   the shared time Controls 'omega', 'play', 't' and 'cursor' (../time-controls.js)
 // Displays: 'impedance' (the static impedance plane: Z_R, Z_L, Z_C head to tail from the origin,
 //   and Z_total from the origin to the chain's end with ∠Z marked by an arc; auto-scaled to fit
@@ -67,6 +75,11 @@ const TRACES = [
   ['VL', 'showVL', 'V_L', 'V<sub>L</sub>'],
   ['VC', 'showVC', 'V_C', 'V<sub>C</sub>'],
 ];
+// The other toggles: [key, State key, a11y name]
+const OVERLAYS = [
+  ['Ztotal', 'showZtotal', 'Show Z_total'],
+  ['kvl', 'showKVL', 'Show KVL closure'],
+];
 
 const STATE_INFO = {
   mode: { label: 'Mode', unit: '' },
@@ -82,6 +95,8 @@ const STATE_INFO = {
   showVR: { label: 'V_R shown', unit: '' },
   showVL: { label: 'V_L shown', unit: '' },
   showVC: { label: 'V_C shown', unit: '' },
+  showZtotal: { label: 'Z_total shown', unit: '' },
+  showKVL: { label: 'KVL closure shown (device voltages head to tail)', unit: '' },
   ZtotRe: { label: 'Real part of Z_total', unit: 'Ω' },
   ZtotIm: { label: 'Imaginary part of Z_total', unit: 'Ω' },
   ZtotMag: { label: 'Magnitude |Z_total|', unit: 'Ω' },
@@ -154,8 +169,12 @@ export function mount(container, setup = {}) {
   for (const [key, , name, html] of TRACES) {
     traces[key] = toggle({ id: key, name: `Show ${name}`, value: true,
       label: `<span class="fw-legend-line ph-swatch" data-color="${key}"></span>${html}`,
-      onChange: changed, onHide: () => draw() });
+      onChange: changed, onHide: () => { showRows(); draw(); } });
   }
+  traces.Ztotal = toggle({ id: 'Ztotal', name: 'Show Z_total', value: true, label: 'Show Z<sub>total</sub>',
+    onChange: changed, onHide: () => { showRows(); draw(); } });
+  traces.kvl = toggle({ id: 'kvl', name: 'Show KVL closure', value: true, label: 'Show KVL closure (head to tail)',
+    onChange: changed, onHide: () => draw() });
   const shown = (key) => !traces[key].isHidden() && traces[key].get();
 
   // ── The solved circuit ──
@@ -178,7 +197,7 @@ export function mount(container, setup = {}) {
     const out = { mode: id };
     for (const k of ELEMENTS) out[`include${k}`] = has(k);
     for (const k of NUMBERS) out[k] = sliders[k].get();
-    for (const [key, stateKey] of TRACES) out[stateKey] = traces[key].get();
+    for (const [key, stateKey] of TRACES.concat(OVERLAYS)) out[stateKey] = traces[key].get();
     Object.assign(out, {
       ZtotRe: c.Z.total.re, ZtotIm: c.Z.total.im, ZtotMag: Z.A, angleZ: Z.phi,
       Imag: I ? I.A : null, angleI: I ? I.phi : null,
@@ -213,6 +232,13 @@ export function mount(container, setup = {}) {
   const phasorReadouts = Object.fromEntries(TRACES.map(([key, , name]) => [key, metric({ name, label: 'A∠φ' })]));
   const traceRows = Object.fromEntries(TRACES.map(([key]) => [key,
     h('div', { class: 'ph-trace' }, traces[key].el, phasorReadouts[key].el)]));
+  /** A row shows unless its element is out of the loop or its layer is hidden (the toggle hides itself). */
+  function showRows() {
+    const c = solved();
+    for (const [key] of TRACES) traceRows[key].hidden = traces[key].isHidden();
+    for (const k of ELEMENTS) if (!c.Z[k]) traceRows[`V${k}`].hidden = true;
+    zReadouts.total.el.hidden = traces.Ztotal.isHidden();
+  }
 
   // ── Layout ──
   const impedanceCv = h('canvas', { class: 'ph-canvas' });
@@ -229,8 +255,8 @@ export function mount(container, setup = {}) {
       time.frequencyEl,
       time.timeEl,
       section('Impedances', zReadouts.R.el, zReadouts.L.el, zReadouts.C.el, zReadouts.total.el,
-        w0Readout.el, wcReadout.el),
-      section('Phasors', ...TRACES.map(([key]) => traceRows[key]))),
+        traces.Ztotal.el, w0Readout.el, wcReadout.el),
+      section('Phasors', ...TRACES.map(([key]) => traceRows[key]), traces.kvl.el)),
     h('div', { class: 'fw-displays' },
       h('div', { class: 'ph-displays ph-circuit-displays' },
         h('div', { class: 'fw-display', 'data-display': 'impedance' }, impedanceCv),
@@ -310,7 +336,7 @@ export function mount(container, setup = {}) {
       arrow(ctx, at(sg.from), at(sg.to), colors[sg.k]);
       sideLabel(ctx, `Z${sg.k}`, at(sg.from), at(sg.to), away, colors[sg.k], colors);
     }
-    drawZtotal(ctx, at, c.Z.total, away);
+    if (shown('Ztotal')) drawZtotal(ctx, at, c.Z.total, away);
     frames.impedance = laidOut ? f : null;
   }
 
@@ -450,9 +476,13 @@ export function mount(container, setup = {}) {
     const away = at({ re: pts.reduce((s, z) => s + z.re, 0) / pts.length, im: pts.reduce((s, z) => s + z.im, 0) / pts.length });
     if (shown('vin')) drawVin(ctx, at, turn(c.Vin), away);
     // V_L and V_C are antiparallel, so head to tail they overlap: the longest goes underneath
-    const segments = ELEMENTS.filter((k) => c.V[k]).map((k, i) => ({ k, from: pts[i], to: pts[i + 1], len: toPolar(c.V[k]).A }));
+    // Without the KVL closure each starts at the origin, labelled on the side away from V_in.
+    const kvl = shown('kvl');
+    const segments = ELEMENTS.filter((k) => c.V[k]).map((k, i) => (kvl
+      ? { k, from: pts[i], to: pts[i + 1], len: toPolar(c.V[k]).A }
+      : { k, from: ZERO, to: turn(c.V[k]), len: toPolar(c.V[k]).A }));
     for (const s of segments.sort((a, b) => b.len - a.len)) {
-      if (shown(`V${s.k}`)) drawDevice(ctx, at, s.k, s.from, s.to, away);
+      if (shown(`V${s.k}`)) drawDevice(ctx, at, s.k, s.from, s.to, kvl ? away : at(turn(c.Vin)));
     }
     if (c.I && shown('I')) {
       const kI = currentScale(c);
@@ -516,8 +546,8 @@ export function mount(container, setup = {}) {
         zReadouts[k].rect.update(siRectText(c.Z[k], 'Ω'));
         zReadouts[k].polar.update(siPolarText(toPolar(c.Z[k]), 'Ω'));
       }
-      traceRows[`V${k}`].hidden = !c.Z[k];
     }
+    showRows();
     zReadouts.total.rect.update(siRectText(c.Z.total, 'Ω'));
     zReadouts.total.polar.update(siPolarText(toPolar(c.Z.total), 'Ω'));
     const w0 = resonance(); const wc = corner();
@@ -576,7 +606,7 @@ export function mount(container, setup = {}) {
       const s = getState();
       return { ...Object.fromEntries(ELEMENTS.map((k) => [`include${k}`, s[`include${k}`]])),
         ...Object.fromEntries(NUMBERS.map((k) => [k, s[k]])),
-        ...Object.fromEntries(TRACES.map(([, stateKey]) => [stateKey, s[stateKey]])),
+        ...Object.fromEntries(TRACES.concat(OVERLAYS).map(([, stateKey]) => [stateKey, s[stateKey]])),
         ...time.serialize() };
     },
     restore(saved = {}) {
@@ -588,7 +618,7 @@ export function mount(container, setup = {}) {
         for (const k of ELEMENTS) if (want(k) === true) includes[k].set(true);
         for (const k of ELEMENTS) if (want(k) === false) includes[k].set(false);
         for (const k of NUMBERS) if (finite(saved[k])) sliders[k].set(saved[k]);
-        for (const [key, stateKey] of TRACES) if (typeof saved[stateKey] === 'boolean') traces[key].set(saved[stateKey]);
+        for (const [key, stateKey] of TRACES.concat(OVERLAYS)) if (typeof saved[stateKey] === 'boolean') traces[key].set(saved[stateKey]);
         time.restore(saved);
       } finally {
         quiet = false;
