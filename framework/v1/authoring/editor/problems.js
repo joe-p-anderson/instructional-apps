@@ -15,7 +15,29 @@
 
 import { activityProblems } from '../../runner/activity.js';
 
-export const CHECKS = [];
+const partsOf = (doc) => (Array.isArray(doc.parts) ? doc.parts : []);
+const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+
+export const CHECKS = [
+  // A Part's Mode must be one of the Tool's Modes.
+  { source: 'modes', run(doc, toolInfo) {
+    if (!toolInfo) return [];
+    return partsOf(doc).flatMap((part, p) => (typeof part?.mode === 'string' && !Object.hasOwn(toolInfo.modes, part.mode)
+      ? [{ path: ['parts', p, 'mode'], message: `Part "${part.id}" Mode "${part.mode}" is not a Mode of the Tool` }] : []));
+  } },
+  // Every Setup value is a Setup key or a Setup option of the Part's Mode (an unknown Mode is
+  // the check above's problem, so its Setup is not checked).
+  { source: 'setup', run(doc, toolInfo) {
+    if (!toolInfo) return [];
+    return partsOf(doc).flatMap((part, p) => {
+      const mode = Object.hasOwn(toolInfo.modes, part?.mode) ? toolInfo.modes[part.mode] : null;
+      if (!mode || !isObject(part.setup)) return [];
+      const known = [...(mode.setupKeys ?? []), ...(mode.setupOptions ?? [])];
+      return Object.keys(part.setup).filter((k) => !known.includes(k)).map((k) => ({ path: ['parts', p, 'setup', k],
+        message: `Part "${part.id}" Setup "${k}" is not a Setup key or Setup option of Mode "${part.mode}"` }));
+    });
+  } },
+];
 
 export function findProblems(doc, toolInfo) {
   const runner = activityProblems(doc).map((p) => ({ ...p, source: 'runner' }));
