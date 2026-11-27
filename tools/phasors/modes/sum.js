@@ -6,6 +6,11 @@
 //   phi1 (°), A2 (V), phi2 (°), omega (rad/s), f (Hz, ω/2π), and the resultant A (V), phi (°).
 // Controls: number inputs 'A1', 'A2' (V, 0 to A_MAX) and 'phi1', 'phi2' (°, any number, wrapped
 //   into (−180, 180]). Each also has update(v), which sets and shows it without reporting.
+//   Drag handles (kit 2-D handles, keyboard-operable): 'tip1', 'tip2' ("v₁ tip", "v₂ tip") on the
+//   plane, value { x: Re, y: Im } in V of that phasor (v₂'s is drawn from v₁'s tip); 'crest1',
+//   'crest2' ("v₁ crest", "v₂ crest") on the time plot at the crest nearest t = 0, value
+//   { x: ωt in °, y: A in V } (the engine's crest mapping, with t as phase so a key step is 1°
+//   at any ω). Handles set the number inputs; the inputs are the one source of truth.
 // Displays: 'plane' (the complex plane: v₁ from the origin, v₂ from v₁'s tip, and the resultant
 //   v₁ + v₂; toScreen(re, im) in V) and 'time' (v₁(t), v₂(t) and their sum over t ∈ [−T, T];
 //   toScreen(t, v) with t in s and v in V). Both share one amplitude scale, and each quantity has
@@ -17,9 +22,9 @@
 
 import { controlRegistry } from '../../../framework/v1/control.js';
 import { createEmitter } from '../../../framework/v1/tool.js';
-import { h, metric, section, themeVars } from '../../../framework/v1/ui-kit.js';
+import { h, handle, metric, section, themeVars } from '../../../framework/v1/ui-kit.js';
 import { plotTheme } from '../../../framework/v1/plot-theme.js';
-import { evaluate, fromPolar, sum, wrapDeg } from '../engine.js';
+import { crest, evaluate, fromCrest, fromPolar, sum, toPolar, wrapDeg } from '../engine.js';
 import { arrow, curve, dot, niceStep, plotFrame, prepCanvas, sideLabel } from '../draw.js';
 import { num, polarText, rectText, timeUnit } from '../format.js';
 import { numberInput } from '../number-input.js';
@@ -81,6 +86,89 @@ export function mount(container, setup = {}) {
   });
   const readouts = { v1: readout('v₁'), v2: readout('v₂'), sum: readout('v₁ + v₂') };
 
+  // ── Drag handles ──
+  // Each phasor's tip on the plane and its crest on the time plot. A handle reports by setting
+  // the number inputs (then one update()), and update() moves every handle to match, so the
+  // views never drift apart.
+  const DEG = 180 / Math.PI;
+  const T = (2 * Math.PI) / omega;
+  const pOf = (n) => (n === 1 ? p1() : p2());
+  const zOf = (n) => { const p = pOf(n); return fromPolar(p.A, p.phi); };
+  const VOLTS = { unit: 'V', step: 0.1, coarse: 1, decimals: 2 };
+  const tipValue = (n) => { const z = zOf(n); return { x: z.re, y: z.im }; };
+  const crestValue = (n) => { const c = crest(pOf(n), omega); return { x: c.t * omega * DEG, y: c.A }; };
+  const local = (cv, cx, cy) => { const r = cv.getBoundingClientRect(); return [cx - r.left, cy - r.top]; };
+
+  /** Set phasor n from a handle; at A = 0 the phase is kept (a zero phasor has no direction). */
+  function setPhasor(n, p) {
+    quiet = true;
+    try {
+      ctl[`A${n}`].set(p.A);
+      if (p.A > 1e-9) ctl[`phi${n}`].set(p.phi);
+    } finally {
+      quiet = false;
+    }
+    update();
+  }
+
+  function tipHandle(n) {
+    const base = () => (n === 1 ? { re: 0, im: 0 } : zOf(1)); // head to tail: v₂ starts at v₁'s tip
+    return handle({ id: `tip${n}`, name: `v${SUB[n]} tip`,
+      x: { name: 'Re', min: -A_MAX, max: A_MAX, ...VOLTS }, y: { name: 'Im', min: -A_MAX, max: A_MAX, ...VOLTS },
+      value: tipValue(n),
+      format: () => `v${SUB[n]} = ${rectText(zOf(n), 'V')} = ${polarText(pOf(n), 'V')}`,
+      toScreen: (v) => { const b = base(); return planeToScreen(b.re + v.x, b.im + v.y); },
+      fromScreen: (cx, cy) => {
+        const f = frames.plane;
+        if (!f) return null;
+        const [x, y] = local(planeCv, cx, cy);
+        const b = base();
+        return { x: f.ix(x) - b.re, y: f.iy(y) - b.im };
+      },
+      onChange: (v) => setPhasor(n, toPolar({ re: v.x, im: v.y })),
+      onHide: () => draw() });
+  }
+
+  function crestHandle(n) {
+    return handle({ id: `crest${n}`, name: `v${SUB[n]} crest`,
+      // ωt may run past ±180° while dragging; φ then wraps and the handle jumps to the new nearest crest
+      x: { name: 'ωt', unit: '°', min: -360, max: 360, step: 1, coarse: 15, decimals: 1 },
+      y: { name: 'A', min: 0, max: A_MAX, ...VOLTS },
+      value: crestValue(n),
+      format: () => {
+        const c = crest(pOf(n), omega);
+        const { unit, scale: k } = timeUnit(T);
+        return `t = ${num(c.t * k, 3)} ${unit}, A = ${num(c.A)} V (φ${SUB[n]} = ${num(pOf(n).phi, 1)}°)`;
+      },
+      toScreen: (v) => timeToScreen(v.x / DEG / omega, v.y),
+      fromScreen: (cx, cy) => {
+        const f = frames.time;
+        if (!f) return null;
+        const [x, y] = local(timeCv, cx, cy);
+        return { x: f.ix(x) * omega * DEG, y: f.iy(y) };
+      },
+      onChange: (v) => setPhasor(n, fromCrest({ t: v.x / DEG / omega, A: v.y }, omega)),
+      onHide: () => draw() });
+  }
+
+  const tips = { 1: tipHandle(1), 2: tipHandle(2) };
+  const crests = { 1: crestHandle(1), 2: crestHandle(2) };
+  const handles = [tips[1], tips[2], crests[1], crests[2]];
+
+  // While a handle is dragged the amplitude scale is held, so the plots do not rescale under the
+  // pointer and the handle follows it; it is fitted again on release.
+  let heldScale = null;
+  for (const hd of handles) {
+    hd.el.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 || hd.isLocked() || hd.isHidden()) return;
+      heldScale = null;
+      heldScale = scale();
+    });
+    const release = () => { if (heldScale !== null) { heldScale = null; draw(); } };
+    hd.el.addEventListener('pointerup', release);
+    hd.el.addEventListener('pointercancel', release);
+  }
+
   // ── Layout ──
   const planeCv = h('canvas', { class: 'ph-canvas' });
   const timeCv = h('canvas', { class: 'ph-canvas' });
@@ -106,8 +194,10 @@ export function mount(container, setup = {}) {
         phasorBlock('sum', 'v<sub>1</sub> + v<sub>2</sub>'))),
     h('div', { class: 'fw-displays' },
       h('div', { class: 'ph-displays' },
-        h('div', { class: 'fw-display', 'data-display': 'plane' }, planeCv),
-        h('div', { class: 'fw-display', 'data-display': 'time' }, timeCv))));
+        h('div', { class: 'fw-display', 'data-display': 'plane' }, planeCv,
+          h('div', { class: 'fw-handle-layer' }, tips[1].el, tips[2].el)),
+        h('div', { class: 'fw-display', 'data-display': 'time' }, timeCv,
+          h('div', { class: 'fw-handle-layer' }, crests[1].el, crests[2].el)))));
   container.append(root);
 
   // One colour per quantity, in both Displays and the legend.
@@ -120,8 +210,10 @@ export function mount(container, setup = {}) {
   };
 
   // ── Drawing ──
-  // One amplitude scale for both Displays: a 1-2-5 step above A₁ + A₂, so every tip fits.
+  // One amplitude scale for both Displays: a 1-2-5 step above A₁ + A₂, so every tip fits (held
+  // during a drag, see heldScale).
   const scale = () => {
+    if (heldScale !== null) return heldScale;
     const reach = Math.max(ctl.A1.get() + ctl.A2.get(), 0.5) * 1.1;
     const step = niceStep(reach, 4);
     return Math.ceil(reach / step) * step;
@@ -152,7 +244,6 @@ export function mount(container, setup = {}) {
 
   function drawTime() {
     const { ctx, W, H, laidOut } = prepCanvas(timeCv, colors);
-    const T = (2 * Math.PI) / omega;
     const { unit, scale: k } = timeUnit(T);
     const R = scale();
     const f = plotFrame(ctx, { x: 0, y: 0, w: W, h: H }, [-T, T], [-R, R], {
@@ -164,6 +255,11 @@ export function mount(container, setup = {}) {
     curve(ctx, f, -T, T, (t) => evaluate(s, omega, t), colors.sum, 3);
     curve(ctx, f, -T, T, (t) => evaluate(p1(), omega, t), colors.v1);
     curve(ctx, f, -T, T, (t) => evaluate(p2(), omega, t), colors.v2);
+    for (const n of [1, 2]) {
+      if (crests[n].isHidden()) continue;
+      const c = crest(pOf(n), omega);
+      dot(ctx, { x: f.X(c.t), y: f.Y(c.A) }, colors[`v${n}`]);
+    }
     frames.time = laidOut ? f : null;
   }
 
@@ -171,6 +267,7 @@ export function mount(container, setup = {}) {
     if (!colors) readColors();
     drawPlane();
     drawTime();
+    for (const hd of handles) hd.place();
   }
 
   function update() {
@@ -180,6 +277,10 @@ export function mount(container, setup = {}) {
     for (const [key, z, p] of [['v1', z1, p1()], ['v2', z2, p2()], ['sum', fromPolar(s.A, s.phi), s]]) {
       readouts[key].rect.update(rectText(z, 'V'));
       readouts[key].polar.update(polarText(p, 'V'));
+    }
+    for (const n of [1, 2]) {
+      tips[n].update(tipValue(n));
+      crests[n].update(crestValue(n));
     }
     draw();
     changes.emit(getState());
@@ -196,6 +297,8 @@ export function mount(container, setup = {}) {
     if (Math.abs(r.width - cv.width / (globalThis.devicePixelRatio || 1)) > 1) return null;
     return { x: r.left + f.X(x), y: r.top + f.Y(y) };
   };
+  const planeToScreen = screenOf(planeCv, 'plane');
+  const timeToScreen = screenOf(timeCv, 'time');
   const snap = (cv) => async () => { draw(); return cv.toDataURL('image/png'); };
 
   readColors();
@@ -207,10 +310,10 @@ export function mount(container, setup = {}) {
       describe: () => structuredClone(STATE_INFO),
       onChange: (fn) => changes.on(fn),
     },
-    controls: controlRegistry(ctl),
+    controls: controlRegistry({ ...ctl, tip1: tips[1], tip2: tips[2], crest1: crests[1], crest2: crests[2] }),
     displays: [
-      { id: 'plane', label: 'Complex plane', snapshot: snap(planeCv), toScreen: screenOf(planeCv, 'plane') },
-      { id: 'time', label: 'Time plot', snapshot: snap(timeCv), toScreen: screenOf(timeCv, 'time') },
+      { id: 'plane', label: 'Complex plane', snapshot: snap(planeCv), toScreen: planeToScreen },
+      { id: 'time', label: 'Time plot', snapshot: snap(timeCv), toScreen: timeToScreen },
     ],
     serialize: () => Object.fromEntries(INPUTS.map((k) => [k, ctl[k].get()])),
     restore(saved = {}) {
@@ -225,6 +328,7 @@ export function mount(container, setup = {}) {
     resize: () => { readColors(); draw(); },
     destroy() {
       resizeObserver.disconnect();
+      for (const hd of handles) hd.destroy();
       changes.clear();
       root.remove();
     },

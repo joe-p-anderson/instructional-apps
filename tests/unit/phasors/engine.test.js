@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { add, div, evaluate, fromPolar, mul, sum, toPolar, wrapDeg } from '../../../tools/phasors/engine.js';
+import { add, crest, div, evaluate, fromCrest, fromPolar, mul, sum, toPolar, wrapDeg } from '../../../tools/phasors/engine.js';
 
 const close = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg ?? ''} ${a} vs ${b}`);
 const wrap = (d) => ((((d + 180) % 360) + 360) % 360) - 180; // into [−180, 180)
@@ -91,4 +91,42 @@ test('angles wrap into (−180, 180]', () => {
   assert.equal(wrapDeg(-180), 180);
   assert.equal(wrapDeg(-450), -90);
   assert.equal(wrapDeg(45), 45);
+});
+
+test('a crest sits at t = −φ/ω, height A: 2∠90° at ω = 1000 peaks at t = −π/2000 s', () => {
+  const c = crest({ A: 2, phi: 90 }, 1000);
+  close(c.t, -Math.PI / 2000, 1e-15, 't'); close(c.A, 2, 1e-12, 'A');
+  close(evaluate({ A: 2, phi: 90 }, 1000, c.t), 2, 1e-12, 'the curve peaks there');
+  close(crest({ A: 1, phi: 0 }, 50).t, 0, 1e-15, 'φ = 0 peaks at t = 0');
+  close(crest({ A: 1, phi: -45 }, 100).t, Math.PI / 400, 1e-15, 'a lagging phasor peaks later');
+});
+
+test('the crest is the one nearest t = 0, within half a period', () => {
+  const omega = 2 * Math.PI * 60;
+  const T = 1 / 60;
+  for (const phi of [-179, -90, 0, 90, 180, 270, -450]) {
+    const c = crest({ A: 1, phi }, omega);
+    assert.ok(Math.abs(c.t) <= T / 2 + 1e-15, `φ = ${phi}: t = ${c.t}`);
+    close(evaluate({ A: 1, phi }, omega, c.t), 1, 1e-12, `φ = ${phi} peaks at its crest`);
+  }
+});
+
+test('the crest mapping round-trips (A, φ) → (t, A) → (A, φ) across φ in (−180°, 180°]', () => {
+  for (const omega of [100, 1000, 2 * Math.PI * 50, 1e6]) {
+    for (let phi = -179.5; phi <= 180; phi += 0.5) {
+      for (const A of [0.25, 3, 10]) {
+        const p = fromCrest(crest({ A, phi }, omega), omega);
+        close(p.A, A, 1e-12, `A at ${A}∠${phi}, ω = ${omega}`);
+        close(p.phi, phi, 1e-9, `φ at ${A}∠${phi}, ω = ${omega}`);
+        assert.ok(p.phi > -180 && p.phi <= 180, `φ in range: ${p.phi}`);
+      }
+    }
+  }
+});
+
+test('a crest dragged past half a period becomes the next crest: φ wraps into (−180, 180]', () => {
+  const omega = 1000;
+  const quarter = Math.PI / 2 / omega;
+  const p = fromCrest({ t: -3 * quarter, A: 2 }, omega); // ωt = −270°: φ = 270° ≡ −90°
+  close(p.phi, -90, 1e-9); close(p.A, 2, 1e-12);
 });
