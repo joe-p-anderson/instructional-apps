@@ -13,7 +13,7 @@ The two views and the number inputs always agree, because they are views of the 
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Phasor tips are 2-D kit `handle`s on the complex plane.
 - [ ] Crest handles are 2-D kit `handle`s, mapped through an engine crest mapping: (A, φ) ↔ crest (t, A).

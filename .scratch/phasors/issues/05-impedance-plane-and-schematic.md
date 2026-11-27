@@ -9,7 +9,7 @@ Spec: .scratch/phasors/spec.md (vocabulary from GLOSSARY.md; builds on framework
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] The impedance plane auto-scales to fit Z_total and the largest component impedance, with an Ω scale.
 - [ ] Excluded elements disappear from both the impedance plane and the schematic.

@@ -20,7 +20,7 @@ Spec: .scratch/phasors/spec.md (vocabulary from GLOSSARY.md; builds on framework
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] The engine gains the circuit math:
   - Z for any subset of R, L and C;
