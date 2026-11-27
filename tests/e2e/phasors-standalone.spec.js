@@ -85,17 +85,17 @@ test('changing an input moves the phasor and its curve', async ({ page }) => {
   await open(page);
   await settle(page);
   const omega = 1000;
-  // v₂ is drawn from v₁'s tip (3, 0): at φ₂ = 90° its tip is (3, 2).
-  const red = await colourAt(page, 'plane', 3, 2);
+  // v₂ is drawn from the origin: at φ₂ = 90° its tip is (0, 2).
+  const red = await colourAt(page, 'plane', 0, 2);
   const crest = (phi) => [(-phi * Math.PI) / 180 / omega, 2]; // v₂'s crest nearest t = 0, at t = −φ/ω
   expect(near(await colourAt(page, 'time', ...crest(90)), red), 'v₂ crest at φ₂ = 90°').toBe(true);
 
   await enter(page, 'φ₂ (°)', 45);
   await settle(page);
   expect((await state(page)).phi2).toBe(45);
-  const tip = [3 + Math.SQRT2, Math.SQRT2];
+  const tip = [Math.SQRT2, Math.SQRT2];
   expect(near(await colourAt(page, 'plane', ...tip), red), 'v₂ tip moved to φ₂ = 45°').toBe(true);
-  expect(near(await colourAt(page, 'plane', 3, 2), red), 'nothing left at the old tip').toBe(false);
+  expect(near(await colourAt(page, 'plane', 0, 2), red), 'nothing left at the old tip').toBe(false);
   expect(near(await colourAt(page, 'time', ...crest(45)), red), 'v₂ crest moved to t = −φ₂/ω').toBe(true);
   expect(near(await colourAt(page, 'time', ...crest(90)), red), 'nothing left at the old crest').toBe(false);
 });
@@ -204,7 +204,7 @@ test('the phasors rotate to ωt + φ, and each projection meets its curve at the
   await open(page);
   const omega = 1000;
   await settle(page);
-  const red = await colourAt(page, 'plane', 3, 2); // v₂'s static tip, head-to-tail from v₁ = (3, 0)
+  const red = await colourAt(page, 'plane', 0, 2); // v₂'s static tip, from the origin
   await enter(page, 'ωt (°)', 60);
   await settle(page);
   const t = (await state(page)).t;
@@ -215,9 +215,9 @@ test('the phasors rotate to ωt + φ, and each projection meets its curve at the
   expect(near(await colourAt(page, 'plane', 1.5, 0), blue), 'v₁ projection on the real axis').toBe(true);
   expect(near(await colourAt(page, 'time', t, 1.5), blue), 'v₁ curve at the cursor').toBe(true);
   // the relative angle stays put: v₂ (2∠90°) is now 2∠150°, still 90° ahead of v₁
-  const tip = [1.5 + 2 * Math.cos(150 * rad), 3 * Math.sin(60 * rad) + 2 * Math.sin(150 * rad)];
+  const tip = [2 * Math.cos(150 * rad), 2 * Math.sin(150 * rad)];
   expect(near(await colourAt(page, 'plane', ...tip), red), 'v₂ tip rotated with v₁').toBe(true);
-  expect(near(await colourAt(page, 'plane', 3, 2), red), 'nothing left at v₂’s static tip').toBe(false);
+  expect(near(await colourAt(page, 'plane', 0, 2), red), 'nothing left at v₂’s static tip').toBe(false);
   expect(near(await colourAt(page, 'time', t, 2 * Math.cos(150 * rad)), red), 'v₂ curve at the cursor').toBe(true);
 });
 
@@ -319,9 +319,9 @@ const rad = (deg) => (deg * Math.PI) / 180;
 test('each phasor has a tip handle on the plane and a crest handle on the time plot', async ({ page }) => {
   await open(page);
   await settle(page);
-  // v₁ = 3∠0° has its tip at (3, 0); v₂ = 2∠90° is drawn from v₁'s tip, so its tip is at (3, 2).
+  // v₁ = 3∠0° has its tip at (3, 0); v₂ = 2∠90°, also from the origin, at (0, 2).
   await expectAt(page, 'v₁ tip', await toScreen(page, 'plane', 3, 0));
-  await expectAt(page, 'v₂ tip', await toScreen(page, 'plane', 3, 2));
+  await expectAt(page, 'v₂ tip', await toScreen(page, 'plane', 0, 2));
   await expectAt(page, 'v₁ crest', await toScreen(page, 'time', ...crestAt(3, 0)));
   await expectAt(page, 'v₂ crest', await toScreen(page, 'time', ...crestAt(2, 90)));
   await expect(handleEl(page, 'v₂ tip')).toHaveAccessibleDescription(/2\.00∠90\.0° V/);
@@ -330,8 +330,8 @@ test('each phasor has a tip handle on the plane and a crest handle on the time p
 test('dragging a phasor tip moves the matching crest handle and the number inputs', async ({ page }) => {
   await open(page);
   await settle(page);
-  // Drag v₂'s tip from (3, 2) to (3, −2): v₂ becomes 2∠−90°.
-  await drag(page, await centreOf(page, 'v₂ tip'), await toScreen(page, 'plane', 3, -2));
+  // Drag v₂'s tip from (0, 2) to (0, −2): v₂ becomes 2∠−90°.
+  await drag(page, await centreOf(page, 'v₂ tip'), await toScreen(page, 'plane', 0, -2));
   await settle(page);
   const s = await state(page);
   expect(s.A1).toBe(3);
@@ -339,7 +339,7 @@ test('dragging a phasor tip moves the matching crest handle and the number input
   expect(s.phi2).toBeCloseTo(-90, 0);
   await expect(box(page, 'φ₂ (°)')).toHaveValue(String(Number(s.phi2.toFixed(1))));
   await expectAt(page, 'v₂ crest', await toScreen(page, 'time', ...crestAt(s.A2, s.phi2)));
-  await expectAt(page, 'v₂ tip', await toScreen(page, 'plane', 3 + s.A2 * Math.cos(rad(s.phi2)), s.A2 * Math.sin(rad(s.phi2))));
+  await expectAt(page, 'v₂ tip', await toScreen(page, 'plane', s.A2 * Math.cos(rad(s.phi2)), s.A2 * Math.sin(rad(s.phi2))));
 });
 
 test('dragging a crest handle sets A and φ, and moves the matching phasor tip', async ({ page }) => {
@@ -355,16 +355,16 @@ test('dragging a crest handle sets A and φ, and moves the matching phasor tip',
   const z1 = [s.A1 * Math.cos(rad(s.phi1)), s.A1 * Math.sin(rad(s.phi1))];
   await expectAt(page, 'v₁ tip', await toScreen(page, 'plane', ...z1));
   await expectAt(page, 'v₁ crest', await toScreen(page, 'time', ...crestAt(s.A1, s.phi1)));
-  await expectAt(page, 'v₂ tip', await toScreen(page, 'plane', z1[0], z1[1] + 2)); // still head to tail
+  await expectAt(page, 'v₂ tip', await toScreen(page, 'plane', 0, 2)); // v₂ is unchanged
 });
 
 test('tip handles ride the rotated tips, and crest handles follow a new ω', async ({ page }) => {
   await open(page);
   await enter(page, 'ωt (°)', 90);
   await settle(page);
-  // a quarter period on, v₁ = 3∠0° is at 3∠90° = (0, 3) and v₂ = 2∠90° at 2∠180°, so v₂'s tip is (−2, 3)
+  // a quarter period on, v₁ = 3∠0° is at 3∠90° = (0, 3) and v₂ = 2∠90° at 2∠180° = (−2, 0)
   await expectAt(page, 'v₁ tip', await toScreen(page, 'plane', 0, 3));
-  await expectAt(page, 'v₂ tip', await toScreen(page, 'plane', -2, 3));
+  await expectAt(page, 'v₂ tip', await toScreen(page, 'plane', -2, 0));
   // dragging the rotated v₁ tip to (−3, 0), i.e. 3∠180° at ωt = 90°, sets the static v₁ to 3∠90°
   await drag(page, await centreOf(page, 'v₁ tip'), await toScreen(page, 'plane', -3, 0));
   await settle(page);

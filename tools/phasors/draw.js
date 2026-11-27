@@ -7,7 +7,8 @@
 //       frame = { X(v), Y(v), ix(px), iy(px), rect, step: { x, y } } maps plot units ↔ canvas
 //       px; step is the grid spacing in plot units.
 //       opts: { colors, xTitle, yTitle, xFormat, yFormat, equal, y2 }  (equal: same px per unit on
-//       both axes, the plot box shrunk and centred to fit the ranges, for a complex plane;
+//       both axes, the shorter range widened about its centre so the plot fills its box, for a
+//       complex plane;
 //       y2: { title, format(v, step) } a second, right-hand axis labelling the same grid lines,
 //       for a quantity drawn on its own scale, e.g. i(t) beside v(t))
 //   arrow(ctx, from, to, color, { width, dashed })   an arrow between canvas points
@@ -21,6 +22,9 @@
 //                                                     a whole number of 1-2-5 steps (4 or so)
 //   line(ctx, from, to, color, { width, dashed })     a plain line between canvas points
 //   angleArc(ctx, at, r, a0, a1, color, width)        an arc marking the angle a0 → a1 (degrees)
+//   tipLabel(ctx, text, a, b, color, colors)          text just past b, along the arrow a → b
+//   niceFine(x)                                       the smallest of 1, 1.25, 1.5, 2, 2.5, 3, 4, 5,
+//                                                     6, 8 × 10ⁿ that is ≥ x (a finer niceStep)
 
 const PAD = { l: 54, r: 12, t: 12, b: 44 };
 
@@ -29,6 +33,12 @@ export function niceStep(span, ticks = 5) {
   const p = 10 ** Math.floor(Math.log10(raw));
   const m = raw / p;
   return (m <= 1 + 1e-9 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+}
+
+const FINE = [1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+export function niceFine(x) {
+  const p = 10 ** Math.floor(Math.log10(x));
+  return FINE.find((m) => m * p >= x * (1 - 1e-9)) * p;
 }
 
 export function fitScale(reach) {
@@ -64,12 +74,12 @@ export function plotFrame(ctx, rect, xr, yr, opts) {
   const padR = y2 ? PAD.l : PAD.r;
   let L = rect.x + PAD.l; let R = rect.x + rect.w - padR;
   let T = rect.y + PAD.t; let B = rect.y + rect.h - PAD.b;
-  const [x0, x1] = xr; const [y0, y1] = yr;
-  if (equal) { // same scale on both axes: shrink the plot box to the ranges' aspect, centred
+  let [x0, x1] = xr; let [y0, y1] = yr;
+  if (equal) { // same scale on both axes: widen the shorter range about its centre to fill the box
     const k = Math.max((x1 - x0) / (R - L), (y1 - y0) / (B - T));
-    const w = (x1 - x0) / k; const hgt = (y1 - y0) / k;
-    L += (R - L - w) / 2; R = L + w;
-    T += (B - T - hgt) / 2; B = T + hgt;
+    const xm = (x0 + x1) / 2; const ym = (y0 + y1) / 2;
+    const xh = ((R - L) * k) / 2; const yh = ((B - T) * k) / 2;
+    [x0, x1] = [xm - xh, xm + xh]; [y0, y1] = [ym - yh, ym + yh];
   }
   const X = (v) => L + ((v - x0) / (x1 - x0)) * (R - L);
   const Y = (v) => B - ((v - y0) / (y1 - y0)) * (B - T);
@@ -192,6 +202,19 @@ export function label(ctx, text, at, color, colors, align = 'left') {
   ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle';
   ctx.fillText(text, at.x, at.y);
   ctx.restore();
+}
+
+/** Label an arrow a → b (canvas points) just past its tip b, centred on its line. */
+export function tipLabel(ctx, text, a, b, color, colors, gap = 12) {
+  const dx = b.x - a.x; const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  ctx.save();
+  ctx.font = `bold ${fontOf(colors)}`;
+  const half = ctx.measureText(text).width / 2;
+  ctx.restore();
+  const ux = dx / len; const uy = dy / len;
+  const push = gap + Math.abs(ux) * half + Math.abs(uy) * colors.font.size * 0.5;
+  label(ctx, text, { x: b.x + ux * push, y: b.y + uy * push }, color, colors, 'center');
 }
 
 /**

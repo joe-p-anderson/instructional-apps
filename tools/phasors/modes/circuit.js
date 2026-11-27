@@ -31,9 +31,10 @@
 //   the shared time Controls 'omega', 'play', 't' and 'cursor' (../time-controls.js)
 // Readouts (status regions): each impedance and each phasor in both forms, "Z_R rectangular",
 //   "Z_R polar", ..., "Z_total polar", "V_in rectangular", "I polar", "V_C polar", ...; "ω₀", "ω_c".
-// Displays: 'impedance' (the static impedance plane: Z_R, Z_L, Z_C head to tail from the origin,
-//   and Z_total from the origin to the chain's end with ∠Z marked by an arc; auto-scaled to fit
-//   the whole chain, its axes in Ω, kΩ or MΩ; toScreen(re, im) in Ω), 'phasor' (the rotating phasor plane: V_in from the origin, V_R, V_L, V_C head to tail
+// Displays: 'impedance' (the static impedance plane: Z_R along +Re, Z_L along +Im, Z_C along −Im
+//   and Z_total, each from the origin, Z_total with dashed drops to the axes and ∠Z marked by an
+//   arc; auto-scaled to fit every arrow, its axes in Ω, kΩ or MΩ; toScreen(re, im) in Ω),
+//   'phasor' (the rotating phasor plane: V_in from the origin, V_R, V_L, V_C head to tail
 //   closing on V_in, and I dashed on its own scale, every phasor rotated by ωt; toScreen(re, im) in
 //   V) , 'time' (v_in(t), v_R(t), v_L(t), v_C(t) on the left axis in V, and i(t) dashed on the
 //   right-hand axis in A, over t ∈ [−T, T], with the time cursor; toScreen(t, v) with t in s and v
@@ -56,7 +57,7 @@ import { createEmitter } from '../../../framework/v1/tool.js';
 import { h, metric, section, slider, themeVars, toggle } from '../../../framework/v1/ui-kit.js';
 import { plotTheme } from '../../../framework/v1/plot-theme.js';
 import { add, evaluate, fromPolar, mul, omega0, omegaC, solve, toPolar } from '../engine.js';
-import { angleArc, arrow, curve, dot, fitScale, label, line, niceStep, plotFrame, prepCanvas, sideLabel } from '../draw.js';
+import { angleArc, arrow, curve, dot, label, line, niceFine, plotFrame, prepCanvas, sideLabel, tipLabel } from '../draw.js';
 import { attachTimeCursor, drawTimeCursor, paintSwatches, redrawOnResize, screenMapper, snapshotOf, timeAxis } from '../display.js';
 import { num, prefix, siPolarText, siRectText } from '../format.js';
 import { LAYERS } from '../layers.js';
@@ -295,28 +296,44 @@ export function mount(container, setup = {}) {
   // The volt axes reach V₀ and what the layers not hidden can draw: each device voltage's
   // amplitude (on the time plot, or from the origin), and with the KVL closure every point of the
   // head-to-tail chain (V_L and V_C can exceed V₀ near ω₀). A hidden layer never widens them.
-  // I is drawn as I/kI, kI the smallest 1-2-5 step (A per V) that keeps it within V₀.
-  const currentScale = (c) => (c.I ? niceStep(size(c.I) / si('V0'), 1) : 1);
+  // I is drawn as I/kI, kI the smallest round step (1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8 × 10ⁿ
+  // A per V) that keeps it within V₀, so the I arrow is most of V₀'s length.
+  const currentScale = (c) => (c.I ? niceFine(size(c.I) / si('V0')) : 1);
   function voltScale(c) {
     const open = (key) => !traces[key].isHidden();
     const present = ELEMENTS.filter((k) => c.V[k]);
     const visible = present.filter((k) => open(`V${k}`));
     const reach = [si('V0'), ...visible.map((k) => size(c.V[k]))];
     if (open('kvl') && visible.length === present.length) reach.push(...chain(present.map((k) => c.V[k])).map(size));
-    return fitScale(Math.max(...reach) * 1.1);
+    return niceFine(Math.max(...reach) * 1.08);
   }
   const frames = { impedance: null, phasor: null, time: null };
 
-  // ── Impedance plane (static): Z_R, Z_L, Z_C head to tail, then Z_total ──
-  /** The plane's half-height S (Ω): a 1-2-5 multiple that fits every point of the chain. */
-  const impedanceScale = (c) => fitScale(Math.max(...chain(ELEMENTS.map((k) => c.Z[k]))
-    .map((z) => Math.max(Math.abs(z.re), Math.abs(z.im)))) * 1.1 || 1);
+  // ── Impedance plane (static): Z_R, Z_L, Z_C and Z_total, each from the origin ──
+  // Z_R lies along +Re, Z_L along +Im and Z_C along −Im. The ranges reach just past the longest
+  // arrow each way (Z_total included, so hiding it never changes the scale), with a little room
+  // on the side no arrow uses so the axis stays visible; the plot frame then widens the shorter
+  // range to fill its box at an equal scale.
+  function impedanceRanges(c) {
+    const zs = [...ELEMENTS.map((k) => c.Z[k]).filter(Boolean), c.Z.total];
+    const right = Math.max(0, ...zs.map((z) => z.re));
+    const up = Math.max(0, ...zs.map((z) => z.im));
+    const down = Math.max(0, ...zs.map((z) => -z.im));
+    const S = niceFine(Math.max(right, up, down) * 1.1 || 1);
+    const room = S * 0.15;
+    // past each arrow's tip there is room for its label; rounded up to a fine step, so an arrow
+    // visibly grows or shrinks as ω moves between steps
+    const reach = (v) => (v > 0 ? niceFine(v * 1.05 + S * 0.12) : room);
+    return { S, xr: [-room, reach(right)], yr: [-reach(down), reach(up)] };
+  }
 
-  /** Z_total from the origin to the end of the chain, and ∠Z as an arc off the real axis. */
-  function drawZtotal(ctx, at, Z, away) {
+  /** Z_total from the origin, dashed drops to its parts on the axes, and ∠Z as an arc off Re. */
+  function drawZtotal(ctx, at, Z) {
     if (size(Z) < 1e-9) return;
+    line(ctx, at(Z), at({ re: Z.re, im: 0 }), colors.total, { dashed: true });
+    line(ctx, at(Z), at({ re: 0, im: Z.im }), colors.total, { dashed: true });
     arrow(ctx, at(ZERO), at(Z), colors.total, { width: 3 });
-    sideLabel(ctx, 'Z', at(ZERO), at(Z), away, colors.total, colors);
+    tipLabel(ctx, 'Z', at(ZERO), at(Z), colors.total, colors);
     const { phi } = toPolar(Z);
     if (Math.abs(phi) < 1) return;
     const o = at(ZERO);
@@ -328,21 +345,17 @@ export function mount(container, setup = {}) {
   function drawImpedancePlane() {
     const { ctx, W, H, laidOut } = prepCanvas(impedanceCv, colors);
     const c = solved();
-    const S = impedanceScale(c);
+    const { S, xr, yr } = impedanceRanges(c);
     const { prefix: p, scale } = prefix(S);
     const fmt = (v, step) => num(v * scale, Math.max(0, -Math.floor(Math.log10(step * scale) + 1e-9)));
-    const f = plotFrame(ctx, { x: 0, y: 0, w: W, h: H }, [-S / 4, S], [-S, S],
+    const f = plotFrame(ctx, { x: 0, y: 0, w: W, h: H }, xr, yr,
       { colors, xTitle: `Re (${p}Ω)`, yTitle: `Im (${p}Ω)`, xFormat: fmt, yFormat: fmt, equal: true });
     const at = (z) => ({ x: f.X(z.re), y: f.Y(z.im) });
-    const pts = chain(ELEMENTS.map((k) => c.Z[k]));
-    const away = at(centroid(pts));
-    // Z_L and Z_C are antiparallel, so head to tail they overlap: the longest goes underneath
-    const segments = ELEMENTS.filter((k) => c.Z[k]).map((k, i) => ({ k, from: pts[i], to: pts[i + 1], len: size(c.Z[k]) }));
-    for (const sg of segments.sort((a, b) => b.len - a.len)) {
-      arrow(ctx, at(sg.from), at(sg.to), colors[sg.k]);
-      sideLabel(ctx, `Z${sg.k}`, at(sg.from), at(sg.to), away, colors[sg.k], colors);
+    if (shown('Ztotal')) drawZtotal(ctx, at, c.Z.total);
+    for (const k of ELEMENTS.filter((e) => c.Z[e])) {
+      arrow(ctx, at(ZERO), at(c.Z[k]), colors[k]);
+      tipLabel(ctx, `Z${k}`, at(ZERO), at(c.Z[k]), colors[k], colors);
     }
-    if (shown('Ztotal')) drawZtotal(ctx, at, c.Z.total, away);
     frames.impedance = laidOut ? f : null;
   }
 

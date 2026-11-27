@@ -165,7 +165,7 @@ test('toggling L or C adds or removes its phasor and its trace', async ({ page }
   expect(a[1] + b[1]).toBeCloseTo(0, 9);
 });
 
-// The impedance plane at the defaults: Z_R from 0 to 100, Z_L up to 100 + j50, Z_C down to 100 − j450.
+// The impedance plane at the defaults, every arrow from the origin: Z_R to 100, Z_L up to j50, Z_C down to −j500.
 const schematic = (page) => panel(page).locator('[data-display="schematic"]').getByRole('img');
 
 test('toggling an element updates the schematic and the impedance plane', async ({ page }) => {
@@ -173,34 +173,36 @@ test('toggling an element updates the schematic and the impedance plane', async 
   await settle(page);
   await expect(schematic(page)).toHaveAccessibleName('Series loop: the source, R, L and C');
   const red = await colourOf(page, 'L'); const gold = await colourOf(page, 'C');
-  expect(near(await colourAt(page, 'impedance', 100, -300), gold), 'Z_C drawn').toBe(true);
+  expect(near(await colourAt(page, 'impedance', 0, -300), gold), 'Z_C drawn').toBe(true);
   await include(page, 'C').uncheck();
   await settle(page);
   await expect(schematic(page)).toHaveAccessibleName('Series loop: the source, R and L');
-  expect(near(await colourAt(page, 'impedance', 100, -300), gold), 'Z_C gone').toBe(false);
-  expect(near(await colourAt(page, 'impedance', 100, 30), red), 'Z_L drawn').toBe(true);
+  expect(near(await colourAt(page, 'impedance', 0, -300), gold), 'Z_C gone').toBe(false);
+  expect(near(await colourAt(page, 'impedance', 0, 30), red), 'Z_L drawn').toBe(true);
   await include(page, 'L').uncheck();
   await settle(page);
   await expect(schematic(page)).toHaveAccessibleName('Series loop: the source, R');
-  expect(near(await colourAt(page, 'impedance', 100, 30), red), 'Z_L gone').toBe(false);
+  expect(near(await colourAt(page, 'impedance', 0, 30), red), 'Z_L gone').toBe(false);
   await include(page, 'C').check();
   await settle(page);
   await expect(schematic(page)).toHaveAccessibleName('Series loop: the source, R and C');
-  expect(near(await colourAt(page, 'impedance', 100, -300), gold), 'Z_C back').toBe(true);
+  expect(near(await colourAt(page, 'impedance', 0, -300), gold), 'Z_C back').toBe(true);
 });
 
 test('raising ω lengthens Z_L and shortens Z_C on the impedance plane', async ({ page }) => {
   await open(page);
   await settle(page);
   const red = await colourOf(page, 'L'); const gold = await colourOf(page, 'C');
-  // ω = 1000: Z_L = j50 stops below j90, and Z_C = −j500 reaches down past −j300
-  expect(near(await colourAt(page, 'impedance', 100, 90), red)).toBe(false);
-  expect(near(await colourAt(page, 'impedance', 100, -300), gold)).toBe(true);
+  // ω = 1000: Z_L = j50 stops below j150 (its label sits just past the tip), and Z_C = −j500
+  // reaches down past −j300
+  expect(near(await colourAt(page, 'impedance', 0, 40), red)).toBe(true);
+  expect(near(await colourAt(page, 'impedance', 0, 150), red)).toBe(false);
+  expect(near(await colourAt(page, 'impedance', 0, -300), gold)).toBe(true);
   await enter(page, 'ω (rad/s)', 2000);
   await settle(page);
-  // ω = 2000: Z_L = j100, and Z_C = −j250 runs from j100 down to −j150
-  expect(near(await colourAt(page, 'impedance', 100, 90), red)).toBe(true);
-  expect(near(await colourAt(page, 'impedance', 100, -300), gold)).toBe(false);
+  // ω = 2000: Z_L = j100 reaches past j90, and Z_C = −j250 stops above −j300
+  expect(near(await colourAt(page, 'impedance', 0, 90), red)).toBe(true);
+  expect(near(await colourAt(page, 'impedance', 0, -300), gold)).toBe(false);
 });
 
 test('the impedance plane scales to fit the whole chain, with its axes in Ω, kΩ or MΩ', async ({ page }) => {

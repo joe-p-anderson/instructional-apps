@@ -13,12 +13,13 @@
 //   the toggle and the v₁ + v₂ readouts, so a Task can ask for the sum before showing it.
 //   Drag handles (kit 2-D handles, keyboard-operable): 'tip1', 'tip2' ("v₁ tip", "v₂ tip") on the
 //   plane, value { x: Re, y: Im } in V of that (static) phasor, drawn at its tip rotated to
-//   ωt + φ (v₂'s from v₁'s tip); 'crest1',
+//   ωt + φ; 'crest1',
 //   'crest2' ("v₁ crest", "v₂ crest") on the time plot at the crest nearest t = 0, value
 //   { x: ωt in °, y: A in V } (the engine's crest mapping, with t as phase so a key step is 1°
 //   at any ω). Handles set the number inputs; the inputs are the one source of truth.
-// Displays: 'plane' (the complex plane: v₁ from the origin, v₂ from v₁'s tip, and the resultant
-//   v₁ + v₂, each rotated to ωt + φ, with their projections on the real axis; toScreen(re, im) in
+// Displays: 'plane' (the complex plane: v₁, v₂ and the resultant v₁ + v₂, each from the origin
+//   and rotated to ωt + φ, the resultant's parallelogram dashed, with their projections on the
+//   real axis; toScreen(re, im) in
 //   V) and 'time' (v₁(t), v₂(t) and their sum over t ∈ [−T, T], with the time cursor at t, where
 //   each curve's value is its phasor's projection; toScreen(t, v) with t in s and v in V). Both
 //   share one amplitude scale, and each quantity has one colour in both. The Tool starts paused
@@ -33,7 +34,7 @@ import { createEmitter } from '../../../framework/v1/tool.js';
 import { h, handle, metric, section, themeVars, toggle } from '../../../framework/v1/ui-kit.js';
 import { plotTheme } from '../../../framework/v1/plot-theme.js';
 import { crest, evaluate, fromCrest, fromPolar, rotate, sum, toPolar, wrapDeg } from '../engine.js';
-import { angleArc, arrow, curve, dot, fitScale, line, plotFrame, prepCanvas, sideLabel } from '../draw.js';
+import { angleArc, arrow, curve, dot, line, niceFine, plotFrame, prepCanvas, tipLabel } from '../draw.js';
 import { attachTimeCursor, drawTimeCursor, paintSwatches, redrawOnResize, screenMapper, snapshotOf, timeAxis } from '../display.js';
 import { num, polarText, rectText, timeUnit } from '../format.js';
 import { LAYERS } from '../layers.js';
@@ -131,19 +132,17 @@ export function mount(container, setup = {}) {
   }
 
   function tipHandle(n) {
-    const base = () => (n === 1 ? { re: 0, im: 0 } : zOf(1)); // head to tail: v₂ starts at v₁'s tip
     return handle({ id: `tip${n}`, name: `v${SUB[n]} tip`,
       x: { name: 'Re', min: -A_MAX, max: A_MAX, ...VOLTS }, y: { name: 'Im', min: -A_MAX, max: A_MAX, ...VOLTS },
       value: tipValue(n),
       format: () => `v${SUB[n]} = ${rectText(zOf(n), 'V')} = ${polarText(pOf(n), 'V')}`,
-      toScreen: (v) => { const b = base(); const z = turn(b.re + v.x, b.im + v.y, time.t()); return planeToScreen(z.re, z.im); },
+      toScreen: (v) => { const z = turn(v.x, v.y, time.t()); return planeToScreen(z.re, z.im); },
       fromScreen: (cx, cy) => {
         const f = frames.plane;
         if (!f) return null;
         const [x, y] = local(planeCv, cx, cy);
         const z = turn(f.ix(x), f.iy(y), -time.t()); // back to the static frame
-        const b = base();
-        return { x: z.re - b.re, y: z.im - b.im };
+        return { x: z.re, y: z.im };
       },
       onChange: (v) => setPhasor(n, toPolar({ re: v.x, im: v.y })),
       onHide: () => draw() });
@@ -230,11 +229,14 @@ export function mount(container, setup = {}) {
   };
 
   // ── Drawing ──
-  // One amplitude scale for both Displays: a 1-2-5 step above A₁ + A₂, so every tip fits (held
-  // during a drag, see heldScale).
+  // One amplitude scale for both Displays, a fine round step just above the longest phasor shown:
+  // A₁, A₂ and, while its layer is shown, the resultant (so a hidden sum never sets the scale).
+  // Held during a drag, see heldScale.
   const scale = () => {
     if (heldScale !== null) return heldScale;
-    return fitScale(Math.max(ctl.A1.get() + ctl.A2.get(), 0.5) * 1.1);
+    const reach = [ctl.A1.get(), ctl.A2.get(), 0.5];
+    if (sumShown()) reach.push(sum(p1(), p2()).A);
+    return niceFine(Math.max(...reach) * 1.08);
   };
   const frames = { plane: null, time: null };
 
@@ -250,28 +252,34 @@ export function mount(container, setup = {}) {
     const z2 = rotate(p2(), time.omega(), time.t());
     const tip = { re: z1.re + z2.re, im: z1.im + z2.im };
     // Projections on the real axis, which are the curves' values at the cursor: dashed drops from
-    // the tips, v₁'s span just above the axis and v₂'s (from v₁'s foot) just below.
+    // the tips, v₁'s span just above the axis and v₂'s just below, each from the origin.
     const foot = (z) => at({ re: z.re, im: 0 });
     const nudge = (p, dy) => ({ x: p.x, y: p.y + dy });
     line(ctx, at(z1), foot(z1), colors.v1, { dashed: true });
-    if (sumShown()) line(ctx, at(tip), foot(tip), colors.sum, { dashed: true });
+    line(ctx, at(z2), foot(z2), colors.v2, { dashed: true });
+    if (sumShown()) {
+      line(ctx, at(tip), foot(tip), colors.sum, { dashed: true });
+      // the parallelogram: v₂ from v₁'s tip and v₁ from v₂'s tip both reach the resultant's tip
+      line(ctx, at(z1), at(tip), colors.v2, { dashed: true });
+      line(ctx, at(z2), at(tip), colors.v1, { dashed: true });
+    }
     line(ctx, nudge(at(o), -4), nudge(foot(z1), -4), colors.v1, { width: 3 });
-    line(ctx, nudge(foot(z1), 4), nudge(foot(tip), 4), colors.v2, { width: 3 });
+    line(ctx, nudge(at(o), 4), nudge(foot(z2), 4), colors.v2, { width: 3 });
     if (sumShown()) arrow(ctx, at(o), at(tip), colors.sum, { width: 3 });
     arrow(ctx, at(o), at(z1), colors.v1);
-    arrow(ctx, at(z1), at(tip), colors.v2);
+    arrow(ctx, at(o), at(z2), colors.v2);
     // The angle from v₁ to v₂, fixed while they rotate together.
     if (ctl.A1.get() > 0 && ctl.A2.get() > 0) {
-      angleArc(ctx, at(z1), 22, toPolar(z1).phi, toPolar(z2).phi, colors.muted);
+      angleArc(ctx, at(o), 22, toPolar(z1).phi, toPolar(z2).phi, colors.muted);
     }
     if (sumShown()) dot(ctx, foot(tip), colors.sum, 4);
     dot(ctx, foot(z1), colors.v1);
+    dot(ctx, foot(z2), colors.v2);
     dot(ctx, at(z1), colors.v1);
-    dot(ctx, at(tip), colors.v2);
-    // each side of the triangle is labelled outside it
-    sideLabel(ctx, 'v₁', at(o), at(z1), at(tip), colors.v1, colors);
-    sideLabel(ctx, 'v₂', at(z1), at(tip), at(o), colors.v2, colors);
-    if (sumShown()) sideLabel(ctx, 'v₁ + v₂', at(o), at(tip), at(z1), colors.sum, colors);
+    dot(ctx, at(z2), colors.v2);
+    tipLabel(ctx, 'v₁', at(o), at(z1), colors.v1, colors);
+    tipLabel(ctx, 'v₂', at(o), at(z2), colors.v2, colors);
+    if (sumShown()) tipLabel(ctx, 'v₁ + v₂', at(o), at(tip), colors.sum, colors);
     frames.plane = laidOut ? f : null;
   }
 
