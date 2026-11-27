@@ -20,14 +20,18 @@
 //                                       hides that quantity on the phasor plane and the time plot
 //                                       (hide() hides it too)
 //   the shared time Controls 'omega', 'play', 't' and 'cursor' (../time-controls.js)
-// Displays: 'phasor' (the rotating phasor plane: V_in from the origin, V_R, V_L, V_C head to tail
+// Displays: 'impedance' (the static impedance plane: Z_R, Z_L, Z_C head to tail from the origin,
+//   and Z_total from the origin to the chain's end with ∠Z marked by an arc; auto-scaled to fit
+//   the whole chain, its axes in Ω, kΩ or MΩ; toScreen(re, im) in Ω), 'phasor' (the rotating phasor plane: V_in from the origin, V_R, V_L, V_C head to tail
 //   closing on V_in, and I dashed on its own scale, every phasor rotated by ωt; toScreen(re, im) in
-//   V) and 'time' (v_in(t), v_R(t), v_L(t), v_C(t) on the left axis in V, and i(t) dashed on the
+//   V) , 'time' (v_in(t), v_R(t), v_L(t), v_C(t) on the left axis in V, and i(t) dashed on the
 //   right-hand axis in A, over t ∈ [−T, T], with the time cursor; toScreen(t, v) with t in s and v
-//   in V). I is drawn as I/kI on the volt axes, kI (A per V) the smallest 1-2-5 step that keeps
+//   in V) and 'schematic' (the series loop: the source and whichever of R, L and C are in it, each
+//   with its value; its accessible name lists them). I is drawn as I/kI on the volt axes, kI (A per V) the smallest 1-2-5 step that keeps
 //   it no longer than V_in, so both Displays share one current scale.
 // Colours (one per quantity, the same in every Display and the legend): V_in ink, I green,
-//   R (V_R, and Z_R) trace 1 blue, L trace 2 red, C yellow (gold).
+//   R (V_R, and Z_R) trace 1 blue, L trace 2 red, C yellow (gold), Z_total ink like V_in (V_in =
+//   I·Z_total, as V_k = I·Z_k shares Z_k's colour).
 // serialize() is every settable value plus { omega, t }; restore() pauses, ignores bad values,
 //   clamps numbers, keeps at least one element on, and reports once.
 //
@@ -38,7 +42,7 @@ import { createEmitter } from '../../../framework/v1/tool.js';
 import { h, metric, section, slider, themeVars, toggle } from '../../../framework/v1/ui-kit.js';
 import { plotTheme } from '../../../framework/v1/plot-theme.js';
 import { add, evaluate, fromPolar, mul, omega0, omegaC, solve, toPolar } from '../engine.js';
-import { arrow, curve, dot, label, line, niceStep, plotFrame, prepCanvas, sideLabel } from '../draw.js';
+import { angleArc, arrow, curve, dot, label, line, niceStep, plotFrame, prepCanvas, sideLabel } from '../draw.js';
 import { num, prefix, siPolarText, siRectText, timeUnit } from '../format.js';
 import { toolStyles } from '../styles.js';
 import { TIME_STATE_INFO, timeControls } from '../time-controls.js';
@@ -211,6 +215,8 @@ export function mount(container, setup = {}) {
     h('div', { class: 'ph-trace' }, traces[key].el, phasorReadouts[key].el)]));
 
   // ── Layout ──
+  const impedanceCv = h('canvas', { class: 'ph-canvas' });
+  const schematicCv = h('canvas', { class: 'ph-canvas', role: 'img' });
   const phasorCv = h('canvas', { class: 'ph-canvas' });
   const timeCv = h('canvas', { class: 'ph-canvas' });
   const root = h('div', { class: 'fw-tool ph-tool', 'data-tool': 'phasors', 'data-mode': id },
@@ -226,11 +232,12 @@ export function mount(container, setup = {}) {
         w0Readout.el, wcReadout.el),
       section('Phasors', ...TRACES.map(([key]) => traceRows[key]))),
     h('div', { class: 'fw-displays' },
-      // 2 Displays for now; the Mode is laid out to take the impedance plane and schematic too
       h('div', { class: 'ph-displays ph-circuit-displays' },
+        h('div', { class: 'fw-display', 'data-display': 'impedance' }, impedanceCv),
         h('div', { class: 'fw-display', 'data-display': 'phasor' }, phasorCv),
         h('div', { class: 'fw-display', 'data-display': 'time' }, timeCv,
-          h('div', { class: 'fw-handle-layer' }, time.cursorEl)))));
+          h('div', { class: 'fw-handle-layer' }, time.cursorEl)),
+        h('div', { class: 'fw-display', 'data-display': 'schematic' }, schematicCv))));
   container.append(root);
 
   // One colour per quantity, in every Display and the legend.
@@ -258,7 +265,142 @@ export function mount(container, setup = {}) {
     const step = niceStep(reach, 4);
     return Math.ceil(reach / step) * step;
   }
-  const frames = { phasor: null, time: null };
+  const frames = { impedance: null, phasor: null, time: null };
+
+  // ── Impedance plane (static): Z_R, Z_L, Z_C head to tail, then Z_total ──
+  const zChain = (c) => {
+    const pts = [ZERO];
+    for (const k of ELEMENTS) if (c.Z[k]) pts.push(add(pts[pts.length - 1], c.Z[k]));
+    return pts;
+  };
+  /** The plane's half-height S (Ω): a 1-2-5 multiple that fits every point of the chain. */
+  function impedanceScale(c) {
+    const reach = Math.max(...zChain(c).map((z) => Math.max(Math.abs(z.re), Math.abs(z.im)))) * 1.1 || 1;
+    const step = niceStep(reach, 4);
+    return Math.ceil(reach / step) * step;
+  }
+
+  /** Z_total from the origin to the end of the chain, and ∠Z as an arc off the real axis. */
+  function drawZtotal(ctx, at, Z, away) {
+    if (Math.hypot(Z.re, Z.im) < 1e-9) return;
+    arrow(ctx, at(ZERO), at(Z), colors.total, { width: 3 });
+    sideLabel(ctx, 'Z', at(ZERO), at(Z), away, colors.total, colors);
+    const { phi } = toPolar(Z);
+    if (Math.abs(phi) < 1) return;
+    const o = at(ZERO);
+    angleArc(ctx, o, 30, 0, phi, colors.total, 2);
+    const mid = (phi / 2) * (Math.PI / 180);
+    label(ctx, '∠Z', { x: o.x + 48 * Math.cos(mid), y: o.y - 48 * Math.sin(mid) }, colors.total, colors, 'center');
+  }
+
+  function drawImpedancePlane() {
+    const { ctx, W, H, laidOut } = prepCanvas(impedanceCv, colors);
+    const c = solved();
+    const S = impedanceScale(c);
+    const { prefix: p, scale } = prefix(S);
+    const fmt = (v, step) => num(v * scale, Math.max(0, -Math.floor(Math.log10(step * scale) + 1e-9)));
+    const f = plotFrame(ctx, { x: 0, y: 0, w: W, h: H }, [-S / 4, S], [-S, S],
+      { colors, xTitle: `Re (${p}Ω)`, yTitle: `Im (${p}Ω)`, xFormat: fmt, yFormat: fmt, equal: true });
+    const at = (z) => ({ x: f.X(z.re), y: f.Y(z.im) });
+    const pts = zChain(c);
+    const away = at({ re: pts.reduce((a, z) => a + z.re, 0) / pts.length, im: pts.reduce((a, z) => a + z.im, 0) / pts.length });
+    // Z_L and Z_C are antiparallel, so head to tail they overlap: the longest goes underneath
+    const segments = ELEMENTS.filter((k) => c.Z[k]).map((k, i) => ({ k, from: pts[i], to: pts[i + 1], len: toPolar(c.Z[k]).A }));
+    for (const sg of segments.sort((a, b) => b.len - a.len)) {
+      arrow(ctx, at(sg.from), at(sg.to), colors[sg.k]);
+      sideLabel(ctx, `Z${sg.k}`, at(sg.from), at(sg.to), away, colors[sg.k], colors);
+    }
+    drawZtotal(ctx, at, c.Z.total, away);
+    frames.impedance = laidOut ? f : null;
+  }
+
+  // ── Schematic: the series loop ──
+  const valueText = (v, unit) => {
+    const { prefix: p, scale } = prefix(v);
+    return `${Number((v * scale).toPrecision(3))} ${p}${unit}`;
+  };
+  const schematicName = () => {
+    const els = included();
+    const list = els.length === 1 ? els[0] : `${els.slice(0, -1).join(', ')} and ${els[els.length - 1]}`;
+    return `Series loop: the source, ${list}`;
+  };
+
+  /** Element k's symbol on the wire from canvas point a to b, in k's colour. */
+  function drawSymbol(ctx, k, a, b) {
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const ux = (b.x - a.x) / len; const uy = (b.y - a.y) / len; // along the wire
+    const nx = uy; const ny = -ux;                              // across it, outward from the loop
+    const pt = (s, n) => ({ x: a.x + ux * s + nx * n, y: a.y + uy * s + ny * n });
+    const seg = (p, q) => { ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); };
+    const body = Math.min(48, len - 12); const s0 = (len - body) / 2; const s1 = s0 + body;
+    ctx.save();
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.lineWidth = 2;
+    ctx.strokeStyle = colors.ink;
+    if (k === 'C') { seg(a, pt(len / 2 - 4, 0)); seg(pt(len / 2 + 4, 0), b); } else { seg(a, pt(s0, 0)); seg(pt(s1, 0), b); }
+    ctx.strokeStyle = colors[k]; ctx.lineWidth = 2.5;
+    if (k === 'R') {
+      ctx.beginPath(); ctx.moveTo(pt(s0, 0).x, pt(s0, 0).y);
+      for (let i = 0; i < 6; i += 1) { const q = pt(s0 + (body * (i + 0.5)) / 6, i % 2 ? -7 : 7); ctx.lineTo(q.x, q.y); }
+      ctx.lineTo(pt(s1, 0).x, pt(s1, 0).y); ctx.stroke();
+    } else if (k === 'L') {
+      const n = 4; const r = body / (2 * n);
+      ctx.beginPath(); ctx.moveTo(pt(s0, 0).x, pt(s0, 0).y);
+      for (let i = 0; i < n; i += 1) {
+        for (let j = 1; j <= 12; j += 1) { // a half circle bulging outward
+          const th = Math.PI - (Math.PI * j) / 12;
+          const q = pt(s0 + r * (2 * i + 1) + r * Math.cos(th), r * Math.sin(th));
+          ctx.lineTo(q.x, q.y);
+        }
+      }
+      ctx.stroke();
+    } else {
+      ctx.lineWidth = 3;
+      seg(pt(len / 2 - 4, -13), pt(len / 2 - 4, 13)); seg(pt(len / 2 + 4, -13), pt(len / 2 + 4, 13));
+    }
+    ctx.restore();
+  }
+
+  /** Lines of text centred on canvas point `at` vertically, aligned `align`. */
+  function textLines(ctx, lines, at, align) {
+    ctx.save();
+    ctx.font = `${colors.font.size}px ${colors.font.family}`;
+    ctx.fillStyle = colors.text; ctx.textAlign = align; ctx.textBaseline = 'middle';
+    lines.forEach((t, i) => ctx.fillText(t, at.x, at.y + (i - (lines.length - 1) / 2) * 18));
+    ctx.restore();
+  }
+
+  function drawSchematic() {
+    const { ctx, W, H } = prepCanvas(schematicCv, colors);
+    schematicCv.setAttribute('aria-label', schematicName());
+    // the loop: the source down the left side, R and L along the top, C down the right side
+    const w = Math.min(W - 48, 360); const hgt = Math.max(60, Math.min(H - 76, 200));
+    const L = (W - w) / 2; const R = L + w; const T = (H - hgt) / 2 + 16; const B = T + hgt;
+    const cy = (T + B) / 2; const r = 16;
+    const seg = (p, q) => { ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); };
+    const slots = { R: [{ x: L, y: T }, { x: L + w / 2, y: T }], L: [{ x: L + w / 2, y: T }, { x: R, y: T }],
+      C: [{ x: R, y: T }, { x: R, y: B }] };
+    ctx.save();
+    ctx.strokeStyle = colors.ink; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    for (const k of ELEMENTS) { if (has(k)) drawSymbol(ctx, k, ...slots[k]); else seg(...slots[k]); }
+    ctx.strokeStyle = colors.ink; ctx.lineWidth = 2;
+    seg({ x: R, y: B }, { x: L, y: B });
+    seg({ x: L, y: B }, { x: L, y: cy + r }); seg({ x: L, y: cy - r }, { x: L, y: T });
+    // the source: a circle round a sine wave
+    ctx.strokeStyle = colors.vin;
+    ctx.beginPath(); ctx.arc(L, cy, r, 0, 2 * Math.PI); ctx.stroke();
+    ctx.beginPath();
+    for (let i = 0; i <= 20; i += 1) {
+      const x = L - 9 + (18 * i) / 20; const y = cy - 6 * Math.sin((2 * Math.PI * i) / 20);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+    textLines(ctx, ['V₀', valueText(sliders.V0.get(), 'V')], { x: L + r + 8, y: cy }, 'left');
+    if (has('R')) textLines(ctx, [`R = ${valueText(sliders.R.get(), 'Ω')}`], { x: L + w / 4, y: T - 24 }, 'center');
+    if (has('L')) textLines(ctx, [`L = ${valueText(sliders.L.get() * 1e-3, 'H')}`], { x: L + (3 * w) / 4, y: T - 24 }, 'center');
+    if (has('C')) textLines(ctx, ['C', valueText(sliders.C.get() * 1e-6, 'F')], { x: R - 20, y: cy }, 'right');
+  }
+
 
   // ── Phasor plane: one function per quantity ──
   const turn = (z) => mul(z, fromPolar(1, time.omega() * time.t() * DEG)); // rotated by ωt
@@ -358,8 +500,10 @@ export function mount(container, setup = {}) {
 
   function draw() {
     if (!colors) readColors();
+    drawImpedancePlane();
     drawPhasorPlane();
     drawTime();
+    drawSchematic();
     time.place();
   }
 
@@ -399,6 +543,7 @@ export function mount(container, setup = {}) {
     if (Math.abs(r.width - cv.width / (globalThis.devicePixelRatio || 1)) > 1) return null;
     return { x: r.left + f.X(x), y: r.top + f.Y(y) };
   };
+  const impedanceToScreen = screenOf(impedanceCv, 'impedance');
   const phasorToScreen = screenOf(phasorCv, 'phasor');
   const timeToScreen = screenOf(timeCv, 'time');
   const snap = (cv) => async () => { draw(); return cv.toDataURL('image/png'); };
@@ -422,8 +567,10 @@ export function mount(container, setup = {}) {
     },
     controls: controlRegistry(controls),
     displays: [
+      { id: 'impedance', label: 'Impedance plane', snapshot: snap(impedanceCv), toScreen: impedanceToScreen },
       { id: 'phasor', label: 'Phasor plane', snapshot: snap(phasorCv), toScreen: phasorToScreen },
       { id: 'time', label: 'Time plot', snapshot: snap(timeCv), toScreen: timeToScreen },
+      { id: 'schematic', label: 'Schematic', snapshot: snap(schematicCv) },
     ],
     serialize: () => {
       const s = getState();

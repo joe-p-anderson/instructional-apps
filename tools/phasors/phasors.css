@@ -22,6 +22,12 @@
 .ph-tool .ph-phasor .fw-metric { line-height: 1.6; }
 .ph-tool .ph-swatch { height: 3px; }
 
+/* Circuit Mode: four Displays two by two (impedance and phasor planes above, time plot and
+   schematic below), never stacked: the Tool's minimum Display width leaves each one ≥ 234 px. */
+.ph-tool .ph-circuit-displays {
+  grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
 /* Circuit Mode: the include toggles in a row, and each phasor's trace toggle beside its readout. */
 .ph-tool .ph-includes { display: flex; gap: 18px; margin-bottom: 8px; }
 .ph-tool .ph-trace { margin-bottom: 6px; }

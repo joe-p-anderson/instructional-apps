@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { installCanvasTextRecorder, displayTexts } from './helpers/display-text.js';
 
 // The Phasors Tool's Circuit Mode on the Standalone page: a series R/L/C loop driven by V₀ cos(ωt).
 // Defaults: V₀ = 5 V, R = 100 Ω, L = 50 mH, C = 2 µF, ω = 1000 rad/s, all three elements on, so
@@ -41,7 +42,7 @@ const colourOf = (page, key) => page.locator(`[data-mode="circuit"] .ph-swatch[d
 const rad = (deg) => (deg * Math.PI) / 180;
 const rect = (A, phi) => [A * Math.cos(rad(phi)), A * Math.sin(rad(phi))];
 
-test('the Circuit tab loads with its Controls shown and unlocked, and two Displays', async ({ page }) => {
+test('the Circuit tab loads with its Controls shown and unlocked, and four Displays', async ({ page }) => {
   await open(page);
   await expect(page.getByRole('tab', { name: 'Circuit' })).toHaveAttribute('aria-selected', 'true');
   const out = await page.evaluate(async (i) => {
@@ -57,7 +58,7 @@ test('the Circuit tab loads with its Controls shown and unlocked, and two Displa
   for (const id of ['omega', 'play', 't', 'cursor', 'includeR', 'includeL', 'includeC', 'V0', 'R', 'L', 'C',
     'vin', 'I', 'VR', 'VL', 'VC']) expect(out.ids, id).toContain(id);
   expect(out.open).toBe(true);
-  expect(out.shots.map(([id]) => id)).toEqual(['phasor', 'time']);
+  expect(out.shots.map(([id]) => id)).toEqual(['impedance', 'phasor', 'time', 'schematic']);
   for (const [, png] of out.shots) expect(png).toMatch(/^data:image\/png;base64,/);
   for (const name of ['V₀ (V)', 'R (Ω)', 'L (mH)', 'C (µF)', 'ω (rad/s)']) await expect(box(page, name)).toBeEditable();
 });
@@ -163,6 +164,109 @@ test('toggling L or C adds or removes its phasor and its trace', async ({ page }
   expect(a[0] + b[0]).toBeCloseTo(5, 9);
   expect(a[1] + b[1]).toBeCloseTo(0, 9);
 });
+
+// The impedance plane at the defaults: Z_R from 0 to 100, Z_L up to 100 + j50, Z_C down to 100 − j450.
+const schematic = (page) => panel(page).locator('[data-display="schematic"]').getByRole('img');
+
+test('toggling an element updates the schematic and the impedance plane', async ({ page }) => {
+  await open(page);
+  await settle(page);
+  await expect(schematic(page)).toHaveAccessibleName('Series loop: the source, R, L and C');
+  const red = await colourOf(page, 'L'); const gold = await colourOf(page, 'C');
+  expect(near(await colourAt(page, 'impedance', 100, -300), gold), 'Z_C drawn').toBe(true);
+  await include(page, 'C').uncheck();
+  await settle(page);
+  await expect(schematic(page)).toHaveAccessibleName('Series loop: the source, R and L');
+  expect(near(await colourAt(page, 'impedance', 100, -300), gold), 'Z_C gone').toBe(false);
+  expect(near(await colourAt(page, 'impedance', 100, 30), red), 'Z_L drawn').toBe(true);
+  await include(page, 'L').uncheck();
+  await settle(page);
+  await expect(schematic(page)).toHaveAccessibleName('Series loop: the source, R');
+  expect(near(await colourAt(page, 'impedance', 100, 30), red), 'Z_L gone').toBe(false);
+  await include(page, 'C').check();
+  await settle(page);
+  await expect(schematic(page)).toHaveAccessibleName('Series loop: the source, R and C');
+  expect(near(await colourAt(page, 'impedance', 100, -300), gold), 'Z_C back').toBe(true);
+});
+
+test('raising ω lengthens Z_L and shortens Z_C on the impedance plane', async ({ page }) => {
+  await open(page);
+  await settle(page);
+  const red = await colourOf(page, 'L'); const gold = await colourOf(page, 'C');
+  // ω = 1000: Z_L = j50 stops below j90, and Z_C = −j500 reaches down past −j300
+  expect(near(await colourAt(page, 'impedance', 100, 90), red)).toBe(false);
+  expect(near(await colourAt(page, 'impedance', 100, -300), gold)).toBe(true);
+  await enter(page, 'ω (rad/s)', 2000);
+  await settle(page);
+  // ω = 2000: Z_L = j100, and Z_C = −j250 runs from j100 down to −j150
+  expect(near(await colourAt(page, 'impedance', 100, 90), red)).toBe(true);
+  expect(near(await colourAt(page, 'impedance', 100, -300), gold)).toBe(false);
+});
+
+test('the impedance plane scales to fit the whole chain, with its axes in Ω, kΩ or MΩ', async ({ page }) => {
+  await installCanvasTextRecorder(page);
+  await open(page);
+  const fits = () => page.evaluate((i) => {
+    const inst = window.toolHost.instances[i];
+    const s = inst.state.snapshot();
+    const d = inst.displays.find((e) => e.id === 'impedance');
+    const r = document.querySelector('[data-mode="circuit"] [data-display="impedance"] canvas').getBoundingClientRect();
+    const inside = (p) => p && p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom;
+    // the chain's corners: Z_R, then up by Z_L, then Z_total
+    const ZL = s.includeL ? s.omega * s.L * 1e-3 : 0;
+    const R = s.includeR ? s.R : 0;
+    const total = d.toScreen(s.ZtotRe, s.ZtotIm);
+    const o = d.toScreen(0, 0);
+    return { fits: [d.toScreen(R, 0), d.toScreen(R, ZL), total].every(inside),
+      // Z_total is no shorter than a quarter of the plane's height
+      big: Math.hypot(total.x - o.x, total.y - o.y) > r.height / 8 };
+  }, CIRCUIT);
+  await settle(page);
+  expect(await fits()).toEqual({ fits: true, big: true });
+  expect((await displayTexts(page)).map((t) => t.text)).toContain('Re (Ω)');
+  await enter(page, 'L (mH)', 1000);
+  await enter(page, 'ω (rad/s)', 100000);
+  await settle(page);
+  expect(await fits()).toEqual({ fits: true, big: true });
+  expect((await displayTexts(page)).map((t) => t.text)).toContain('Im (kΩ)');
+  await enter(page, 'ω (rad/s)', 100);
+  await settle(page);
+  expect(await fits()).toEqual({ fits: true, big: true });
+});
+
+// In an Activity the four Displays fit the side layout in both its forms: beside the Tasks column
+// at 1366×768, and under the Task drawer bar (open, with its form) on a narrower screen.
+for (const { name, size, form } of [
+  { name: '1366×768, Tasks column', size: { width: 1366, height: 768 }, form: 'column' },
+  { name: '1024×768, Task drawer', size: { width: 1024, height: 768 }, form: 'drawer' },
+  { name: '768×1024, Task drawer', size: { width: 768, height: 1024 }, form: 'drawer' },
+]) {
+  test(`${name}: the four Circuit Displays fit without scrolling, text at 12 px or more`, async ({ page }) => {
+    await page.setViewportSize(size);
+    await installCanvasTextRecorder(page);
+    await page.goto('/tests/e2e/fixtures/phasors-circuit.html');
+    await page.waitForFunction(() => window.activityHost);
+    await page.getByRole('textbox', { name: 'Your name' }).fill('Ada Lovelace');
+    await page.getByRole('button', { name: 'Start' }).click();
+    await expect(page.locator('.fw-app')).toHaveAttribute('data-side-form', form);
+    if (form === 'drawer') {
+      await page.getByRole('group', { name: 'Current Task' }).getByRole('button', { name: /^Task 1\.1/ }).click();
+      await expect(page.getByRole('region', { name: 'Task 1.1' }).getByRole('textbox')).toBeVisible();
+    }
+    await settle(page);
+    const displays = page.locator('.fw-displays:visible');
+    expect(await displays.evaluate((e) => e.scrollHeight - e.clientHeight)).toBeLessThanOrEqual(0);
+    const boxes = await page.locator('[data-mode="circuit"] .fw-display').evaluateAll((els) =>
+      els.map((e) => [e.dataset.display, Math.round(e.getBoundingClientRect().width), Math.round(e.getBoundingClientRect().height)]));
+    expect(boxes.map(([id]) => id)).toEqual(['impedance', 'phasor', 'time', 'schematic']);
+    for (const [id, w, hgt] of boxes) {
+      expect(w, `${id} width`).toBeGreaterThanOrEqual(220);
+      expect(hgt, `${id} height`).toBeGreaterThanOrEqual(200);
+    }
+    const small = (await displayTexts(page)).filter((t) => t.px < 12);
+    expect(small).toEqual([]);
+  });
+}
 
 test('a trace toggle hides that quantity on the phasor plane and the time plot', async ({ page }) => {
   await open(page);
