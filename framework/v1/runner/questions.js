@@ -13,7 +13,7 @@
 // Any Question may carry its own points (see scoring.js).
 //
 // questionKinds is the one table of Question kinds: how each is validated (validate(q, fail),
-// used by activity.js) and judged (judge(q, given, state), absent for a kind that is never
+// used by activity.js; fail(message, field) names the Question field at fault) and judged (judge(q, given, state), absent for a kind that is never
 // graded). judge returns a boolean or { pass, expected?, feedback? }.
 // Adding a kind means adding an entry here, and a matching input in activity-ui.js.
 //
@@ -30,12 +30,12 @@ export const questionKinds = {
           expressionFor(q.answer.expr);
         } catch (err) {
           if (!(err instanceof ExpressionError)) throw err;
-          fail(`answer expression "${q.answer.expr}" doesn't parse: ${err.message}`);
+          fail(`answer expression "${q.answer.expr}" doesn't parse: ${err.message}`, 'answer');
         }
-      } else if (typeof q.answer !== 'number') fail('needs a numeric answer');
-      if (typeof q.tol !== 'number' && typeof q.relTol !== 'number') fail('needs tol or relTol');
+      } else if (typeof q.answer !== 'number') fail('needs a numeric answer', 'answer');
+      if (typeof q.tol !== 'number' && typeof q.relTol !== 'number') fail('needs tol or relTol', 'tol');
       if (q.modulus !== undefined && !(Number.isFinite(q.modulus) && q.modulus > 0)) {
-        fail('modulus must be a positive number');
+        fail('modulus must be a positive number', 'modulus');
       }
     },
     judge(q, given, state) {
@@ -59,8 +59,8 @@ export const questionKinds = {
   },
   choice: {
     validate(q, fail) {
-      if (!Array.isArray(q.choices) || q.choices.length < 2) fail('needs at least two choices');
-      if (!q.choices.some((c) => c.id === q.correct)) fail('correct must name one of its choices');
+      if (!Array.isArray(q.choices) || q.choices.length < 2) fail('needs at least two choices', 'choices');
+      if (!q.choices.some((c) => c.id === q.correct)) fail('correct must name one of its choices', 'correct');
     },
     judge(q, given) {
       return given === q.correct;

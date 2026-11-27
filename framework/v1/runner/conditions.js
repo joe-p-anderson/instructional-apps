@@ -17,7 +17,9 @@
 // ../expression.js), and target, equals, above and below may be a value or an { expr },
 // worked out against the State at Submit; tol and relTol are plain numbers. Unknown State,
 // or a non-finite target or bound, makes the Condition a miss whose feedback names it.
-// validateCondition(condition, fail) checks the built-in forms when a runner is created.
+// validateCondition(condition, fail) checks the built-in forms when a runner is created. It
+// calls fail(message, path), where path leads from the Condition to the field at fault (such
+// as ['conditions', 1, 'target']); fail may throw to stop at the first problem.
 //
 // A Condition type is an evaluator (condition, state, info, { evaluate }) => { pass, feedback? },
 // where info maps State names to { label, unit } and evaluate(condition) judges a
@@ -71,11 +73,14 @@ export const builtinConditionTypes = Object.freeze({
 // parses, and a target Condition has exactly one numeric tol or relTol. Registered types
 // and functions are left to their evaluators. fail(message) reports a problem.
 const VALUE_SLOTS = ['state', 'target', 'equals', 'above', 'below'];
-export function validateCondition(c, fail) {
-  if (Array.isArray(c)) return c.forEach((component) => validateCondition(component, fail));
+export function validateCondition(c, fail, path = []) {
+  if (Array.isArray(c)) return c.forEach((component, i) => validateCondition(component, fail, [...path, i]));
   if (!c || typeof c !== 'object') return;
   const type = c.type ?? ('equals' in c ? 'equals' : 'tolerance');
-  if (type === 'anyOf') return Array.isArray(c.conditions) && c.conditions.forEach((component) => validateCondition(component, fail));
+  if (type === 'anyOf') {
+    return Array.isArray(c.conditions)
+      && c.conditions.forEach((component, i) => validateCondition(component, fail, [...path, 'conditions', i]));
+  }
   if (!['tolerance', 'equals', 'range'].includes(type)) return;
   for (const slot of VALUE_SLOTS) {
     if (!isExpression(c[slot])) continue;
@@ -83,12 +88,14 @@ export function validateCondition(c, fail) {
       cachedExpression(c[slot].expr);
     } catch (err) {
       if (!(err instanceof ExpressionError)) throw err;
-      fail(`${slot} expression "${c[slot].expr}" doesn't parse: ${err.message}`);
+      fail(`${slot} expression "${c[slot].expr}" doesn't parse: ${err.message}`, [...path, slot]);
     }
   }
   if (type === 'tolerance') {
     const given = ['tol', 'relTol'].filter((key) => c[key] !== undefined);
-    if (given.length !== 1 || typeof c[given[0]] !== 'number') fail('needs exactly one of tol and relTol, as a number');
+    if (given.length !== 1 || typeof c[given[0]] !== 'number') {
+      fail('needs exactly one of tol and relTol, as a number', [...path, given.length === 1 ? given[0] : 'tol']);
+    }
   }
 }
 
