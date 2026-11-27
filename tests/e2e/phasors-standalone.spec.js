@@ -38,7 +38,7 @@ test('the Standalone page opens on the Sum Mode with its inputs shown and unlock
     const i = window.toolHost.instances[0];
     return i.controls.ids().map((id) => ({ id, locked: i.controls.get(id).isLocked(), hidden: i.controls.get(id).isHidden() }));
   });
-  expect(controls.map((c) => c.id).sort()).toEqual(['A1', 'A2', 'cursor', 'omega', 'phi1', 'phi2', 'play', 't']);
+  expect(controls.map((c) => c.id).sort()).toEqual(['A1', 'A2', 'crest1', 'crest2', 'cursor', 'omega', 'phi1', 'phi2', 'play', 't', 'tip1', 'tip2']);
   for (const c of controls) expect(c, c.id).toMatchObject({ locked: false, hidden: false });
   const shots = await page.evaluate(() => Promise.all(window.toolHost.instances[0].displays.map(async (d) => [d.id, await d.snapshot()])));
   expect(shots.map(([id]) => id)).toEqual(['plane', 'time']);
@@ -262,4 +262,129 @@ test('locking play pauses it', async ({ page }) => {
     return { on, locked, still: i.state.snapshot().playing };
   });
   expect(out).toEqual({ on: true, locked: false, still: false });
+});
+
+// ── Drag handles: each phasor's tip on the plane, and its crest on the time plot ──
+
+const handleEl = (page, name) => page.getByRole('group', { name, exact: true });
+async function centreOf(page, name) {
+  const b = await handleEl(page, name).boundingBox();
+  return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+}
+const toScreen = (page, id, x, y) => page.evaluate(({ id, x, y }) =>
+  window.toolHost.instances[0].displays.find((d) => d.id === id).toScreen(x, y), { id, x, y });
+async function expectAt(page, name, at) {
+  const c = await centreOf(page, name);
+  expect(Math.abs(c.x - at.x), `${name} x`).toBeLessThanOrEqual(1.5);
+  expect(Math.abs(c.y - at.y), `${name} y`).toBeLessThanOrEqual(1.5);
+}
+async function drag(page, from, to) {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 6 });
+  await page.mouse.up();
+}
+const OMEGA = 1000;
+const crestAt = (A, phi) => [(-phi * Math.PI) / 180 / OMEGA, A]; // (t, v) of the crest nearest t = 0
+const rad = (deg) => (deg * Math.PI) / 180;
+
+test('each phasor has a tip handle on the plane and a crest handle on the time plot', async ({ page }) => {
+  await open(page);
+  await settle(page);
+  // v₁ = 3∠0° has its tip at (3, 0); v₂ = 2∠90° is drawn from v₁'s tip, so its tip is at (3, 2).
+  await expectAt(page, 'v₁ tip', await toScreen(page, 'plane', 3, 0));
+  await expectAt(page, 'v₂ tip', await toScreen(page, 'plane', 3, 2));
+  await expectAt(page, 'v₁ crest', await toScreen(page, 'time', ...crestAt(3, 0)));
+  await expectAt(page, 'v₂ crest', await toScreen(page, 'time', ...crestAt(2, 90)));
+  await expect(handleEl(page, 'v₂ tip')).toHaveAccessibleDescription(/2\.00∠90\.0° V/);
+});
+
+test('dragging a phasor tip moves the matching crest handle and the number inputs', async ({ page }) => {
+  await open(page);
+  await settle(page);
+  // Drag v₂'s tip from (3, 2) to (3, −2): v₂ becomes 2∠−90°.
+  await drag(page, await centreOf(page, 'v₂ tip'), await toScreen(page, 'plane', 3, -2));
+  await settle(page);
+  const s = await state(page);
+  expect(s.A1).toBe(3);
+  expect(s.A2).toBeCloseTo(2, 1);
+  expect(s.phi2).toBeCloseTo(-90, 0);
+  await expect(box(page, 'φ₂ (°)')).toHaveValue(String(Number(s.phi2.toFixed(1))));
+  await expectAt(page, 'v₂ crest', await toScreen(page, 'time', ...crestAt(s.A2, s.phi2)));
+  await expectAt(page, 'v₂ tip', await toScreen(page, 'plane', 3 + s.A2 * Math.cos(rad(s.phi2)), s.A2 * Math.sin(rad(s.phi2))));
+});
+
+test('dragging a crest handle sets A and φ, and moves the matching phasor tip', async ({ page }) => {
+  await open(page);
+  await settle(page);
+  // Drag v₁'s crest from (0, 3) up and left to the crest of 4∠60°.
+  await drag(page, await centreOf(page, 'v₁ crest'), await toScreen(page, 'time', ...crestAt(4, 60)));
+  await settle(page);
+  const s = await state(page);
+  expect(s.A1).toBeCloseTo(4, 1);
+  expect(s.phi1).toBeCloseTo(60, 0);
+  await expect(box(page, 'A₁ (V)')).toHaveValue(String(Number(s.A1.toFixed(2))));
+  const z1 = [s.A1 * Math.cos(rad(s.phi1)), s.A1 * Math.sin(rad(s.phi1))];
+  await expectAt(page, 'v₁ tip', await toScreen(page, 'plane', ...z1));
+  await expectAt(page, 'v₁ crest', await toScreen(page, 'time', ...crestAt(s.A1, s.phi1)));
+  await expectAt(page, 'v₂ tip', await toScreen(page, 'plane', z1[0], z1[1] + 2)); // still head to tail
+});
+
+test('tip handles ride the rotated tips, and crest handles follow a new ω', async ({ page }) => {
+  await open(page);
+  await enter(page, 'ωt (°)', 90);
+  await settle(page);
+  // a quarter period on, v₁ = 3∠0° is at 3∠90° = (0, 3) and v₂ = 2∠90° at 2∠180°, so v₂'s tip is (−2, 3)
+  await expectAt(page, 'v₁ tip', await toScreen(page, 'plane', 0, 3));
+  await expectAt(page, 'v₂ tip', await toScreen(page, 'plane', -2, 3));
+  // dragging the rotated v₁ tip to (−3, 0), i.e. 3∠180° at ωt = 90°, sets the static v₁ to 3∠90°
+  await drag(page, await centreOf(page, 'v₁ tip'), await toScreen(page, 'plane', -3, 0));
+  await settle(page);
+  const s = await state(page);
+  expect(s.A1).toBeCloseTo(3, 1);
+  expect(s.phi1).toBeCloseTo(90, 0);
+
+  await enter(page, 'ω (rad/s)', 4000);
+  await settle(page);
+  await expectAt(page, 'v₂ crest', await toScreen(page, 'time', (-Math.PI / 2) / 4000, 2));
+});
+
+test('the keyboard nudges a handle: arrows step, Shift steps further', async ({ page }) => {
+  await open(page);
+  await handleEl(page, 'v₁ tip').focus();
+  await page.keyboard.press('ArrowRight'); // Re 3 → 3.1
+  expect((await state(page)).A1).toBeCloseTo(3.1, 9);
+  await page.keyboard.press('Shift+ArrowLeft'); // Re 3.1 → 2.1
+  expect((await state(page)).A1).toBeCloseTo(2.1, 9);
+  await expect(box(page, 'A₁ (V)')).toHaveValue('2.1');
+
+  await handleEl(page, 'v₂ crest').focus();
+  await page.keyboard.press('ArrowUp'); // A₂ 2 → 2.1
+  expect((await state(page)).A2).toBeCloseTo(2.1, 9);
+  await page.keyboard.press('ArrowRight'); // the crest slides 1° later: φ₂ 90° → 89°
+  expect((await state(page)).phi2).toBeCloseTo(89, 9);
+  await page.keyboard.press('Shift+ArrowLeft'); // 15° earlier: φ₂ → 104°
+  expect((await state(page)).phi2).toBeCloseTo(104, 9);
+  await expect(handleEl(page, 'v₂ crest')).toHaveAccessibleDescription(/A = 2\.10 V/);
+});
+
+test('handles lock and hide like any Control', async ({ page }) => {
+  await open(page);
+  await page.evaluate(() => {
+    const c = window.toolHost.instances[0].controls;
+    c.get('tip1').lock();
+    c.get('crest2').hide();
+  });
+  await handleEl(page, 'v₁ tip').focus();
+  await page.keyboard.press('ArrowRight');
+  expect((await state(page)).A1).toBe(3);
+  await expect(page.locator('[data-mode="sum"] .fw-handle[aria-label="v₂ crest"]')).toBeHidden();
+  await page.evaluate(() => {
+    const c = window.toolHost.instances[0].controls;
+    c.get('tip1').unlock();
+    c.get('crest2').show();
+  });
+  await page.keyboard.press('ArrowRight');
+  expect((await state(page)).A1).toBeCloseTo(3.1, 9);
+  await expect(handleEl(page, 'v₂ crest')).toBeVisible();
 });

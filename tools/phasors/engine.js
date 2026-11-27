@@ -11,6 +11,10 @@
 //   evaluate(p, omega, t)             A cos(ωt + φ) at time t (s), ω in rad/s
 //   rotate(p, omega, t) -> { re, im } the rotating phasor A∠(ωt + φ) at time t
 //   wrapDeg(deg)                      an angle wrapped into (−180, 180]
+//   crest(p, omega) -> { t, A }       the crest of A cos(ωt + φ) nearest t = 0: t = −φ/ω (s),
+//                                     within half a period of 0, at height A
+//   fromCrest({ t, A }, omega)        the phasor { A, phi } whose crest is at (t, A); a crest
+//                                     more than half a period from 0 gives φ wrapped as usual
 
 const RAD = Math.PI / 180;
 
@@ -43,3 +47,8 @@ export const rotate = (p, omega, t) => fromPolar(p.A, p.phi + (omega * t) / RAD)
 
 /** An angle in degrees wrapped into (−180, 180]. */
 export const wrapDeg = (deg) => 180 - ((((180 - deg) % 360) + 360) % 360);
+
+export const crest = (p, omega) => ({ t: (-wrapDeg(p.phi) * RAD) / omega, A: p.A });
+
+// 12 significant digits drop the float noise of ω·t, so φ = 180° does not come back as −180°.
+export const fromCrest = (c, omega) => ({ A: c.A, phi: wrapDeg(Number(((-omega * c.t) / RAD).toPrecision(12))) });
