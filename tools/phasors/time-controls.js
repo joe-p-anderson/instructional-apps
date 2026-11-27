@@ -10,7 +10,8 @@
 //   't'       the t-scrubber: get() is t in s, in [0, T]; set(t) takes any time and wraps it into
 //             one period. On screen it is a slider over ωt in degrees ("ωt (°)"), with a t readout.
 //   'cursor'  the time cursor: a 1-D kit handle named "Time cursor" over the time plot; its value
-//             is ωt in degrees, 0 to 360 (the same instant as 't').
+//             is ωt in degrees, 0 to 360 (the same instant as 't'). The time plot spans −T to T,
+//             so a drag anywhere on it wraps into that one period (−90° is 270°).
 //   Moving the scrubber or the cursor pauses play. Changing ω keeps ωt, so the cursor stays put
 //   on a time axis that scales with the period.
 //
@@ -33,6 +34,7 @@
 import { createControl } from '../../framework/v1/control.js';
 import { h, handle, metric, section, slider } from '../../framework/v1/ui-kit.js';
 import { num, timeUnit } from './format.js';
+import { clamp, DEG, finite } from './numbers.js';
 
 export const OMEGA_MIN = 100; // rad/s
 export const OMEGA_MAX = 1e6; // rad/s
@@ -46,9 +48,7 @@ export const TIME_STATE_INFO = {
   playing: { label: 'Playing', unit: '' },
 };
 
-const finite = (v) => v !== null && v !== '' && Number.isFinite(Number(v));
-const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-const DEG = 180 / Math.PI;
+const wrapPhase = (p) => ((p % 360) + 360) % 360;
 
 export function timeControls({ omega: start = TIME_DEFAULTS.omega, onChange = () => {} } = {}) {
   let phase = 0; // ωt in degrees, [0, 360]: the one source of truth for t
@@ -79,7 +79,7 @@ export function timeControls({ omega: start = TIME_DEFAULTS.omega, onChange = ()
     value: 0, decimals: 0,
     format: (v) => `t = ${timeText(v / DEG / omega())}, ωt = ${num(v, 0)}°`,
     toScreen: (v) => cursorScreen?.(v / DEG / omega()) ?? null,
-    fromScreen: (cx, cy) => (cursorFrom ? cursorFrom(cx, cy) * omega() * DEG : phase),
+    fromScreen: (cx, cy) => (cursorFrom ? wrapPhase(cursorFrom(cx, cy) * omega() * DEG) : phase),
     onChange: (v) => { pause(); setPhase(v); } });
 
   function timeText(s) {
@@ -91,7 +91,6 @@ export function timeControls({ omega: start = TIME_DEFAULTS.omega, onChange = ()
     tReadout.update(timeText(t()));
     cursor.update(phase);
   }
-  const wrapPhase = (p) => ((p % 360) + 360) % 360;
 
   function setPhase(p, notify = true) {
     phase = clamp(p, 0, 360);

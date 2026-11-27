@@ -6,11 +6,12 @@
 // State (state.snapshot(), each with a label and unit in describe()):
 //   mode ('circuit'); the Controls includeR, includeL, includeC, V0 (V), R (Ω), L (mH), C (µF),
 //   showVin, showI, showVR, showVL, showVC, showZtotal, showKVL (the toggles); the solved circuit ZtotRe, ZtotIm,
-//   ZtotMag (Ω), angleZ (°), Imag (A), angleI (°), VRmag, VLmag, VCmag (V), angleVR, angleVL,
+//   ZtotMag (Ω), angleZ (°), IMag (A), angleI (°), VRMag, VLMag, VCMag (V), angleVR, angleVL,
 //   angleVC (°) — null for an excluded element, and I and every V_k null when Z = 0 (L and C alone
 //   exactly at ω₀); omega0 (rad/s, ω₀ = 1/√(LC), null unless L and C are both on), omegaC (rad/s,
 //   ω_c = 1/(RC), null unless R and C are on without L); omegaMin, omegaMax (rad/s, the range of ω
-//   swept since mount or restore, for sweep Conditions); and the time State omega, f, t, playing
+//   swept since mount, kept through serialize and restore, for sweep Conditions); and the time
+//   State omega, f, t, playing
 //   (../time-controls.js).
 // Controls (ids):
 //   'includeR', 'includeL', 'includeC'  toggles "Include R" etc.; the last one on refuses to go off
@@ -23,11 +24,13 @@
 //                                       head to tail, closing on V_in; off, each from the origin
 //   Revealable layers (ids in ../layers.js, for Activity Task hide/show lists): 'Ztotal', 'I',
 //   'VR', 'VL', 'VC', 'kvl'. hide() on one hides its toggle, its drawing on every Display and its
-//   readouts, whatever the toggle says: hiding I also hides i(t), the time plot's A axis and the
+//   readouts (a + jb and A∠φ°), whatever the toggle says: hiding I also hides i(t), the time plot's A axis and the
 //   I scale; hiding Z_total also hides the Z_total readouts, never Z_R, Z_L or Z_C. 'vin' hides
 //   the same way, but V_in is the given source, not a layer to reveal. State keeps publishing
 //   every solved value while its layer is hidden.
 //   the shared time Controls 'omega', 'play', 't' and 'cursor' (../time-controls.js)
+// Readouts (status regions): each impedance and each phasor in both forms, "Z_R rectangular",
+//   "Z_R polar", ..., "Z_total polar", "V_in rectangular", "I polar", "V_C polar", ...; "ω₀", "ω_c".
 // Displays: 'impedance' (the static impedance plane: Z_R, Z_L, Z_C head to tail from the origin,
 //   and Z_total from the origin to the chain's end with ∠Z marked by an arc; auto-scaled to fit
 //   the whole chain, its axes in Ω, kΩ or MΩ; toScreen(re, im) in Ω), 'phasor' (the rotating phasor plane: V_in from the origin, V_R, V_L, V_C head to tail
@@ -35,25 +38,32 @@
 //   V) , 'time' (v_in(t), v_R(t), v_L(t), v_C(t) on the left axis in V, and i(t) dashed on the
 //   right-hand axis in A, over t ∈ [−T, T], with the time cursor; toScreen(t, v) with t in s and v
 //   in V) and 'schematic' (the series loop: the source and whichever of R, L and C are in it, each
-//   with its value; its accessible name lists them). I is drawn as I/kI on the volt axes, kI (A per V) the smallest 1-2-5 step that keeps
-//   it no longer than V_in, so both Displays share one current scale.
+//   with its value; its accessible name lists them; ../schematic.js). I is drawn as I/kI on the
+//   volt axes, kI (A per V) the smallest 1-2-5 step that keeps it no longer than V_in, so both
+//   Displays share one current scale. The volt axes fit V₀ and what the shown layers can draw, so
+//   their range never hints at a hidden device voltage.
 // Colours (one per quantity, the same in every Display and the legend): V_in ink, I green,
 //   R (V_R, and Z_R) trace 1 blue, L trace 2 red, C yellow (gold), Z_total ink like V_in (V_in =
 //   I·Z_total, as V_k = I·Z_k shares Z_k's colour).
-// serialize() is every settable value plus { omega, t }; restore() pauses, ignores bad values,
-//   clamps numbers, keeps at least one element on, and reports once.
+// serialize() is every settable value plus { omega, t, omegaMin, omegaMax }; restore() pauses,
+//   ignores bad values, clamps numbers (the swept range too, which then widens to take in the
+//   restored ω), keeps at least one element on, and reports once.
 //
-// All circuit maths is the engine's (../engine.js); drawing helpers are ../draw.js.
-
+// All circuit maths is the engine's (../engine.js); drawing helpers are ../draw.js and
+// ../display.js.
 import { controlRegistry } from '../../../framework/v1/control.js';
 import { createEmitter } from '../../../framework/v1/tool.js';
 import { h, metric, section, slider, themeVars, toggle } from '../../../framework/v1/ui-kit.js';
 import { plotTheme } from '../../../framework/v1/plot-theme.js';
 import { add, evaluate, fromPolar, mul, omega0, omegaC, solve, toPolar } from '../engine.js';
-import { angleArc, arrow, curve, dot, label, line, niceStep, plotFrame, prepCanvas, sideLabel } from '../draw.js';
-import { num, prefix, siPolarText, siRectText, timeUnit } from '../format.js';
+import { angleArc, arrow, curve, dot, fitScale, label, line, niceStep, plotFrame, prepCanvas, sideLabel } from '../draw.js';
+import { attachTimeCursor, drawTimeCursor, paintSwatches, redrawOnResize, screenMapper, snapshotOf, timeAxis } from '../display.js';
+import { num, prefix, siPolarText, siRectText } from '../format.js';
+import { LAYERS } from '../layers.js';
+import { clamp, DEG, finite } from '../numbers.js';
+import { drawSchematic } from '../schematic.js';
 import { toolStyles } from '../styles.js';
-import { TIME_STATE_INFO, timeControls } from '../time-controls.js';
+import { OMEGA_MAX, OMEGA_MIN, TIME_STATE_INFO, timeControls } from '../time-controls.js';
 
 export const id = 'circuit';
 export const title = 'Circuit';
@@ -67,19 +77,22 @@ const RANGES = {
   C: { min: 0.01, max: 100 },
 };
 const NUMBERS = ['V0', 'R', 'L', 'C'];
-// The drawn quantities, each with its trace toggle: [key, State key, a11y name, label HTML]
-const TRACES = [
-  ['vin', 'showVin', 'V_in', 'V<sub>in</sub>'],
-  ['I', 'showI', 'I', 'I'],
-  ['VR', 'showVR', 'V_R', 'V<sub>R</sub>'],
-  ['VL', 'showVL', 'V_L', 'V<sub>L</sub>'],
-  ['VC', 'showVC', 'V_C', 'V<sub>C</sub>'],
-];
-// The other toggles: [key, State key, a11y name]
-const OVERLAYS = [
-  ['Ztotal', 'showZtotal', 'Show Z_total'],
-  ['kvl', 'showKVL', 'Show KVL closure'],
-];
+// Each number Control's unit in SI units: L is set in mH and C in µF.
+const TO_SI = { V0: 1, R: 1, L: 1e-3, C: 1e-6 };
+
+// The toggles, by Control id: V_in's, then the revealable layers (../layers.js). A trace is a
+// drawn phasor, with a legend swatch and readouts in the Phasors section.
+const TOGGLES = {
+  vin: { state: 'showVin', name: 'V_in', html: 'V<sub>in</sub>', trace: true },
+  Ztotal: { state: 'showZtotal', name: 'Z_total', label: 'Show Z<sub>total</sub>' },
+  I: { state: 'showI', name: 'I', html: 'I', trace: true },
+  VR: { state: 'showVR', name: 'V_R', html: 'V<sub>R</sub>', trace: true },
+  VL: { state: 'showVL', name: 'V_L', html: 'V<sub>L</sub>', trace: true },
+  VC: { state: 'showVC', name: 'V_C', html: 'V<sub>C</sub>', trace: true },
+  kvl: { state: 'showKVL', name: 'KVL closure', label: 'Show KVL closure (head to tail)' },
+};
+const TOGGLE_IDS = ['vin', ...LAYERS.circuit];
+const TRACES = ['vin', 'I', 'VR', 'VL', 'VC'];
 
 const STATE_INFO = {
   mode: { label: 'Mode', unit: '' },
@@ -101,13 +114,13 @@ const STATE_INFO = {
   ZtotIm: { label: 'Imaginary part of Z_total', unit: 'Ω' },
   ZtotMag: { label: 'Magnitude |Z_total|', unit: 'Ω' },
   angleZ: { label: 'Angle ∠Z_total', unit: '°' },
-  Imag: { label: 'Current amplitude |I|', unit: 'A' },
+  IMag: { label: 'Current amplitude |I|', unit: 'A' },
   angleI: { label: 'Current phase ∠I', unit: '°' },
-  VRmag: { label: 'Amplitude |V_R|', unit: 'V' },
+  VRMag: { label: 'Amplitude |V_R|', unit: 'V' },
   angleVR: { label: 'Phase ∠V_R', unit: '°' },
-  VLmag: { label: 'Amplitude |V_L|', unit: 'V' },
+  VLMag: { label: 'Amplitude |V_L|', unit: 'V' },
   angleVL: { label: 'Phase ∠V_L', unit: '°' },
-  VCmag: { label: 'Amplitude |V_C|', unit: 'V' },
+  VCMag: { label: 'Amplitude |V_C|', unit: 'V' },
   angleVC: { label: 'Phase ∠V_C', unit: '°' },
   omega0: { label: 'Resonance ω₀ = 1/√(LC)', unit: 'rad/s' },
   omegaC: { label: 'Corner ω_c = 1/(RC)', unit: 'rad/s' },
@@ -116,17 +129,15 @@ const STATE_INFO = {
   ...TIME_STATE_INFO,
 };
 
-const finite = (v) => v !== null && v !== '' && typeof v !== 'boolean' && Number.isFinite(Number(v));
-const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const ZERO = { re: 0, im: 0 };
-const DEG = 180 / Math.PI;
-
-/** The smallest 1-2-5 step ≥ x (x > 0). */
-function niceUp(x) {
-  const p = 10 ** Math.floor(Math.log10(x));
-  const m = x / p;
-  return (m <= 1 + 1e-9 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+const size = (z) => Math.hypot(z.re, z.im);
+/** The points of the head-to-tail chain of complex numbers zs (nulls skipped), from the origin. */
+function chain(zs) {
+  const pts = [ZERO];
+  for (const z of zs) if (z) pts.push(add(pts[pts.length - 1], z));
+  return pts;
 }
+const centroid = (pts) => ({ re: pts.reduce((a, z) => a + z.re, 0) / pts.length, im: pts.reduce((a, z) => a + z.im, 0) / pts.length });
 
 export function mount(container, setup = {}) {
   const start = { ...DEFAULTS };
@@ -153,6 +164,7 @@ export function mount(container, setup = {}) {
       } });
   }
   const included = () => ELEMENTS.filter((k) => includes[k].get());
+  const has = (k) => includes[k].get();
 
   const sliders = {
     V0: slider({ id: 'V0', name: 'V₀', label: 'V<sub>0</sub>', unit: 'V', ...RANGES.V0, step: 0.1, decimals: 2,
@@ -164,26 +176,23 @@ export function mount(container, setup = {}) {
     C: slider({ id: 'C', name: 'C', unit: 'µF', ...RANGES.C, log: true, decimals: 3, value: start.C,
       reset: DEFAULTS.C, onChange: changed }),
   };
+  /** Number Control k's value in SI units (Ω, H, F, V). */
+  const si = (k) => sliders[k].get() * TO_SI[k];
 
   const traces = {};
-  for (const [key, , name, html] of TRACES) {
-    traces[key] = toggle({ id: key, name: `Show ${name}`, value: true,
-      label: `<span class="fw-legend-line ph-swatch" data-color="${key}"></span>${html}`,
+  for (const key of TOGGLE_IDS) {
+    const t = TOGGLES[key];
+    traces[key] = toggle({ id: key, name: `Show ${t.name}`, value: true,
+      label: t.label ?? `<span class="fw-legend-line ph-swatch" data-color="${key}"></span>${t.html}`,
       onChange: changed, onHide: () => { showRows(); draw(); } });
   }
-  traces.Ztotal = toggle({ id: 'Ztotal', name: 'Show Z_total', value: true, label: 'Show Z<sub>total</sub>',
-    onChange: changed, onHide: () => { showRows(); draw(); } });
-  traces.kvl = toggle({ id: 'kvl', name: 'Show KVL closure', value: true, label: 'Show KVL closure (head to tail)',
-    onChange: changed, onHide: () => draw() });
   const shown = (key) => !traces[key].isHidden() && traces[key].get();
 
   // ── The solved circuit ──
-  const solved = () => solve({ V0: sliders.V0.get(), R: sliders.R.get(), L: sliders.L.get() * 1e-3,
-    C: sliders.C.get() * 1e-6, include: included(), omega: time.omega() });
-  const has = (k) => includes[k].get();
-  const resonance = () => (has('L') && has('C') ? omega0(sliders.L.get() * 1e-3, sliders.C.get() * 1e-6) : null);
-  const corner = () => (has('R') && has('C') && !has('L') ? omegaC(sliders.R.get(), sliders.C.get() * 1e-6) : null);
-  let sweep = null; // { min, max } of ω since mount or restore
+  const solved = () => solve({ V0: si('V0'), R: si('R'), L: si('L'), C: si('C'), include: included(), omega: time.omega() });
+  const resonance = () => (has('L') && has('C') ? omega0(si('L'), si('C')) : null);
+  const corner = () => (has('R') && has('C') && !has('L') ? omegaC(si('R'), si('C')) : null);
+  let sweep = null; // { min, max } of ω since mount (or the restored range)
   const track = () => {
     const w = time.omega();
     sweep = sweep ? { min: Math.min(sweep.min, w), max: Math.max(sweep.max, w) } : { min: w, max: w };
@@ -197,24 +206,29 @@ export function mount(container, setup = {}) {
     const out = { mode: id };
     for (const k of ELEMENTS) out[`include${k}`] = has(k);
     for (const k of NUMBERS) out[k] = sliders[k].get();
-    for (const [key, stateKey] of TRACES.concat(OVERLAYS)) out[stateKey] = traces[key].get();
+    for (const key of TOGGLE_IDS) out[TOGGLES[key].state] = traces[key].get();
     Object.assign(out, {
       ZtotRe: c.Z.total.re, ZtotIm: c.Z.total.im, ZtotMag: Z.A, angleZ: Z.phi,
-      Imag: I ? I.A : null, angleI: I ? I.phi : null,
+      IMag: I ? I.A : null, angleI: I ? I.phi : null,
     });
     for (const k of ELEMENTS) {
       const v = polar(c.V[k]);
-      out[`V${k}mag`] = v ? v.A : null;
+      out[`V${k}Mag`] = v ? v.A : null;
       out[`angleV${k}`] = v ? v.phi : null;
     }
     return { ...out, omega0: resonance(), omegaC: corner(), omegaMin: sweep.min, omegaMax: sweep.max,
       ...time.state() };
   }
 
-  // ── Readouts ──
-  const zReadout = (key, name, html) => {
+  // ── Readouts: every impedance and phasor in both forms ──
+  const twoForms = (name, polarLabel) => {
     const r = { rect: metric({ name: `${name} rectangular`, label: 'a + jb' }),
-      polar: metric({ name: `${name} polar`, label: '|Z|∠θ' }) };
+      polar: metric({ name: `${name} polar`, label: polarLabel }) };
+    r.show = (rectText, polarText) => { r.rect.update(rectText); r.polar.update(polarText); };
+    return r;
+  };
+  const zReadout = (key, name, html) => {
+    const r = twoForms(name, '|Z|∠θ');
     r.el = h('div', { class: 'ph-phasor' },
       h('div', { class: 'fw-legend-row' }, h('span', { class: 'fw-legend-line ph-swatch', 'data-color': key }),
         h('span', { html })),
@@ -229,13 +243,13 @@ export function mount(container, setup = {}) {
   };
   const w0Readout = metric({ name: 'ω₀', label: 'ω<sub>0</sub> = 1/√(LC)' });
   const wcReadout = metric({ name: 'ω_c', label: 'ω<sub>c</sub> = 1/(RC)' });
-  const phasorReadouts = Object.fromEntries(TRACES.map(([key, , name]) => [key, metric({ name, label: 'A∠φ' })]));
-  const traceRows = Object.fromEntries(TRACES.map(([key]) => [key,
-    h('div', { class: 'ph-trace' }, traces[key].el, phasorReadouts[key].el)]));
+  const phasorReadouts = Object.fromEntries(TRACES.map((key) => [key, twoForms(TOGGLES[key].name, 'A∠φ')]));
+  const traceRows = Object.fromEntries(TRACES.map((key) => [key,
+    h('div', { class: 'ph-trace' }, traces[key].el, phasorReadouts[key].rect.el, phasorReadouts[key].polar.el)]));
   /** A row shows unless its element is out of the loop or its layer is hidden (the toggle hides itself). */
   function showRows() {
     const c = solved();
-    for (const [key] of TRACES) traceRows[key].hidden = traces[key].isHidden();
+    for (const key of TRACES) traceRows[key].hidden = traces[key].isHidden();
     for (const k of ELEMENTS) if (!c.Z[k]) traceRows[`V${k}`].hidden = true;
     zReadouts.total.el.hidden = traces.Ztotal.isHidden();
   }
@@ -256,7 +270,7 @@ export function mount(container, setup = {}) {
       time.timeEl,
       section('Impedances', zReadouts.R.el, zReadouts.L.el, zReadouts.C.el, zReadouts.total.el,
         traces.Ztotal.el, w0Readout.el, wcReadout.el),
-      section('Phasors', ...TRACES.map(([key]) => traceRows[key]), traces.kvl.el)),
+      section('Phasors', ...TRACES.map((key) => traceRows[key]), traces.kvl.el)),
     h('div', { class: 'fw-displays' },
       h('div', { class: 'ph-displays ph-circuit-displays' },
         h('div', { class: 'fw-display', 'data-display': 'impedance' }, impedanceCv),
@@ -274,41 +288,33 @@ export function mount(container, setup = {}) {
     colors = { ...theme, vin: theme.ink, I: green, R: theme.traces[0], L: theme.traces[1], C: yellow,
       total: theme.ink };
     colors.VR = colors.R; colors.VL = colors.L; colors.VC = colors.C;
-    for (const el of root.querySelectorAll('.ph-swatch')) el.style.background = colors[el.dataset.color];
+    paintSwatches(root, colors);
   }
 
   // ── Scales ──
-  // The volt axes reach every point of the head-to-tail chain (V_L and V_C can exceed V₀ near
-  // ω₀); I is drawn as I/kI, kI the smallest 1-2-5 step (A per V) that keeps it within V₀.
-  const chain = (c) => {
-    const pts = [ZERO];
-    for (const k of ELEMENTS) if (c.V[k]) pts.push(add(pts[pts.length - 1], c.V[k]));
-    return pts;
-  };
-  const currentScale = (c) => (c.I ? niceUp(toPolar(c.I).A / sliders.V0.get()) : 1);
+  // The volt axes reach V₀ and what the layers not hidden can draw: each device voltage's
+  // amplitude (on the time plot, or from the origin), and with the KVL closure every point of the
+  // head-to-tail chain (V_L and V_C can exceed V₀ near ω₀). A hidden layer never widens them.
+  // I is drawn as I/kI, kI the smallest 1-2-5 step (A per V) that keeps it within V₀.
+  const currentScale = (c) => (c.I ? niceStep(size(c.I) / si('V0'), 1) : 1);
   function voltScale(c) {
-    const reach = Math.max(sliders.V0.get(), ...chain(c).map((z) => Math.hypot(z.re, z.im))) * 1.1;
-    const step = niceStep(reach, 4);
-    return Math.ceil(reach / step) * step;
+    const open = (key) => !traces[key].isHidden();
+    const present = ELEMENTS.filter((k) => c.V[k]);
+    const visible = present.filter((k) => open(`V${k}`));
+    const reach = [si('V0'), ...visible.map((k) => size(c.V[k]))];
+    if (open('kvl') && visible.length === present.length) reach.push(...chain(present.map((k) => c.V[k])).map(size));
+    return fitScale(Math.max(...reach) * 1.1);
   }
   const frames = { impedance: null, phasor: null, time: null };
 
   // ── Impedance plane (static): Z_R, Z_L, Z_C head to tail, then Z_total ──
-  const zChain = (c) => {
-    const pts = [ZERO];
-    for (const k of ELEMENTS) if (c.Z[k]) pts.push(add(pts[pts.length - 1], c.Z[k]));
-    return pts;
-  };
   /** The plane's half-height S (Ω): a 1-2-5 multiple that fits every point of the chain. */
-  function impedanceScale(c) {
-    const reach = Math.max(...zChain(c).map((z) => Math.max(Math.abs(z.re), Math.abs(z.im)))) * 1.1 || 1;
-    const step = niceStep(reach, 4);
-    return Math.ceil(reach / step) * step;
-  }
+  const impedanceScale = (c) => fitScale(Math.max(...chain(ELEMENTS.map((k) => c.Z[k]))
+    .map((z) => Math.max(Math.abs(z.re), Math.abs(z.im)))) * 1.1 || 1);
 
   /** Z_total from the origin to the end of the chain, and ∠Z as an arc off the real axis. */
   function drawZtotal(ctx, at, Z, away) {
-    if (Math.hypot(Z.re, Z.im) < 1e-9) return;
+    if (size(Z) < 1e-9) return;
     arrow(ctx, at(ZERO), at(Z), colors.total, { width: 3 });
     sideLabel(ctx, 'Z', at(ZERO), at(Z), away, colors.total, colors);
     const { phi } = toPolar(Z);
@@ -328,10 +334,10 @@ export function mount(container, setup = {}) {
     const f = plotFrame(ctx, { x: 0, y: 0, w: W, h: H }, [-S / 4, S], [-S, S],
       { colors, xTitle: `Re (${p}Ω)`, yTitle: `Im (${p}Ω)`, xFormat: fmt, yFormat: fmt, equal: true });
     const at = (z) => ({ x: f.X(z.re), y: f.Y(z.im) });
-    const pts = zChain(c);
-    const away = at({ re: pts.reduce((a, z) => a + z.re, 0) / pts.length, im: pts.reduce((a, z) => a + z.im, 0) / pts.length });
+    const pts = chain(ELEMENTS.map((k) => c.Z[k]));
+    const away = at(centroid(pts));
     // Z_L and Z_C are antiparallel, so head to tail they overlap: the longest goes underneath
-    const segments = ELEMENTS.filter((k) => c.Z[k]).map((k, i) => ({ k, from: pts[i], to: pts[i + 1], len: toPolar(c.Z[k]).A }));
+    const segments = ELEMENTS.filter((k) => c.Z[k]).map((k, i) => ({ k, from: pts[i], to: pts[i + 1], len: size(c.Z[k]) }));
     for (const sg of segments.sort((a, b) => b.len - a.len)) {
       arrow(ctx, at(sg.from), at(sg.to), colors[sg.k]);
       sideLabel(ctx, `Z${sg.k}`, at(sg.from), at(sg.to), away, colors[sg.k], colors);
@@ -339,94 +345,6 @@ export function mount(container, setup = {}) {
     if (shown('Ztotal')) drawZtotal(ctx, at, c.Z.total, away);
     frames.impedance = laidOut ? f : null;
   }
-
-  // ── Schematic: the series loop ──
-  const valueText = (v, unit) => {
-    const { prefix: p, scale } = prefix(v);
-    return `${Number((v * scale).toPrecision(3))} ${p}${unit}`;
-  };
-  const schematicName = () => {
-    const els = included();
-    const list = els.length === 1 ? els[0] : `${els.slice(0, -1).join(', ')} and ${els[els.length - 1]}`;
-    return `Series loop: the source, ${list}`;
-  };
-
-  /** Element k's symbol on the wire from canvas point a to b, in k's colour. */
-  function drawSymbol(ctx, k, a, b) {
-    const len = Math.hypot(b.x - a.x, b.y - a.y);
-    const ux = (b.x - a.x) / len; const uy = (b.y - a.y) / len; // along the wire
-    const nx = uy; const ny = -ux;                              // across it, outward from the loop
-    const pt = (s, n) => ({ x: a.x + ux * s + nx * n, y: a.y + uy * s + ny * n });
-    const seg = (p, q) => { ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); };
-    const body = Math.min(48, len - 12); const s0 = (len - body) / 2; const s1 = s0 + body;
-    ctx.save();
-    ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.lineWidth = 2;
-    ctx.strokeStyle = colors.ink;
-    if (k === 'C') { seg(a, pt(len / 2 - 4, 0)); seg(pt(len / 2 + 4, 0), b); } else { seg(a, pt(s0, 0)); seg(pt(s1, 0), b); }
-    ctx.strokeStyle = colors[k]; ctx.lineWidth = 2.5;
-    if (k === 'R') {
-      ctx.beginPath(); ctx.moveTo(pt(s0, 0).x, pt(s0, 0).y);
-      for (let i = 0; i < 6; i += 1) { const q = pt(s0 + (body * (i + 0.5)) / 6, i % 2 ? -7 : 7); ctx.lineTo(q.x, q.y); }
-      ctx.lineTo(pt(s1, 0).x, pt(s1, 0).y); ctx.stroke();
-    } else if (k === 'L') {
-      const n = 4; const r = body / (2 * n);
-      ctx.beginPath(); ctx.moveTo(pt(s0, 0).x, pt(s0, 0).y);
-      for (let i = 0; i < n; i += 1) {
-        for (let j = 1; j <= 12; j += 1) { // a half circle bulging outward
-          const th = Math.PI - (Math.PI * j) / 12;
-          const q = pt(s0 + r * (2 * i + 1) + r * Math.cos(th), r * Math.sin(th));
-          ctx.lineTo(q.x, q.y);
-        }
-      }
-      ctx.stroke();
-    } else {
-      ctx.lineWidth = 3;
-      seg(pt(len / 2 - 4, -13), pt(len / 2 - 4, 13)); seg(pt(len / 2 + 4, -13), pt(len / 2 + 4, 13));
-    }
-    ctx.restore();
-  }
-
-  /** Lines of text centred on canvas point `at` vertically, aligned `align`. */
-  function textLines(ctx, lines, at, align) {
-    ctx.save();
-    ctx.font = `${colors.font.size}px ${colors.font.family}`;
-    ctx.fillStyle = colors.text; ctx.textAlign = align; ctx.textBaseline = 'middle';
-    lines.forEach((t, i) => ctx.fillText(t, at.x, at.y + (i - (lines.length - 1) / 2) * 18));
-    ctx.restore();
-  }
-
-  function drawSchematic() {
-    const { ctx, W, H } = prepCanvas(schematicCv, colors);
-    schematicCv.setAttribute('aria-label', schematicName());
-    // the loop: the source down the left side, R and L along the top, C down the right side
-    const w = Math.min(W - 48, 360); const hgt = Math.max(60, Math.min(H - 76, 200));
-    const L = (W - w) / 2; const R = L + w; const T = (H - hgt) / 2 + 16; const B = T + hgt;
-    const cy = (T + B) / 2; const r = 16;
-    const seg = (p, q) => { ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); };
-    const slots = { R: [{ x: L, y: T }, { x: L + w / 2, y: T }], L: [{ x: L + w / 2, y: T }, { x: R, y: T }],
-      C: [{ x: R, y: T }, { x: R, y: B }] };
-    ctx.save();
-    ctx.strokeStyle = colors.ink; ctx.lineWidth = 2; ctx.lineCap = 'round';
-    for (const k of ELEMENTS) { if (has(k)) drawSymbol(ctx, k, ...slots[k]); else seg(...slots[k]); }
-    ctx.strokeStyle = colors.ink; ctx.lineWidth = 2;
-    seg({ x: R, y: B }, { x: L, y: B });
-    seg({ x: L, y: B }, { x: L, y: cy + r }); seg({ x: L, y: cy - r }, { x: L, y: T });
-    // the source: a circle round a sine wave
-    ctx.strokeStyle = colors.vin;
-    ctx.beginPath(); ctx.arc(L, cy, r, 0, 2 * Math.PI); ctx.stroke();
-    ctx.beginPath();
-    for (let i = 0; i <= 20; i += 1) {
-      const x = L - 9 + (18 * i) / 20; const y = cy - 6 * Math.sin((2 * Math.PI * i) / 20);
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-    ctx.restore();
-    textLines(ctx, ['V₀', valueText(sliders.V0.get(), 'V')], { x: L + r + 8, y: cy }, 'left');
-    if (has('R')) textLines(ctx, [`R = ${valueText(sliders.R.get(), 'Ω')}`], { x: L + w / 4, y: T - 24 }, 'center');
-    if (has('L')) textLines(ctx, [`L = ${valueText(sliders.L.get() * 1e-3, 'H')}`], { x: L + (3 * w) / 4, y: T - 24 }, 'center');
-    if (has('C')) textLines(ctx, ['C', valueText(sliders.C.get() * 1e-6, 'F')], { x: R - 20, y: cy }, 'right');
-  }
-
 
   // ── Phasor plane: one function per quantity ──
   const turn = (z) => mul(z, fromPolar(1, time.omega() * time.t() * DEG)); // rotated by ωt
@@ -471,18 +389,18 @@ export function mount(container, setup = {}) {
     const f = plotFrame(ctx, { x: 0, y: 0, w: W, h: H }, [-R, R], [-R, R],
       { colors, xTitle: 'Re (V)', yTitle: 'Im (V)', equal: true });
     const at = (z) => ({ x: f.X(z.re), y: f.Y(z.im) });
-    const pts = chain(c).map(turn);
+    const pts = chain(ELEMENTS.map((k) => c.V[k])).map(turn);
     // labels sit outside the KVL polygon (origin, the chain, back along V_in)
-    const away = at({ re: pts.reduce((s, z) => s + z.re, 0) / pts.length, im: pts.reduce((s, z) => s + z.im, 0) / pts.length });
+    const away = at(centroid(pts));
     if (shown('vin')) drawVin(ctx, at, turn(c.Vin), away);
     // V_L and V_C are antiparallel, so head to tail they overlap: the longest goes underneath
     // Without the KVL closure each starts at the origin, labelled on the side away from V_in.
     const kvl = shown('kvl');
     const segments = ELEMENTS.filter((k) => c.V[k]).map((k, i) => (kvl
-      ? { k, from: pts[i], to: pts[i + 1], len: toPolar(c.V[k]).A }
-      : { k, from: ZERO, to: turn(c.V[k]), len: toPolar(c.V[k]).A }));
-    for (const s of segments.sort((a, b) => b.len - a.len)) {
-      if (shown(`V${s.k}`)) drawDevice(ctx, at, s.k, s.from, s.to, kvl ? away : at(turn(c.Vin)));
+      ? { k, from: pts[i], to: pts[i + 1], len: size(c.V[k]) }
+      : { k, from: ZERO, to: turn(c.V[k]), len: size(c.V[k]) }));
+    for (const sg of segments.sort((a, b) => b.len - a.len)) {
+      if (shown(`V${sg.k}`)) drawDevice(ctx, at, sg.k, sg.from, sg.to, kvl ? away : at(turn(c.Vin)));
     }
     if (c.I && shown('I')) {
       const kI = currentScale(c);
@@ -498,23 +416,19 @@ export function mount(container, setup = {}) {
     const c = solved();
     const omega = time.omega();
     const T = time.period();
-    const { unit, scale: k } = timeUnit(T);
     const R = voltScale(c);
     const kI = currentScale(c);
     const amp = prefix(R * kI);
     const ampDecimals = (step) => Math.max(0, -Math.floor(Math.log10(step * kI * amp.scale) + 1e-9));
     const f = plotFrame(ctx, { x: 0, y: 0, w: W, h: H }, [-T, T], [-R, R], {
-      colors, xTitle: `t (${unit})`, yTitle: 'v (V)',
-      xFormat: (v) => num(v * k, Math.max(0, -Math.floor(Math.log10(niceStep(2 * T * k, 4))))),
+      colors, yTitle: 'v (V)', ...timeAxis(T),
       y2: c.I && shown('I') ? { title: `i (${amp.prefix}A)`, format: (v, step) => num(v * kI * amp.scale, ampDecimals(step)) } : null,
     });
     const signals = timeSignals(c, kI);
     for (const s of signals) curve(ctx, f, -T, T, (t) => evaluate(s.p, omega, t), s.color, s.width, { dashed: s.dashed });
     // The time cursor at t, and each curve's value there (its phasor's real-axis projection).
     const t = time.t();
-    line(ctx, { x: f.X(t), y: f.rect.T }, { x: f.X(t), y: f.rect.B }, colors.ink, { width: 1.5 });
-    dot(ctx, { x: f.X(t), y: f.rect.T }, colors.ink, 6);
-    for (const s of signals) dot(ctx, { x: f.X(t), y: f.Y(evaluate(s.p, omega, t)) }, s.color, 4);
+    drawTimeCursor(ctx, f, t, colors, signals.map((s) => ({ v: evaluate(s.p, omega, t), color: s.color })), 4);
     frames.time = laidOut ? f : null;
   }
 
@@ -533,7 +447,8 @@ export function mount(container, setup = {}) {
     drawImpedancePlane();
     drawPhasorPlane();
     drawTime();
-    drawSchematic();
+    drawSchematic(schematicCv, { colors, include: included(),
+      values: { V0: si('V0'), R: si('R'), L: si('L'), C: si('C') } });
     time.place();
   }
 
@@ -542,52 +457,34 @@ export function mount(container, setup = {}) {
     const c = solved();
     for (const k of ELEMENTS) {
       zReadouts[k].el.hidden = !c.Z[k];
-      if (c.Z[k]) {
-        zReadouts[k].rect.update(siRectText(c.Z[k], 'Ω'));
-        zReadouts[k].polar.update(siPolarText(toPolar(c.Z[k]), 'Ω'));
-      }
+      if (c.Z[k]) zReadouts[k].show(siRectText(c.Z[k], 'Ω'), siPolarText(toPolar(c.Z[k]), 'Ω'));
     }
     showRows();
-    zReadouts.total.rect.update(siRectText(c.Z.total, 'Ω'));
-    zReadouts.total.polar.update(siPolarText(toPolar(c.Z.total), 'Ω'));
+    zReadouts.total.show(siRectText(c.Z.total, 'Ω'), siPolarText(toPolar(c.Z.total), 'Ω'));
     const w0 = resonance(); const wc = corner();
     w0Readout.el.hidden = w0 === null;
     wcReadout.el.hidden = wc === null;
     if (w0 !== null) w0Readout.update(`${num(w0, 0)} rad/s`);
     if (wc !== null) wcReadout.update(`${num(wc, 0)} rad/s`);
-    phasorReadouts.vin.update(siPolarText(toPolar(c.Vin), 'V'));
-    phasorReadouts.I.update(c.I ? siPolarText(toPolar(c.I), 'A') : 'unbounded (Z = 0)');
-    for (const k of ELEMENTS) phasorReadouts[`V${k}`].update(c.V[k] ? siPolarText(toPolar(c.V[k]), 'V') : '—');
+    const showPhasor = (key, z, unit, none) => phasorReadouts[key].show(
+      z ? siRectText(z, unit) : none, z ? siPolarText(toPolar(z), unit) : none);
+    showPhasor('vin', c.Vin, 'V');
+    showPhasor('I', c.I, 'A', 'unbounded (Z = 0)');
+    for (const k of ELEMENTS) showPhasor(`V${k}`, c.V[k], 'V', '—');
     draw();
     changes.emit(getState());
   }
 
-  const resizeObserver = new ResizeObserver(() => draw());
-  resizeObserver.observe(root);
-
-  // Display contract: the client position of a plot point, or null until laid out.
-  const screenOf = (cv, key) => (x, y) => {
-    const f = frames[key];
-    if (!f) return null;
-    const r = cv.getBoundingClientRect();
-    if (Math.abs(r.width - cv.width / (globalThis.devicePixelRatio || 1)) > 1) return null;
-    return { x: r.left + f.X(x), y: r.top + f.Y(y) };
-  };
-  const impedanceToScreen = screenOf(impedanceCv, 'impedance');
-  const phasorToScreen = screenOf(phasorCv, 'phasor');
-  const timeToScreen = screenOf(timeCv, 'time');
-  const snap = (cv) => async () => { draw(); return cv.toDataURL('image/png'); };
-  // The time cursor's handle rides the top edge of the time plot at t.
-  time.attachCursor(
-    (t) => { const p = timeToScreen(t, 0); return p && { x: p.x, y: timeCv.getBoundingClientRect().top + frames.time.rect.T }; },
-    (cx) => (frames.time ? frames.time.ix(cx - timeCv.getBoundingClientRect().left) : time.t()),
-  );
+  const stopResizing = redrawOnResize(root, draw);
+  const snap = (cv) => snapshotOf(cv, draw);
+  attachTimeCursor(time, timeCv, frames);
 
   readColors();
   update();
 
   const controls = { ...Object.fromEntries(ELEMENTS.map((k) => [`include${k}`, includes[k]])), ...sliders,
     ...traces, ...time.controls };
+  const omegaIn = (v) => clamp(Number(v), OMEGA_MIN, OMEGA_MAX);
 
   return {
     state: {
@@ -597,17 +494,17 @@ export function mount(container, setup = {}) {
     },
     controls: controlRegistry(controls),
     displays: [
-      { id: 'impedance', label: 'Impedance plane', snapshot: snap(impedanceCv), toScreen: impedanceToScreen },
-      { id: 'phasor', label: 'Phasor plane', snapshot: snap(phasorCv), toScreen: phasorToScreen },
-      { id: 'time', label: 'Time plot', snapshot: snap(timeCv), toScreen: timeToScreen },
+      { id: 'impedance', label: 'Impedance plane', snapshot: snap(impedanceCv), toScreen: screenMapper(impedanceCv, frames, 'impedance') },
+      { id: 'phasor', label: 'Phasor plane', snapshot: snap(phasorCv), toScreen: screenMapper(phasorCv, frames, 'phasor') },
+      { id: 'time', label: 'Time plot', snapshot: snap(timeCv), toScreen: screenMapper(timeCv, frames, 'time') },
       { id: 'schematic', label: 'Schematic', snapshot: snap(schematicCv) },
     ],
     serialize: () => {
       const s = getState();
       return { ...Object.fromEntries(ELEMENTS.map((k) => [`include${k}`, s[`include${k}`]])),
         ...Object.fromEntries(NUMBERS.map((k) => [k, s[k]])),
-        ...Object.fromEntries(TRACES.concat(OVERLAYS).map(([, stateKey]) => [stateKey, s[stateKey]])),
-        ...time.serialize() };
+        ...Object.fromEntries(TOGGLE_IDS.map((key) => [TOGGLES[key].state, s[TOGGLES[key].state]])),
+        ...time.serialize(), omegaMin: s.omegaMin, omegaMax: s.omegaMax };
     },
     restore(saved = {}) {
       saved = saved ?? {};
@@ -618,18 +515,23 @@ export function mount(container, setup = {}) {
         for (const k of ELEMENTS) if (want(k) === true) includes[k].set(true);
         for (const k of ELEMENTS) if (want(k) === false) includes[k].set(false);
         for (const k of NUMBERS) if (finite(saved[k])) sliders[k].set(saved[k]);
-        for (const [key, stateKey] of TRACES.concat(OVERLAYS)) if (typeof saved[stateKey] === 'boolean') traces[key].set(saved[stateKey]);
+        for (const key of TOGGLE_IDS) {
+          const v = saved[TOGGLES[key].state];
+          if (typeof v === 'boolean') traces[key].set(v);
+        }
         time.restore(saved);
       } finally {
         quiet = false;
       }
-      sweep = null;
+      // the saved swept range, if it is one; update() widens it to take in the restored ω
+      const { omegaMin: lo, omegaMax: hi } = saved;
+      sweep = finite(lo) && finite(hi) && Number(lo) <= Number(hi) ? { min: omegaIn(lo), max: omegaIn(hi) } : null;
       update();
     },
     resize: () => { readColors(); draw(); },
     destroy() {
       time.destroy();
-      resizeObserver.disconnect();
+      stopResizing();
       changes.clear();
       root.remove();
     },

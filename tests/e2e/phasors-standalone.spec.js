@@ -171,6 +171,24 @@ test('dragging the time cursor changes t', async ({ page }) => {
   expect(s.t / T).toBeLessThan(0.55);
 });
 
+test('dragging the time cursor into the plot\'s left half wraps t into one period', async ({ page }) => {
+  await open(page);
+  await settle(page);
+  const cursor = page.getByRole('slider', { name: 'Time cursor' });
+  const b = await cursor.boundingBox();
+  const T = (2 * Math.PI) / 1000;
+  // t = −T/4 on the plot is the same instant as 3T/4
+  const target = await page.evaluate((T) => window.toolHost.instances[0].displays
+    .find((d) => d.id === 'time').toScreen(-T / 4, 0), T);
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(target.x, b.y + b.height / 2, { steps: 4 });
+  await page.mouse.up();
+  const s = await state(page);
+  expect(s.t / T).toBeGreaterThan(0.7);
+  expect(s.t / T).toBeLessThan(0.8);
+});
+
 test('changing ω updates the f readout', async ({ page }) => {
   await open(page);
   const f = page.getByRole('status', { name: 'f', exact: true });
@@ -222,6 +240,16 @@ test('serialize and restore round-trip the inputs, ignoring bad values and clamp
   expect(out.after).toMatchObject({ omega: 2000, playing: false });
   expect(out.after.t).toBeCloseTo(0.001, 9);
   expect(out.saved2.t).toBeCloseTo(0.001, 9);
+});
+
+test('restore ignores booleans for the number inputs', async ({ page }) => {
+  await open(page);
+  const s = await page.evaluate(() => {
+    const i = window.toolHost.instances[0];
+    i.restore({ A1: true, phi1: false, A2: true });
+    return i.state.snapshot();
+  });
+  expect(s).toMatchObject({ A1: 3, phi1: 0, A2: 2 });
 });
 
 test('the Tool mounts several times on one page, each instance on its own State, and destroy cancels play', async ({ page }) => {

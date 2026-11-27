@@ -7,9 +7,7 @@ import { LAYERS } from '../../../tools/phasors/layers.js';
 // The revealable layers are Controls, so a Task's `hide` list hides one until the next Task's
 // `show` brings it back. The stub stands in for the Tool (Mode modules need a DOM).
 
-test('the layer ids are the ones the Activity hides and shows', () => {
-  assert.deepEqual(LAYERS, { sum: ['sum'], circuit: ['Ztotal', 'I', 'VR', 'VL', 'VC', 'kvl'] });
-});
+// (tests/e2e/phasors-circuit.spec.js checks that each Mode registers every one of its LAYERS ids.)
 
 for (const [mode, layers] of Object.entries(LAYERS)) {
   test(`${mode} Mode: each compute Task hides its layer and the next Task shows it`, () => {

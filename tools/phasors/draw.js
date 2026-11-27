@@ -15,7 +15,10 @@
 //   curve(ctx, frame, x0, x1, fn, color, width, { dashed })   y = fn(x) across [x0, x1]
 //   label(ctx, text, at, color, colors, align)        text at a canvas point
 //   sideLabel(ctx, text, a, b, away, color, colors)   text beside segment a → b, away from `away`
-//   niceStep(span, ticks)                             a 1-2-5 tick step
+//   niceStep(span, ticks)                             a 1-2-5 tick step: the smallest 1-2-5
+//                                                     number ≥ span/ticks (niceStep(x, 1) ≥ x)
+//   fitScale(reach)                                   an axis half-range that holds `reach`:
+//                                                     a whole number of 1-2-5 steps (4 or so)
 //   line(ctx, from, to, color, { width, dashed })     a plain line between canvas points
 //   angleArc(ctx, at, r, a0, a1, color, width)        an arc marking the angle a0 → a1 (degrees)
 
@@ -25,7 +28,12 @@ export function niceStep(span, ticks = 5) {
   const raw = span / Math.max(1, ticks);
   const p = 10 ** Math.floor(Math.log10(raw));
   const m = raw / p;
-  return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+  return (m <= 1 + 1e-9 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+}
+
+export function fitScale(reach) {
+  const step = niceStep(reach, 4);
+  return Math.ceil(reach / step) * step;
 }
 
 const tickText = (v, step) => {

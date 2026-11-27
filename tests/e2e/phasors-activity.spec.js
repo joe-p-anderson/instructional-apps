@@ -121,7 +121,7 @@ test('in Part 2, submitting Z reveals Z_total and submitting I reveals I', async
   await page.getByRole('tab', { name: /Part 2/ }).click();
   const p2 = part(page, 2);
   const zTotal = p2.getByRole('status', { name: 'Z_total polar', exact: true });
-  const current = p2.getByRole('status', { name: 'I', exact: true });
+  const current = p2.getByRole('status', { name: 'I polar', exact: true });
   await expect(p2.getByRole('spinbutton', { name: 'R (Ω)', exact: true })).toBeDisabled();
   await expect(zTotal).toBeHidden();
   await expect(current).toBeHidden();

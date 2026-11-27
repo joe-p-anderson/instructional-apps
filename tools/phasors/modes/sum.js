@@ -33,9 +33,12 @@ import { createEmitter } from '../../../framework/v1/tool.js';
 import { h, handle, metric, section, themeVars, toggle } from '../../../framework/v1/ui-kit.js';
 import { plotTheme } from '../../../framework/v1/plot-theme.js';
 import { crest, evaluate, fromCrest, fromPolar, rotate, sum, toPolar, wrapDeg } from '../engine.js';
-import { angleArc, arrow, curve, dot, line, niceStep, plotFrame, prepCanvas, sideLabel } from '../draw.js';
+import { angleArc, arrow, curve, dot, fitScale, line, plotFrame, prepCanvas, sideLabel } from '../draw.js';
+import { attachTimeCursor, drawTimeCursor, paintSwatches, redrawOnResize, screenMapper, snapshotOf, timeAxis } from '../display.js';
 import { num, polarText, rectText, timeUnit } from '../format.js';
+import { LAYERS } from '../layers.js';
 import { numberInput } from '../number-input.js';
+import { DEG, finite } from '../numbers.js';
 import { toolStyles } from '../styles.js';
 import { TIME_STATE_INFO, timeControls } from '../time-controls.js';
 
@@ -58,7 +61,7 @@ const STATE_INFO = {
   ...TIME_STATE_INFO,
 };
 
-const finite = (v) => v !== null && v !== '' && Number.isFinite(Number(v));
+const [SUM_LAYER] = LAYERS.sum; // the resultant's toggle
 
 export function mount(container, setup = {}) {
   const start = { ...DEFAULTS };
@@ -81,7 +84,7 @@ export function mount(container, setup = {}) {
   };
 
   // The resultant is a revealable layer.
-  const resultant = toggle({ id: 'sum', name: 'Show v₁ + v₂', value: true,
+  const resultant = toggle({ id: SUM_LAYER, name: 'Show v₁ + v₂', value: true,
     label: '<span class="fw-legend-line ph-swatch" data-color="sum"></span>Show v<sub>1</sub> + v<sub>2</sub>',
     onChange: changed, onHide: (hidden) => { sumBlock.hidden = hidden; draw(); } });
   const sumShown = () => !resultant.isHidden() && resultant.get();
@@ -105,7 +108,6 @@ export function mount(container, setup = {}) {
   // Each phasor's tip on the plane and its crest on the time plot. A handle reports by setting
   // the number inputs (then one update()), and update() moves every handle to match, so the
   // views never drift apart.
-  const DEG = 180 / Math.PI;
   const omega = () => time.omega(); // ω is a Control: every mapping reads its current value
   const pOf = (n) => (n === 1 ? p1() : p2());
   const zOf = (n) => { const p = pOf(n); return fromPolar(p.A, p.phi); };
@@ -224,7 +226,7 @@ export function mount(container, setup = {}) {
     const theme = plotTheme(root);
     const { green } = themeVars(root, { green: '--fw-green' });
     colors = { ...theme, v1: theme.traces[0], v2: theme.traces[1], sum: green };
-    for (const el of root.querySelectorAll('.ph-swatch')) el.style.background = colors[el.dataset.color];
+    paintSwatches(root, colors);
   };
 
   // ── Drawing ──
@@ -232,9 +234,7 @@ export function mount(container, setup = {}) {
   // during a drag, see heldScale).
   const scale = () => {
     if (heldScale !== null) return heldScale;
-    const reach = Math.max(ctl.A1.get() + ctl.A2.get(), 0.5) * 1.1;
-    const step = niceStep(reach, 4);
-    return Math.ceil(reach / step) * step;
+    return fitScale(Math.max(ctl.A1.get() + ctl.A2.get(), 0.5) * 1.1);
   };
   const frames = { plane: null, time: null };
 
@@ -279,12 +279,9 @@ export function mount(container, setup = {}) {
     const { ctx, W, H, laidOut } = prepCanvas(timeCv, colors);
     const omega = time.omega();
     const T = time.period();
-    const { unit, scale: k } = timeUnit(T);
     const R = scale();
-    const f = plotFrame(ctx, { x: 0, y: 0, w: W, h: H }, [-T, T], [-R, R], {
-      colors, xTitle: `t (${unit})`, yTitle: 'v (V)',
-      xFormat: (v) => num(v * k, Math.max(0, -Math.floor(Math.log10(niceStep(2 * T * k, 4))))),
-    });
+    const f = plotFrame(ctx, { x: 0, y: 0, w: W, h: H }, [-T, T], [-R, R],
+      { colors, yTitle: 'v (V)', ...timeAxis(T) });
     const s = sum(p1(), p2());
     // The resultant goes underneath, as on the plane, so v₁ and v₂ stay visible where they meet it.
     if (sumShown()) curve(ctx, f, -T, T, (t) => evaluate(s, omega, t), colors.sum, 3);
@@ -297,11 +294,9 @@ export function mount(container, setup = {}) {
     }
     // The time cursor at t, and each curve's value there (its phasor's real-axis projection).
     const t = time.t();
-    line(ctx, { x: f.X(t), y: f.rect.T }, { x: f.X(t), y: f.rect.B }, colors.ink, { width: 1.5 });
-    dot(ctx, { x: f.X(t), y: f.rect.T }, colors.ink, 6);
-    if (sumShown()) dot(ctx, { x: f.X(t), y: f.Y(evaluate(s, omega, t)) }, colors.sum);
-    dot(ctx, { x: f.X(t), y: f.Y(evaluate(p2(), omega, t)) }, colors.v2);
-    dot(ctx, { x: f.X(t), y: f.Y(evaluate(p1(), omega, t)) }, colors.v1);
+    const at = (p, color) => ({ v: evaluate(p, omega, t), color });
+    drawTimeCursor(ctx, f, t, colors,
+      [...(sumShown() ? [at(s, colors.sum)] : []), at(p2(), colors.v2), at(p1(), colors.v1)]);
     frames.time = laidOut ? f : null;
   }
 
@@ -329,26 +324,12 @@ export function mount(container, setup = {}) {
     changes.emit(getState());
   }
 
-  const resizeObserver = new ResizeObserver(() => draw());
-  resizeObserver.observe(root);
-
+  const stopResizing = redrawOnResize(root, draw);
   // Display contract: the client position of a plot point, or null until laid out.
-  const screenOf = (cv, key) => (x, y) => {
-    const f = frames[key];
-    if (!f) return null;
-    const r = cv.getBoundingClientRect();
-    if (Math.abs(r.width - cv.width / (globalThis.devicePixelRatio || 1)) > 1) return null;
-    return { x: r.left + f.X(x), y: r.top + f.Y(y) };
-  };
-  const planeToScreen = screenOf(planeCv, 'plane');
-  const timeToScreen = screenOf(timeCv, 'time');
-  const snap = (cv) => async () => { draw(); return cv.toDataURL('image/png'); };
-  // The time cursor's handle rides the top edge of the time plot at t.
-  const timeAt = screenOf(timeCv, 'time');
-  time.attachCursor(
-    (t) => { const p = timeAt(t, 0); return p && { x: p.x, y: timeCv.getBoundingClientRect().top + frames.time.rect.T }; },
-    (cx) => (frames.time ? frames.time.ix(cx - timeCv.getBoundingClientRect().left) : time.t()),
-  );
+  const planeToScreen = screenMapper(planeCv, frames, 'plane');
+  const timeToScreen = screenMapper(timeCv, frames, 'time');
+  const snap = (cv) => snapshotOf(cv, draw);
+  attachTimeCursor(time, timeCv, frames);
 
   readColors();
   update();
@@ -359,7 +340,7 @@ export function mount(container, setup = {}) {
       describe: () => structuredClone(STATE_INFO),
       onChange: (fn) => changes.on(fn),
     },
-    controls: controlRegistry({ ...ctl, sum: resultant, tip1: tips[1], tip2: tips[2], crest1: crests[1], crest2: crests[2],
+    controls: controlRegistry({ ...ctl, [SUM_LAYER]: resultant, tip1: tips[1], tip2: tips[2], crest1: crests[1], crest2: crests[2],
       ...time.controls }),
     displays: [
       { id: 'plane', label: 'Complex plane', snapshot: snap(planeCv), toScreen: planeToScreen },
@@ -381,7 +362,7 @@ export function mount(container, setup = {}) {
     resize: () => { readColors(); draw(); },
     destroy() {
       time.destroy();
-      resizeObserver.disconnect();
+      stopResizing();
       for (const hd of handles) hd.destroy();
       changes.clear();
       root.remove();
