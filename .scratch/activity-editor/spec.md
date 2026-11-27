@@ -72,6 +72,8 @@ Activities are stored as plain JSON instead of JS modules (ADR 0004), so the edi
 27. As the instructor, I want changing a Control at an early Task to update the effective states shown on later Tasks, so that the carry-over is always visible.
 28. As the instructor, I want revealable layers to appear in the same list as the other Controls, under their labels, so that hiding a resultant is the same action as locking a slider.
 
+    (Added after the mockup review: on a Task, the live Tool shows the student's view by default. A Student / Full toggle opens every Control while arranging the Tool; see "Editor page".)
+
 ### Conditions
 
 29. As the instructor, I want to give a Task a Condition, or none, so that some Tasks just ask Questions.
@@ -198,6 +200,11 @@ The core provides:
   - On the right, the live Tool mounted at the selected Part's Mode and Setup.
 - **Folder access:** the File System Access API. The folder handle is kept in IndexedDB, so the folder is remembered, and permission is asked again when the browser requires it. Where the API is missing, save downloads the file. The folder access sits behind a small interface (list folders, read file, write file), so tests can replace it with an in-memory folder.
 - **The live Tool's uses:** Capture for the Setup, "Use current value" for targets, live expression values and the live Condition result. Operating it never changes the Activity unless the instructor clicks one of those.
+- **Student / Full toggle:** a two-way toggle on the live Tool.
+  - **Student**, the default whenever a Task is selected, mounts the Tool with that Task's effective exposure applied. Locked Controls are locked, and hidden Controls and layers are hidden, exactly as the student gets them. Flipping a Control in the exposure list updates the Tool at once.
+  - **Full** opens every Control, so the instructor can arrange the Tool for Capture or "Use current value".
+  - With an Activity or Part selected there is no Task to apply, so the Tool is always Full.
+  - The toggle only changes the view. It never changes the Activity or the live State.
 - **Preview:**
   - It mounts the runner with autosave off, under a preview Activity id, in a pane or a new tab.
   - To start at a given Task, it marks the earlier Tasks as passed without Attempts. That is done through a preview-only runner option. It never appears in a student's Run or in a Report.

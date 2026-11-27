@@ -36,3 +36,5 @@ The mockup assumes one choice that the spec should settle when this is reviewed:
 
 Waiting on: the instructor's review and approval, which variant to take, and any spec changes it prompts. Once the editor page is built, move the prototype to a throwaway branch (prototype skill, rule 6) rather than merging it to main.
 
+**2026-11-27, review: Student / Full toggle.** The instructor asked for the live Tool to show the student's view of the selected Task by default, with a Student / Full toggle. The mockup now has one, replacing the old opt-in checkbox. Written into the spec under "Editor page", and added to ticket 10's checklist.
+

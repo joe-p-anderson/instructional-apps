@@ -147,6 +147,7 @@
   .seg button[aria-pressed="true"][data-v="hidden"] { background: var(--fw-text-dim); }
   .seg.small button { padding: 2px 7px; }
   .seg button[aria-pressed="true"]:not([data-v]) { background: var(--fw-blue); }
+  .seg button:disabled { cursor: default; opacity: .6; }
   .expo-filter { display: flex; gap: 10px; align-items: center; font-size: 13px; margin-bottom: 6px; }
 
   /* Condition builder */
@@ -503,7 +504,7 @@ if (!VARIANTS[variant]) variant = 'A';
 let sel = { kind: 'task', p: 2, t: 2 };
 let taskTab = 'prompt';
 let dirty = false;
-let studentView = false;
+let studentView = true;   // the live Tool's Student/Full toggle; Student is the default on a Task
 let expoFilter = 'all';
 const liveInputs = activity.parts.map((part) => ({ ...DEFAULTS, ...part.setup }));
 let liveUpdaters = [];
@@ -1008,10 +1009,17 @@ function renderRight() {
     const st = eff?.[c.id]?.state ?? 'open'; return h('span', { class: 'muted', style: st === 'hidden' ? 'text-decoration:line-through' : 'font-style:normal' }, `${st === 'hidden' ? '◌' : '●'} ${c.label.replace(/^Show /, '')}`);
   });
   r.append(h('div', { class: 'tool-box' },
-    h('h3', {}, `Live Tool · ${mode.title} Mode`), h('div', { class: 'muted' }, `${part.title}: stand-in, the real ${TOOL.title} Tool mounts here`),
+    h('div', { style: 'display:flex; align-items:center; gap:8px' }, h('h3', { style: 'flex:1' }, `Live Tool · ${mode.title} Mode`),
+      h('span', { class: 'seg small', role: 'group', 'aria-label': 'Live Tool view' }, [['student', 'Student'], ['full', 'Full']].map(([v, l]) => {
+        const onTask = sel.kind === 'task'; const pressed = v === 'student' ? onTask && studentView : !(onTask && studentView);
+        return h('button', { type: 'button', 'aria-pressed': String(pressed), disabled: !onTask,
+          title: !onTask ? 'Select a Task to see what the student gets' : v === 'student' ? 'What the student gets at this Task: locked and hidden as the exposure list says' : 'Every Control open, for arranging the Tool (Capture, Use current value)',
+          onclick: () => { studentView = v === 'student'; renderRight(); } }, l);
+      }))),
+    h('div', { class: 'muted' }, sel.kind !== 'task' ? `${part.title}: Full view (no Task selected). Stand-in: the real ${TOOL.title} Tool mounts here`
+      : studentView ? `Student view at Task ${sel.p + 1}.${sel.t + 1}: follows the exposure list. Stand-in for the real Tool`
+      : `Full view: every Control open. Stand-in for the real ${TOOL.title} Tool`),
     h('div', { class: 'tool-ph' }, `[ ${mode.title === 'Sum' ? 'phasor plane + sinusoids' : 'schematic + phasor plane + impedance plane'} ]`),
-    sel.kind === 'task' ? h('label', { style: 'display:flex; gap:6px; font-size:13px; margin-bottom:6px' }, h('input', { type: 'checkbox', checked: studentView, onchange: (e) => { studentView = e.target.checked; renderRight(); } }),
-      `As the student sees it at Task ${sel.p + 1}.${sel.t + 1}`) : null,
     ...ctls, h('div', { class: 'tlayers' }, layers),
     h('div', { class: 'muted' }, 'Operating the Tool never changes the Activity, except through Capture or "Use current value".')),
   h('h4', { class: 'right-h' }, 'State now ', h('span', { class: 'muted' }, '(names for Conditions and expressions)')),
