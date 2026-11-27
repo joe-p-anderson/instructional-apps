@@ -2,10 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createRunner, decodeKey, isEncodedKey } from '../../../framework/v1/runner/index.js';
-import activity from '../../../tools/phasors/activities/phasors-impedance.js';
+import { readFileSync } from 'node:fs';
 import { div, omega0, omegaC, solve, sum, toPolar } from '../../../tools/phasors/engine.js';
 import { LAYERS } from '../../../tools/phasors/layers.js';
 import { stubTool } from '../runner/stub-tool.js';
+
+const ACTIVITY_FILE = new URL('../../../tools/phasors/activities/phasors-impedance.json', import.meta.url);
+const activity = JSON.parse(readFileSync(ACTIVITY_FILE, 'utf8'));
 
 // The Activity "Phasors and Impedance" through the runner core, with a stub Tool per Part
 // (Mode modules need a DOM). CONTROLS lists every Control id each Mode registers, so a Task
@@ -522,7 +525,7 @@ test('Conditions, numeric answers and choice keys are encoded answer keys', asyn
     if (q.kind === 'numeric') assert.ok(isEncodedKey(q.answer), q.id);
     if (q.kind === 'choice') assert.ok(isEncodedKey(q.correct), q.id);
   }
-  const source = await readFile(new URL('../../../tools/phasors/activities/phasors-impedance.js', import.meta.url), 'utf8');
+  const source = await readFile(ACTIVITY_FILE, 'utf8');
   for (const leak of ['53.1', '3.60', '3.61', '73.9', '√13', 'target:', 'below:', 'above:',
     '36.8', '67.3', '22.6', '157.3', '632.', '1333.']) {
     assert.ok(!source.includes(leak), `source contains "${leak}"`);

@@ -45,12 +45,12 @@ for (const id of TOOLS) {
   });
 }
 
-// Every Activity in the repo (a JS module or a JSON file in a Tool's activities folder).
+// Every Activity in the repo (a JSON file in a Tool's activities folder).
 const TOOLS_DIR = fileURLToPath(new URL('../../tools', import.meta.url));
 const ACTIVITIES = readdirSync(TOOLS_DIR, { withFileTypes: true })
   .filter((d) => d.isDirectory() && existsSync(join(TOOLS_DIR, d.name, 'activities')))
   .flatMap((d) => readdirSync(join(TOOLS_DIR, d.name, 'activities'))
-    .filter((f) => /\.(js|json)$/.test(f))
+    .filter((f) => f.endsWith('.json'))
     .map((f) => `/tools/${d.name}/activities/${f}`));
 
 test('the Activities are found', () => {
@@ -61,9 +61,7 @@ for (const url of ACTIVITIES) {
   test(`${url}: every Setup value is a Setup key or a Setup option of its Mode`, async ({ page }) => {
     await page.goto('/tests/e2e/fixtures/blank.html');
     const parts = await page.evaluate(async (url) => {
-      const activity = url.endsWith('.json')
-        ? await (await fetch(url)).json()
-        : (await import(url)).default;
+      const activity = await (await fetch(url)).json();
       const { default: tool } = await import(`/tools/${activity.tool}/${activity.tool}.js`);
       return activity.parts.map((part) => {
         const mode = tool.modes.find((m) => m.id === (part.mode ?? tool.modes[0].id));

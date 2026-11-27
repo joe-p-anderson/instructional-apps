@@ -2,9 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createRunner, decodeKey, isEncodedKey } from '../../../framework/v1/runner/index.js';
-import activity from '../../../tools/fourier/activities/fourier-series.js';
+import { readFileSync } from 'node:fs';
 import { filterResponse, filterSeries, ideal, partialSum, productAverage, series } from '../../../tools/fourier/engine.js';
 import { stubTool } from '../runner/stub-tool.js';
+
+const ACTIVITY_FILE = new URL('../../../tools/fourier/activities/fourier-series.json', import.meta.url);
+const activity = JSON.parse(readFileSync(ACTIVITY_FILE, 'utf8'));
 
 const SHARED = ['waveform', 'amp', 'f0', 'offset', 'shift', 'filter', 'fc', 'applyGain', 'applyPhase'];
 const CONTROLS = {
@@ -311,7 +314,7 @@ test('Conditions, numeric answers and choice keys are encoded answer keys', asyn
     if (q.kind === 'numeric') assert.ok(isEncodedKey(q.answer), q.id);
     if (q.kind === 'choice') assert.ok(isEncodedKey(q.correct), q.id);
   }
-  const source = await readFile(new URL('../../../tools/fourier/activities/fourier-series.js', import.meta.url), 'utf8');
+  const source = await readFile(ACTIVITY_FILE, 'utf8');
   for (const leak of ['1.273', '0.424', '-90', 'above:', 'below:', 'equals:', '0.300', '-135', '-45', '1.414', '0.707']) {
     assert.ok(!source.includes(leak), `source contains "${leak}"`);
   }
