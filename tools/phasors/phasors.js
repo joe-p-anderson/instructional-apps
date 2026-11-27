@@ -7,9 +7,10 @@
 // See each Mode module's header for its Setup, State, Controls and Displays.
 
 import { defineTool } from '../../framework/v1/tool.js';
+import * as circuit from './modes/circuit.js';
 import * as sum from './modes/sum.js';
 
-const MODES = [sum];
+const MODES = [sum, circuit];
 
 function mount(container, modeId = MODES[0].id, setup = {}) {
   const mode = MODES.find((m) => m.id === modeId);

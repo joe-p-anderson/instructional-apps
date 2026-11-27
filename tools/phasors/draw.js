@@ -4,12 +4,15 @@
 //
 //   prepCanvas(cv, colors) -> { ctx, W, H, laidOut }  sizes the canvas to its box and clears it
 //   plotFrame(ctx, rect, xr, yr, opts) -> frame       draws grid, ticks, zero axes and titles;
-//       frame = { X(v), Y(v), ix(px), iy(px), rect } maps plot units ↔ canvas px.
-//       opts: { colors, xTitle, yTitle, xFormat, yFormat, equal }  (equal: same px per unit on
-//       both axes, the plot box shrunk and centred to fit the ranges, for a complex plane)
+//       frame = { X(v), Y(v), ix(px), iy(px), rect, step: { x, y } } maps plot units ↔ canvas
+//       px; step is the grid spacing in plot units.
+//       opts: { colors, xTitle, yTitle, xFormat, yFormat, equal, y2 }  (equal: same px per unit on
+//       both axes, the plot box shrunk and centred to fit the ranges, for a complex plane;
+//       y2: { title, format(v, step) } a second, right-hand axis labelling the same grid lines,
+//       for a quantity drawn on its own scale, e.g. i(t) beside v(t))
 //   arrow(ctx, from, to, color, { width, dashed })   an arrow between canvas points
 //   dot(ctx, at, color, r)                            a filled marker
-//   curve(ctx, frame, x0, x1, fn, color, width)       y = fn(x) across [x0, x1]
+//   curve(ctx, frame, x0, x1, fn, color, width, { dashed })   y = fn(x) across [x0, x1]
 //   label(ctx, text, at, color, colors, align)        text at a canvas point
 //   sideLabel(ctx, text, a, b, away, color, colors)   text beside segment a → b, away from `away`
 //   niceStep(span, ticks)                             a 1-2-5 tick step
@@ -49,8 +52,9 @@ export function prepCanvas(cv, colors) {
 const fontOf = (colors) => `${colors.font.size}px ${colors.font.family}`;
 
 export function plotFrame(ctx, rect, xr, yr, opts) {
-  const { colors, xTitle, yTitle, xFormat, yFormat, equal = false } = opts;
-  let L = rect.x + PAD.l; let R = rect.x + rect.w - PAD.r;
+  const { colors, xTitle, yTitle, xFormat, yFormat, equal = false, y2 = null } = opts;
+  const padR = y2 ? PAD.l : PAD.r;
+  let L = rect.x + PAD.l; let R = rect.x + rect.w - padR;
   let T = rect.y + PAD.t; let B = rect.y + rect.h - PAD.b;
   const [x0, x1] = xr; const [y0, y1] = yr;
   if (equal) { // same scale on both axes: shrink the plot box to the ranges' aspect, centred
@@ -79,6 +83,10 @@ export function plotFrame(ctx, rect, xr, yr, opts) {
     ctx.strokeStyle = colors.grid; ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(R, Y(v)); ctx.stroke();
     ctx.fillText(yFormat ? yFormat(v, ys) : tickText(v, ys), L - 5, Y(v));
   }
+  if (y2) {
+    ctx.textAlign = 'left';
+    for (let v = Math.ceil(y0 / ys) * ys; v <= y1 + ys * 1e-9; v += ys) ctx.fillText(y2.format(v, ys), R + 5, Y(v));
+  }
   ctx.strokeStyle = colors.axis;
   if (x0 < 0 && x1 > 0) { ctx.beginPath(); ctx.moveTo(X(0), T); ctx.lineTo(X(0), B); ctx.stroke(); }
   if (y0 < 0 && y1 > 0) { ctx.beginPath(); ctx.moveTo(L, Y(0)); ctx.lineTo(R, Y(0)); ctx.stroke(); }
@@ -93,7 +101,14 @@ export function plotFrame(ctx, rect, xr, yr, opts) {
     ctx.fillText(yTitle, 0, 0);
     ctx.restore();
   }
-  return { X, Y, ix, iy, rect: { L, R, T, B } };
+  if (y2?.title) {
+    ctx.save();
+    ctx.translate(R + padR - 2, (T + B) / 2); ctx.rotate(Math.PI / 2);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText(y2.title, 0, 0);
+    ctx.restore();
+  }
+  return { X, Y, ix, iy, rect: { L, R, T, B }, step: { x: xs, y: ys } };
 }
 
 export function arrow(ctx, from, to, color, { width = 2.5, dashed = false, head = 11 } = {}) {
@@ -146,12 +161,13 @@ export function dot(ctx, at, color, r = 5) {
   ctx.restore();
 }
 
-export function curve(ctx, frame, x0, x1, fn, color, width = 2.5) {
+export function curve(ctx, frame, x0, x1, fn, color, width = 2.5, { dashed = false } = {}) {
   const { L, R, T, B } = frame.rect;
   const n = Math.max(2, Math.ceil(R - L));
   ctx.save();
   ctx.beginPath(); ctx.rect(L, T, R - L, B - T); ctx.clip();
   ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineJoin = 'round';
+  if (dashed) ctx.setLineDash([7, 5]);
   ctx.beginPath();
   for (let i = 0; i <= n; i += 1) {
     const x = x0 + ((x1 - x0) * i) / n;

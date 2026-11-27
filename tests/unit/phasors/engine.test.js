@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { add, crest, div, evaluate, fromCrest, fromPolar, mul, rotate, sum, toPolar, wrapDeg } from '../../../tools/phasors/engine.js';
+import { add, crest, div, evaluate, fromCrest, fromPolar, impedances, mul, omega0, omegaC, rotate, solve, sum, toPolar, wrapDeg } from '../../../tools/phasors/engine.js';
 
 const close = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg ?? ''} ${a} vs ${b}`);
 const wrap = (d) => ((((d + 180) % 360) + 360) % 360) - 180; // into [−180, 180)
@@ -151,4 +151,94 @@ test('a crest dragged past half a period becomes the next crest: φ wraps into (
   const quarter = Math.PI / 2 / omega;
   const p = fromCrest({ t: -3 * quarter, A: 2 }, omega); // ωt = −270°: φ = 270° ≡ −90°
   close(p.phi, -90, 1e-9); close(p.A, 2, 1e-12);
+});
+
+// ── Series circuits ──
+// Values in SI: R in Ω, L in H, C in F, ω in rad/s. A subset of { R, L, C } is the included elements.
+
+const SUBSETS = [['R'], ['L'], ['C'], ['R', 'L'], ['R', 'C'], ['L', 'C'], ['R', 'L', 'C']];
+const PARTS = { R: 100, L: 0.05, C: 2e-6 }; // 100 Ω, 50 mH, 2 µF
+const closeZ = (z, re, im, tol, msg) => { close(z.re, re, tol, `${msg} re`); close(z.im, im, tol, `${msg} im`); };
+
+test('Z for every R/L/C subset is R + jωL + 1/(jωC) over the included elements; excluded ones give none', () => {
+  for (const omega of [100, 1000, 3162, 1e5]) {
+    for (const on of SUBSETS) {
+      const z = impedances({ ...PARTS, include: on, omega });
+      // independent: ωL up, 1/(ωC) down, summed by hand
+      const re = on.includes('R') ? 100 : 0;
+      const im = (on.includes('L') ? omega * 0.05 : 0) - (on.includes('C') ? 1 / (omega * 2e-6) : 0);
+      closeZ(z.total, re, im, 1e-9 * Math.max(1, Math.abs(im)), `${on} at ${omega}`);
+      for (const k of ['R', 'L', 'C']) assert.equal(z[k] === null, !on.includes(k), `${k} in ${on}`);
+      if (on.includes('R')) closeZ(z.R, 100, 0, 1e-12, 'Z_R');
+      if (on.includes('L')) closeZ(z.L, 0, omega * 0.05, 1e-9, 'Z_L');
+      if (on.includes('C')) closeZ(z.C, 0, -1 / (omega * 2e-6), 1e-6, 'Z_C');
+    }
+  }
+  // a worked example: 100 Ω, 50 mH, 2 µF at 1000 rad/s is 100 + j50 − j500 = 100 − j450 Ω
+  closeZ(impedances({ ...PARTS, include: ['R', 'L', 'C'], omega: 1000 }).total, 100, -450, 1e-9, 'RLC');
+});
+
+test('I = V/Z: 10 V across 100 − j450 Ω (RLC at 1000 rad/s) is 0.0217∠77.47° A', () => {
+  const c = solve({ V0: 10, ...PARTS, include: ['R', 'L', 'C'], omega: 1000 });
+  const I = toPolar(c.I);
+  close(I.A, 0.021693045781865616, 1e-12, '|I|'); // 10 / √(100² + 450²)
+  close(I.phi, 77.47119229084849, 1e-9, '∠I'); // atan(450/100)
+  closeZ(c.Vin, 10, 0, 1e-12, 'V_in is the phase reference');
+  closeZ(c.Z.total, 100, -450, 1e-9, 'the impedances come back too');
+});
+
+test('V_R ∥ I, ∠V_L − ∠I = +90° and ∠V_C − ∠I = −90°, for every subset and many ω', () => {
+  for (const omega of [100, 700, 5000, 2e5]) {
+    for (const on of SUBSETS) {
+      const c = solve({ V0: 5, ...PARTS, include: on, omega });
+      const aI = toPolar(c.I).phi;
+      for (const k of ['R', 'L', 'C']) assert.equal(c.V[k] === null, !on.includes(k), `V_${k} in ${on}`);
+      if (c.V.R) closeDeg(toPolar(c.V.R).phi - aI, 0, 1e-9, `V_R in ${on}`);
+      if (c.V.L) closeDeg(toPolar(c.V.L).phi - aI, 90, 1e-9, `V_L in ${on}`);
+      if (c.V.C) closeDeg(toPolar(c.V.C).phi - aI, -90, 1e-9, `V_C in ${on}`);
+      if (c.V.R) close(toPolar(c.V.R).A, toPolar(c.I).A * 100, 1e-9, '|V_R| = |I| R');
+    }
+  }
+});
+
+test('KVL: the device voltages sum to V_in for every subset and many ω', () => {
+  for (const omega of [100, 1000, 3162, 1e6]) {
+    for (const on of SUBSETS) {
+      const c = solve({ V0: 7, ...PARTS, include: on, omega });
+      const total = ['R', 'L', 'C'].reduce((acc, k) => (c.V[k] ? add(acc, c.V[k]) : acc), { re: 0, im: 0 });
+      closeZ(total, 7, 0, 1e-9, `${on} at ${omega}`);
+    }
+  }
+});
+
+test('ω₀ = 1/√(LC) and ω_c = 1/(RC): 50 mH and 2 µF resonate at 3162 rad/s; 100 Ω and 2 µF cut off at 5000', () => {
+  close(omega0(0.05, 2e-6), 3162.2776601683795, 1e-9, 'ω₀');
+  close(omegaC(100, 2e-6), 5000, 1e-9, 'ω_c');
+});
+
+test('at ω₀, ∠Z = 0 and V_L = −V_C (with R in the loop)', () => {
+  const w0 = omega0(PARTS.L, PARTS.C);
+  const c = solve({ V0: 10, ...PARTS, include: ['R', 'L', 'C'], omega: w0 });
+  close(toPolar(c.Z.total).phi, 0, 1e-9, '∠Z');
+  closeZ(c.V.L, -c.V.C.re, -c.V.C.im, 1e-9, 'V_L = −V_C');
+  closeZ(c.V.R, 10, 0, 1e-9, 'all of V_in across R');
+  assert.ok(toPolar(c.V.L).A > 10, 'V_L exceeds V₀ here (Q > 1)');
+});
+
+test('L and C alone exactly at ω₀ have Z = 0 and no finite current', () => {
+  const c = solve({ V0: 1, R: 100, L: 1, C: 1e-6, include: ['L', 'C'], omega: 1000 });
+  closeZ(c.Z.total, 0, 0, 1e-12, 'Z');
+  assert.equal(c.I, null);
+  assert.deepEqual(c.V, { R: null, L: null, C: null });
+});
+
+test('for series RC, V_C/V_in = 1/(1 + jωRC) at many ω', () => {
+  const R = 1000; const C = 0.1e-6;
+  for (let i = 0; i <= 40; i += 1) {
+    const omega = 100 * 10 ** (i / 10);
+    const c = solve({ V0: 3, R, C, L: 0.01, include: ['R', 'C'], omega });
+    const H = div(c.V.C, c.Vin);
+    const x = omega * R * C; // 1/(1 + jx) = (1 − jx)/(1 + x²)
+    closeZ(H, 1 / (1 + x * x), -x / (1 + x * x), 1e-12, `ω = ${omega}`);
+  }
 });
