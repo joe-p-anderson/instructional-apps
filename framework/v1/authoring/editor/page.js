@@ -15,6 +15,8 @@ import { h } from '../../ui-kit.js';
 import { openActivity } from './core.js';
 import * as folderModule from './folder.js';
 import { loadTool, mountLive } from './tool-info.js';
+import { slugFromTitle, newActivityProblems, createActivity } from './new-activity.js';
+import { TOOLS } from '../../tool-list.js';
 
 const { createDirectoryFolder, createFileListFolder, findActivities } = folderModule;
 const $ = (id) => document.getElementById(id);
@@ -190,8 +192,16 @@ function renderOpen(recents) {
   }
 
   const recent = recents.map((p) => activities.find((a) => a.path === p && !a.error)).filter(Boolean);
+  const newSlot = h('div');
+  const newButton = h('button', { type: 'button', class: 'btn', 'aria-expanded': 'false', onclick: () => {
+    if (newSlot.firstChild) return newSlot.querySelector('select')?.focus();
+    newButton.setAttribute('aria-expanded', 'true');
+    newSlot.append(newActivityForm(() => { newSlot.replaceChildren(); newButton.setAttribute('aria-expanded', 'false'); newButton.focus(); }));
+    newSlot.querySelector('select').focus();
+  } }, 'New Activity…');
   box.replaceChildren(
-    h('h2', {}, 'Open an Activity'),
+    h('div', { class: 'ed-open-head' }, h('h2', {}, 'Open an Activity'), newButton),
+    newSlot,
     editor ? h('p', {}, h('button', { type: 'button', class: 'btn', onclick: backToEditor }, `Back to ${editor.doc.title || current}`),
       ' ', h('span', { class: 'muted' }, 'or press Escape')) : null,
     recent.length ? h('section', { 'aria-label': 'Recent' }, h('h3', { class: 'flabel' }, 'Recent'),
@@ -209,15 +219,74 @@ function renderOpen(recents) {
   search.focus();
 }
 
+// The new-Activity form (spec story 8): a Tool from the Tool list, a title, an id (offered from
+// the title until it is typed by hand) and a course. Create writes both files (new-activity.js)
+// and opens the new Activity. close() removes the form.
+function newActivityForm(close) {
+  let idTyped = false;
+  const errors = {};
+  const control = (name, label, el) => {
+    el.id = `new-${name}`;
+    errors[name] = h('span', { class: 'sev', id: `new-${name}-error` });
+    return h('div', { class: 'row' }, h('label', { for: el.id }, label), el, errors[name]);
+  };
+  const tool = h('select', { class: 't' }, h('option', { value: '' }, 'Choose a Tool…'),
+    ...TOOLS.map((t) => h('option', { value: t.id }, t.title)));
+  const title = h('input', { type: 'text', class: 't wide', autocomplete: 'off' });
+  const id = h('input', { type: 'text', class: 't', autocomplete: 'off', spellcheck: 'false' });
+  const courses = [...new Set(activities.map((a) => a.course).filter(Boolean))].sort();
+  const course = h('input', { type: 'text', class: 't', list: 'new-courses', autocomplete: 'off' });
+  title.addEventListener('input', () => { if (!idTyped) id.value = slugFromTitle(title.value); });
+  id.addEventListener('input', () => { idTyped = id.value !== ''; });
+  const inputs = { tool, title, id, course };
+
+  const form = h('form', { class: 'sec ed-new', 'aria-label': 'New Activity', novalidate: true },
+    h('h3', {}, 'New Activity', h('span', { class: 'sub' }, "its JSON and its page go in the Tool's activities folder")),
+    h('div', { class: 'sec-body' },
+      control('tool', 'Tool', tool), control('title', 'Title', title), control('id', 'Id', id), control('course', 'Course', course),
+      h('datalist', { id: 'new-courses' }, ...courses.map((c) => h('option', { value: c }))),
+      h('div', { class: 'row' }, h('button', { type: 'submit', class: 'btn primary' }, 'Create'),
+        h('button', { type: 'button', class: 'btn', onclick: close }, 'Cancel'))));
+  form.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fields = { tool: tool.value, id: id.value.trim(), title: title.value, course: course.value };
+    const problems = await newActivityProblems(folder, fields);
+    for (const [name, el] of Object.entries(inputs)) {
+      errors[name].textContent = problems[name] ?? '';
+      if (problems[name]) el.setAttribute('aria-describedby', errors[name].id);
+      else el.removeAttribute('aria-describedby');
+    }
+    const first = ['tool', 'title', 'id', 'course'].find((name) => problems[name]);
+    if (first) return inputs[first].focus();
+    if (editor?.dirty && !confirm(`“${editor.doc.title}” has unsaved changes. Discard them and make a new Activity?`)) return;
+    let path;
+    try {
+      path = await createActivity(folder, fields);
+    } catch (err) {
+      form.prepend(h('p', { role: 'alert', class: 'sev' }, `Couldn't create the Activity: ${err.message}`));
+      return;
+    }
+    await openPath(path, { discard: true });
+    if (folder.saves === 'download' && current === path) {
+      const json = path.split('/').at(-1);
+      statusNote = `Downloaded ${json} and ${json.replace(/\.json$/, '.html')}: move them into ${path.replace(/\/[^/]*$/, '')}`;
+      refresh();
+    }
+  });
+  return form;
+}
+
 const modified = (ms) => new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 function backToEditor() {
   if (editor) show('main');
 }
 
-async function openPath(path) {
+// discard: the instructor has already agreed to lose unsaved changes (a new Activity asks first).
+async function openPath(path, { discard = false } = {}) {
   if (editor && path === current) return backToEditor();
-  if (editor?.dirty && !confirm(`“${editor.doc.title}” has unsaved changes. Discard them and open another Activity?`)) return;
+  if (!discard && editor?.dirty && !confirm(`“${editor.doc.title}” has unsaved changes. Discard them and open another Activity?`)) return;
   let next;
   try {
     next = openActivity((await folder.readFile(path)).text);
