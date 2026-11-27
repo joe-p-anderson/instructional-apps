@@ -6,7 +6,7 @@
 //
 //   {
 //     formatVersion: 1,
-//     frameworkVersion: '1.0.0',
+//     frameworkVersion: '1.1.0',      // the runner that wrote it (1.1.0 added expected)
 //     activity: { id, version, title, course },
 //     student: { name },
 //     fingerprint,                      // Run fingerprint (createFingerprint)
@@ -16,16 +16,21 @@
 //       tasks: [{ id, title, passed, earned, possible,
 //         points,                       // the Task's own points, as defined
 //         questions: [{ id, graded, points }],   // each Question's points (no answer keys)
-//         attempts: [{ at, state, answers, results, passed,
+//         attempts: [{ at, state, answers, results, passed,   // results: see below
 //                      snapshots?: [{ display, png }] }] }] }],   // snapshots on passing Attempts only
 //     checksum,                         // over everything above (checksumOf)
 //   }
+//
+// Each result is { kind: 'condition', pass, feedback } or { kind: 'question', id, graded,
+// pass, feedback, expected? }. expected (since framework 1.1.0) is the value a judged numeric
+// Question was judged against, from a number or a State expression. It is optional, so a
+// Report without it is still format version 1.
 //
 // The checksum only deters hand-editing (ADR 0001): its key ships in the client.
 // Readers must recompute scores from the Attempts rather than trust the stored points.
 
 export const REPORT_FORMAT_VERSION = 1;
-export const FRAMEWORK_VERSION = '1.0.0';
+export const FRAMEWORK_VERSION = '1.1.0';
 
 const CHECKSUM_KEY = 'instructional-apps/report/v1';
 

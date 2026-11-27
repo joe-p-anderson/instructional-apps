@@ -19,7 +19,7 @@ import { decodeActivity } from './keys.js';
 // Judge one Submit of a Task: the Condition (if any) and its Questions.
 export function judgeTask(task, state, answers = {}, { info = {}, registry } = {}) {
   const results = task.condition ? evaluateCondition(task.condition, state, { info, registry }) : [];
-  results.push(...evaluateQuestions(task.questions, answers));
+  results.push(...evaluateQuestions(task.questions, answers, state));
   return { results, passed: results.every((r) => r.pass !== false) };
 }
 
@@ -66,7 +66,7 @@ function safeJudge(task, state, answers, registry) {
   try {
     return judgeTask(task, state, answers, { registry });
   } catch {
-    return { results: evaluateQuestions(task.questions, answers), passed: false };
+    return { results: evaluateQuestions(task.questions, answers, state), passed: false };
   }
 }
 

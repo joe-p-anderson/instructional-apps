@@ -625,6 +625,7 @@ html.fw-root:has(.fw-viewer), html.fw-root:has(.fw-viewer) body { height: auto; 
 .fw-report-attempt.fw-miss .fw-report-attempt-head { color: var(--fw-red); }
 .fw-report-state, .fw-report-answers { margin: 2px 0; }
 .fw-report-answers > div { white-space: pre-wrap; }
+.fw-report-expected { color: var(--fw-text-dim); }
 .fw-report-feedback { margin: 2px 0; padding-left: 18px; font-style: italic; color: var(--fw-text-dim); }
 .fw-report-snapshot { margin: 6px 0; }
 .fw-report-snapshot img { max-width: 100%; height: auto; border: 1px solid var(--fw-border); background: #fff; }
