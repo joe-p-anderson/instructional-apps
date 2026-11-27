@@ -8,12 +8,19 @@
 </head>
 <body>
 <div id="app"></div>
+<!-- Made from the Activity page template (framework/v1/activity-file.js); the Activity is phase-period-amplitude.json. -->
 <script type="module">
-  import oscilloscope from '../oscilloscope.js';
-  import activity from './phase-period-amplitude.js';
+  import * as tool from '../oscilloscope.js';
   import { mountActivity } from '../../../framework/v1/activity-ui.js';
 
-  window.activityHost = mountActivity(oscilloscope, activity, document.getElementById('app'));
+  const app = document.getElementById('app');
+  const response = await fetch('./phase-period-amplitude.json');
+  if (!response.ok) {
+    app.textContent = `This Activity could not be loaded (${response.status}). Try reloading the page.`;
+    throw new Error(`Activity file: HTTP ${response.status}`);
+  }
+  const activity = await response.json();
+  window.activityHost = mountActivity(tool.default, activity, app, { conditionTypes: tool.conditionTypes });
 </script>
 </body>
 </html>

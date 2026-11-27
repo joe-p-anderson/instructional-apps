@@ -5,9 +5,10 @@ import { validateCondition } from './conditions.js';
 //
 // {
 //   id, version, title, course, tool,          // tool = the Tool's id
+//   notes?,                                     // author-only text (see below)
 //   conditionTypes?: { [type]: evaluator },     // extra Condition types (see conditions.js)
 //   parts: [{
-//     id, title, mode, setup,
+//     id, title, mode, setup, notes?,
 //     tasks: [{
 //       id, title, prompt,                      // prompt may contain math
 //       show?: [controlId], lock?: [controlId], hide?: [controlId],
@@ -15,23 +16,33 @@ import { validateCondition } from './conditions.js';
 //       questions?: [question],                  // see questions.js
 //       points,
 //       hint?: { after: missCount, text },
+//       notes?,
 //     }],
 //   }],
 // }
+//
+// notes (Activity, Part, Task) is plain text for authors, such as design reasoning. The runner
+// ignores it: it is never shown to students and never in the Report. It is stored unencoded, so
+// it must not give an answer away.
 export function validateActivity(activity) {
   const fail = (msg) => { throw new Error(`Invalid Activity: ${msg}`); };
+  const checkNotes = (owner, where) => {
+    if (owner.notes !== undefined && typeof owner.notes !== 'string') fail(`${where} notes must be text`);
+  };
   if (!activity || typeof activity !== 'object') fail('definition must be an object');
   for (const key of ['id', 'title', 'tool']) {
     if (typeof activity[key] !== 'string' || !activity[key]) fail(`missing ${key}`);
   }
   if (activity.version === undefined) fail('missing version');
   if (!Array.isArray(activity.parts) || activity.parts.length === 0) fail('needs at least one Part');
+  checkNotes(activity, 'the Activity');
 
   const partIds = new Set();
   for (const part of activity.parts) {
     if (!part.id) fail('a Part is missing its id');
     if (partIds.has(part.id)) fail(`duplicate Part id "${part.id}"`);
     partIds.add(part.id);
+    checkNotes(part, `Part "${part.id}"`);
     if (!part.mode) fail(`Part "${part.id}" is missing its mode`);
     if (!Array.isArray(part.tasks)) fail(`Part "${part.id}" needs a tasks list`);
 
@@ -40,6 +51,7 @@ export function validateActivity(activity) {
       if (!task.id) fail(`a Task in Part "${part.id}" is missing its id`);
       if (taskIds.has(task.id)) fail(`duplicate Task id "${task.id}" in Part "${part.id}"`);
       taskIds.add(task.id);
+      checkNotes(task, `Task "${task.id}"`);
       if (task.points !== undefined && typeof task.points !== 'number') fail(`Task "${task.id}" points must be a number`);
       for (const list of ['show', 'lock', 'hide']) {
         if (task[list] !== undefined && !Array.isArray(task[list])) fail(`Task "${task.id}" ${list} must be a list of Control ids`);
