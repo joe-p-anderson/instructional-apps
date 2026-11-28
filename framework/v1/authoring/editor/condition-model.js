@@ -25,7 +25,6 @@
 //                           { error } when the Condition can't be judged at all
 
 import { evaluateCondition, builtinConditionTypes } from '../../runner/conditions.js';
-import { isExpression } from '../../expression.js';
 
 export const LEAF_KINDS = ['target', 'equals', 'range'];
 export const GROUP_KINDS = ['anyOf', 'allOf'];
@@ -131,5 +130,3 @@ export function judgeLive(condition, state, { info = {}, registry = builtinCondi
     return { error: err.message };
   }
 }
-
-export { isExpression };

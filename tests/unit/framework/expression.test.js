@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { parseExpression, isExpression, ExpressionError } from '../../../framework/v1/expression.js';
+import { parseExpression, isExpression, ExpressionError, parseProblem, workOut } from '../../../framework/v1/expression.js';
 
 const close = (actual, expected, msg) => {
   assert.ok(Math.abs(actual - expected) <= 1e-12 * Math.max(1, Math.abs(expected)), `${msg}: got ${actual}, want ${expected}`);
@@ -131,4 +131,16 @@ test('inputs that would need eval are refused', () => {
 test('isExpression recognises an { expr } value', () => {
   assert.equal(isExpression({ expr: 'I * 1000' }), true);
   for (const v of [3, 'I', null, {}, { expr: 3 }, [{ expr: 'x' }]]) assert.equal(isExpression(v), false);
+});
+
+test('parseProblem is null for an expression that parses, else the reason it does not', () => {
+  assert.equal(parseProblem('2 * x'), null);
+  assert.match(parseProblem('2 *'), /position/);
+});
+
+test('workOut gives the value, or the reason it could not, phrased to follow "has"', () => {
+  assert.deepEqual(workOut('2 * x', { x: 3 }), { value: 6 });
+  assert.deepEqual(workOut('1 / x', { x: 0 }), { value: Infinity });
+  const { problem } = workOut('x + y', { x: 1 });
+  assert.equal(problem, 'unknown State "y"');
 });

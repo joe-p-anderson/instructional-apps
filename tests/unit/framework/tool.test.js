@@ -2,7 +2,7 @@
 // and its minimum Display width, default 480 px.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { defineTool } from '../../../framework/v1/tool.js';
+import { defineTool, modesOf } from '../../../framework/v1/tool.js';
 
 const tool = (extra = {}) => ({ id: 't', title: 'T', modes: [{ id: 'm' }], mount() {}, ...extra });
 
@@ -96,4 +96,13 @@ test('a name that is both a Setup key and a Setup option is rejected', () => {
     () => defineTool(tool({ modes: [{ id: 'm', setupKeys: ['f', 'seed'], setupOptions: ['seed'] }] })),
     /modes\[0\].*seed/,
   );
+});
+
+test('modesOf turns Mode modules into modes entries, keeping only what the definition declares', () => {
+  const circuit = { id: 'circuit', title: 'Circuit', setupKeys: ['R'], setupOptions: ['seed'], mount() {}, extra: 1 };
+  const sum = { id: 'sum', title: 'Sum', setupKeys: ['A1'], mount() {} };
+  assert.deepEqual(modesOf([circuit, sum]), [
+    { id: 'circuit', title: 'Circuit', setupKeys: ['R'], setupOptions: ['seed'] },
+    { id: 'sum', title: 'Sum', setupKeys: ['A1'], setupOptions: undefined },
+  ]);
 });

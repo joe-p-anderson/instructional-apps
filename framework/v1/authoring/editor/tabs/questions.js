@@ -137,7 +137,7 @@ function numericBody(ctx, q, i, path) {
     ...[['number', 'Number'], ['expr', 'State expression']].map(([v, word]) => h('button', { type: 'button', 'aria-pressed': String(side === v),
       onclick: () => flip(v) }, word)));
 
-  const tolerance = toleranceField(ctx, { owner: q, path, unit: answerUnit(ctx, q) ?? '',
+  const tolerance = toleranceField(ctx, { owner: q, path, unit: answerUnit(ctx, q) ?? '', name: `Question ${n} tolerance`,
     toEdit: (values) => ({ type: 'setQuestionValues', p, t, q: i, values }) });
   const [modLabel, modInput] = ctx.field({ label: 'modulus', path: `${path}.modulus`, value: q.modulus === undefined ? '' : String(q.modulus),
     class: 't num mono', inputmode: 'decimal', placeholder: 'none', toEdit: (v) => set(ctx, i, 'modulus', numberOrText(v)) });

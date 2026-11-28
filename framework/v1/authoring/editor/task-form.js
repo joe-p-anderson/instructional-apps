@@ -11,7 +11,7 @@
 // claim more paths, change its owns. No tab reads another's code.
 //
 // render gets the TaskContext page.js builds (taskContext there):
-//   editor, doc, p, t, part, task       the open editor session and the selected Task, now
+//   editor, doc, p, t, part, task       the open Activity's editor and the selected Task, now
 //   base                                'parts.<p>.tasks.<t>', the prefix of every data-path
 //   tool                                { tool, conditionTypes, info } once loaded, else null
 //   toolError                           why the Tool couldn't load, or null

@@ -25,7 +25,7 @@
 // where info maps State names to { label, unit } and evaluate(condition) judges a
 // nested Condition against the same State and registry (one result per component).
 
-import { cachedExpression, isExpression, ExpressionError } from '../expression.js';
+import { isExpression, parseProblem, workOut } from '../expression.js';
 
 export const builtinConditionTypes = Object.freeze({
   tolerance: judged((c, state, info) => {
@@ -84,12 +84,8 @@ export function validateCondition(c, fail, path = []) {
   if (!['tolerance', 'equals', 'range'].includes(type)) return;
   for (const slot of VALUE_SLOTS) {
     if (!isExpression(c[slot])) continue;
-    try {
-      cachedExpression(c[slot].expr);
-    } catch (err) {
-      if (!(err instanceof ExpressionError)) throw err;
-      fail(`${slot} expression "${c[slot].expr}" doesn't parse: ${err.message}`, [...path, slot]);
-    }
+    const problem = parseProblem(c[slot].expr);
+    if (problem) fail(`${slot} expression "${c[slot].expr}" doesn't parse: ${problem}`, [...path, slot]);
   }
   if (type === 'tolerance') {
     const given = ['tol', 'relTol'].filter((key) => c[key] !== undefined);
@@ -146,15 +142,10 @@ function operand(slot, state) {
 }
 
 function evaluateExpression(source, state) {
-  try {
-    return cachedExpression(source).evaluate(state);
-  } catch (err) {
-    if (!(err instanceof ExpressionError)) throw err;
-    throw new Unjudgeable(`"${source}" has ${lowerFirst(err.message).replace(/\.$/, '')}`);
-  }
+  const { value, problem } = workOut(source, state);
+  if (problem) throw new Unjudgeable(`"${source}" has ${problem}`);
+  return value;
 }
-
-const lowerFirst = (text) => text.charAt(0).toLowerCase() + text.slice(1);
 
 function normalize(outcome) {
   return typeof outcome === 'object' && outcome !== null
