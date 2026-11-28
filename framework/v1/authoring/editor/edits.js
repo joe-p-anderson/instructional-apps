@@ -9,6 +9,7 @@
 // To add an edit kind, add an entry here and a case to tests/unit/editor/core.test.js.
 
 import { STATES, LIST_OF, exposureState } from './exposure.js';
+import { ENCODING } from './encoding.js';
 
 export const EDITS = {
   // { type: 'setActivityField', field: 'title' | 'course' | 'version' | 'notes', value }
@@ -163,7 +164,151 @@ export const EDITS = {
   clearExposure(doc, { p, t, control }) {
     return withTask(doc, p, t, (task) => withoutControl(task, control));
   },
+
+  // ── Questions (each edit names its Part p, Task t and, but for addQuestion, Question q) ──
+  // A field a Question gains takes its place in QUESTION_KEYS order (the files' order); fields
+  // it has keep theirs, so an unchanged Question saves byte for byte.
+
+  // { type: 'addQuestion', p, t, kind: 'numeric' | 'choice' | 'text', prompt, at? } inserts a
+  // Question (at the end by default) worth 1 point. Its id is a slug of the prompt (tags
+  // stripped), unique in the Task, and never changes after. A numeric one starts with a 2%
+  // tolerance and no answer; a choice one with two empty choices, a correct.
+  addQuestion(doc, { p, t, kind, prompt = '', at }) {
+    if (!Object.hasOwn(KIND_FIELDS, kind)) throw new Error(`"${kind}" is not a Question kind`);
+    return withTask(doc, p, t, (task) => {
+      const list = questionsOf(task);
+      const q = withKind({ id: slug(stripTags(prompt), list.map((x) => x.id), 'question'), kind, prompt, points: 1 }, kind);
+      const i = Number.isInteger(at) && at >= 0 && at <= list.length ? at : list.length;
+      return withField(task, 'questions', [...list.slice(0, i), q, ...list.slice(i)]);
+    });
+  },
+
+  // { type: 'setQuestionField', p, t, q, field, value }: prompt, points, answer (a number or
+  // { expr }), tol, relTol, modulus or correct (a choice id). undefined removes the field.
+  setQuestionField(doc, { p, t, q, field, value }) {
+    if (!QUESTION_FIELDS.includes(field)) throw new Error(`setQuestionField can't set a Question's "${field}" field`);
+    return withQuestion(doc, p, t, q, (question) => withQuestionField(question, field, value));
+  },
+
+  // { type: 'setQuestionValues', p, t, q, values: { [field]: value } } sets several fields as one
+  // edit: a tolerance preset ({ tol, relTol, modulus }) or the tolerance field ({ tol, relTol }).
+  setQuestionValues(doc, { p, t, q, values }) {
+    for (const field of Object.keys(values)) {
+      if (!QUESTION_FIELDS.includes(field)) throw new Error(`setQuestionValues can't set a Question's "${field}" field`);
+    }
+    return withQuestion(doc, p, t, q, (question) => Object.entries(values).reduce((out, [k, v]) => withQuestionField(out, k, v), question));
+  },
+
+  // { type: 'setQuestionKind', p, t, q, kind } drops the old kind's fields and gives the new
+  // kind's starting fields (as addQuestion); id, prompt and points stay.
+  setQuestionKind(doc, { p, t, q, kind }) {
+    if (!Object.hasOwn(KIND_FIELDS, kind)) throw new Error(`"${kind}" is not a Question kind`);
+    return withQuestion(doc, p, t, q, (question) => {
+      if (question.kind === kind) return question;
+      let out = withField(question, 'kind', kind);
+      for (const k of Object.values(KIND_FIELDS).flat()) out = withField(out, k, undefined);
+      return withKind(out, kind);
+    });
+  },
+
+  // { type: 'moveQuestion', p, t, q, to }; an index outside the list changes nothing.
+  moveQuestion(doc, { p, t, q, to }) {
+    return withTask(doc, p, t, (task) => withField(task, 'questions', moved(questionsOf(task), q, to)));
+  },
+
+  // { type: 'deleteQuestion', p, t, q }; the last one taken takes the empty list with it.
+  deleteQuestion(doc, { p, t, q }) {
+    return withTask(doc, p, t, (task) => {
+      const list = questionsOf(task);
+      if (!(q in list)) return task;
+      const rest = list.filter((_, i) => i !== q);
+      return withField(task, 'questions', rest.length ? rest : undefined);
+    });
+  },
+
+  // { type: 'addChoice', p, t, q, text? } appends a choice whose id is the first free letter.
+  addChoice(doc, { p, t, q, text = '' }) {
+    return withQuestion(doc, p, t, q, (question) => {
+      const list = choicesOf(question);
+      const ids = list.map((c) => c.id);
+      const id = [...'abcdefghijklmnopqrstuvwxyz'].find((x) => !ids.includes(x)) ?? slug('choice', ids, 'choice');
+      return withQuestionField(question, 'choices', [...list, { id, text }]);
+    });
+  },
+
+  // { type: 'setChoiceField', p, t, q, c, field: 'id' | 'text', value }. Renaming the correct
+  // choice's id renames correct with it.
+  setChoiceField(doc, { p, t, q, c, field, value }) {
+    if (!CHOICE_FIELDS.includes(field)) throw new Error(`setChoiceField can't set a choice's "${field}" field`);
+    return withQuestion(doc, p, t, q, (question) => {
+      const list = choicesOf(question);
+      if (!list[c]) throw new Error(`Question ${q} has no choice ${c}`);
+      let out = withField(question, 'choices', withItem(list, c, withField(list[c], field, value)));
+      if (field === 'id' && question.correct === list[c].id) out = withField(out, 'correct', value);
+      return out;
+    });
+  },
+
+  // { type: 'moveChoice', p, t, q, c, to }; an index outside the list changes nothing.
+  moveChoice(doc, { p, t, q, c, to }) {
+    return withQuestion(doc, p, t, q, (question) => withField(question, 'choices', moved(choicesOf(question), c, to)));
+  },
+
+  // { type: 'deleteChoice', p, t, q, c }. correct is left as it is (a problem if it named this one).
+  deleteChoice(doc, { p, t, q, c }) {
+    return withQuestion(doc, p, t, q, (question) => {
+      const list = choicesOf(question);
+      return c in list ? withField(question, 'choices', list.filter((_, i) => i !== c)) : question;
+    });
+  },
 };
+
+const QUESTION_KEYS = ['id', 'kind', 'prompt', 'choices', 'correct', 'answer', 'tol', 'relTol', 'modulus', 'points'];
+const QUESTION_FIELDS = ['prompt', 'points', 'answer', 'tol', 'relTol', 'modulus', 'correct'];
+const CHOICE_FIELDS = ['id', 'text'];
+const KIND_FIELDS = { numeric: ['answer', 'tol', 'relTol', 'modulus'], choice: ['choices', 'correct'], text: [] };
+const questionsOf = (task) => (Array.isArray(task.questions) ? task.questions : []);
+const choicesOf = (q) => (Array.isArray(q.choices) ? q.choices : []);
+
+// question with the starting fields of kind added.
+function withKind(question, kind) {
+  if (kind === 'numeric') return withQuestionField(question, 'relTol', 0.02);
+  if (kind === 'choice') {
+    return withQuestionField(withQuestionField(question, 'choices', [{ id: 'a', text: '' }, { id: 'b', text: '' }]), 'correct', 'a');
+  }
+  return question;
+}
+
+// withField, but a key the Question doesn't have yet goes in QUESTION_KEYS order.
+function withQuestionField(question, key, value) {
+  if (value === undefined || Object.hasOwn(question, key)) return withField(question, key, value);
+  const rank = QUESTION_KEYS.indexOf(key);
+  const entries = Object.entries(question);
+  const i = entries.findIndex(([k]) => QUESTION_KEYS.indexOf(k) > rank);
+  if (i < 0) return { ...question, [key]: value };
+  entries.splice(i, 0, [key, value]);
+  const out = Object.fromEntries(entries);
+  if (question[ENCODING]) out[ENCODING] = question[ENCODING];
+  return out;
+}
+
+// list with item i moved to index to; list itself when either is out of range.
+function moved(list, i, to) {
+  if (!(i in list) || !(to in list) || i === to) return list;
+  const out = list.filter((_, j) => j !== i);
+  out.splice(to, 0, list[i]);
+  return out;
+}
+
+// doc with Question q of Task t of Part p replaced by change(question).
+function withQuestion(doc, p, t, q, change) {
+  return withTask(doc, p, t, (task) => {
+    const list = questionsOf(task);
+    if (!list[q]) throw new Error(`Task ${t} of Part ${p} has no Question ${q}`);
+    const next = withItem(list, q, change(list[q]));
+    return next === list ? task : { ...task, questions: next };
+  });
+}
 
 const TASK_FIELDS = ['title', 'prompt', 'points', 'notes'];
 const HINT_FIELDS = ['after', 'text'];

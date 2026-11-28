@@ -14,6 +14,7 @@
 // To add a check (unknown Controls, unknown State, Setup values, ...), append it here.
 
 import { activityProblems } from '../../runner/activity.js';
+import { parseExpression, isExpression } from '../../expression.js';
 
 const partsOf = (doc) => (Array.isArray(doc.parts) ? doc.parts : []);
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -48,6 +49,22 @@ export const CHECKS = [
       return part.tasks.flatMap((task, t) => ['show', 'lock', 'hide'].flatMap((k) => (Array.isArray(task?.[k]) ? task[k] : [])
         .flatMap((id, i) => (known.has(id) ? [] : [{ path: ['parts', p, 'tasks', t, k, i],
           message: `Task "${task.id}" ${k} list names "${id}", which is not a Control of Mode "${part.mode}"` }]))));
+    });
+  } },
+  // A numeric Question's expression answer names only State the Part's Mode has (an expression
+  // that doesn't parse is the runner's problem). Path: the answer.
+  { source: 'questions', run(doc, toolInfo) {
+    if (!toolInfo) return [];
+    return partsOf(doc).flatMap((part, p) => {
+      const mode = Object.hasOwn(toolInfo.modes, part?.mode) ? toolInfo.modes[part.mode] : null;
+      if (!mode || !Array.isArray(part.tasks)) return [];
+      return part.tasks.flatMap((task, t) => (Array.isArray(task?.questions) ? task.questions : []).flatMap((q, k) => {
+        if (q?.kind !== 'numeric' || !isExpression(q.answer)) return [];
+        let names;
+        try { names = parseExpression(q.answer.expr).names; } catch { return []; }
+        return names.filter((n) => !Object.hasOwn(mode.state ?? {}, n)).map((n) => ({ path: ['parts', p, 'tasks', t, 'questions', k, 'answer'],
+          message: `Task "${task.id}" Question "${q.id}" answer names "${n}", which is not State of Mode "${part.mode}"` }));
+      }));
     });
   } },
 ];
