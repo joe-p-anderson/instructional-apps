@@ -64,7 +64,7 @@ function questionCard(ctx, q, i, count) {
   ...KINDS.map(([v, word]) => h('option', { value: v, selected: q.kind === v }, word)),
   ...(KINDS.some(([v]) => v === q.kind) ? [] : [h('option', { value: q.kind, selected: true }, String(q.kind))]));
   const [pointsLabel, points] = ctx.field({ label: 'Points', path: `${path}.points`, value: q.points === undefined ? '' : String(q.points),
-    class: 't num', inputmode: 'decimal', toEdit: (v) => set(ctx, i, 'points', numberOrText(v)) });
+    class: 't num', inputmode: 'decimal', 'aria-label': `Question ${n} points`, toEdit: (v) => set(ctx, i, 'points', numberOrText(v)) });
   const move = (to) => ctx.commitAndRender({ type: 'moveQuestion', p, t, q: i, to });
   const head = h('div', { class: 'qcard-head' }, h('span', { class: 'qn' }, `Question ${n}`), kind,
     h('span', { class: 'idfield', 'data-path': `${path}.id`, title: 'made from the first prompt; changing the prompt keeps it' },
@@ -140,7 +140,7 @@ function numericBody(ctx, q, i, path) {
   const tolerance = toleranceField(ctx, { owner: q, path, unit: answerUnit(ctx, q) ?? '', name: `Question ${n} tolerance`,
     toEdit: (values) => ({ type: 'setQuestionValues', p, t, q: i, values }) });
   const [modLabel, modInput] = ctx.field({ label: 'modulus', path: `${path}.modulus`, value: q.modulus === undefined ? '' : String(q.modulus),
-    class: 't num mono', inputmode: 'decimal', placeholder: 'none', toEdit: (v) => set(ctx, i, 'modulus', numberOrText(v)) });
+    class: 't num mono', inputmode: 'decimal', placeholder: 'none', 'aria-label': `Question ${n} modulus`, toEdit: (v) => set(ctx, i, 'modulus', numberOrText(v)) });
   const tolRow = h('div', { class: 'row' }, h('span', { class: 'flabel' }, 'Tolerance'), tolerance, modLabel, modInput, presetMenu(ctx, q, i));
   return [
     h('div', { class: 'row' }, answerLabel, sideSwitch, answer, live),
@@ -203,7 +203,7 @@ function choiceBody(ctx, q, i, path) {
     const [idLabel, id] = ctx.field({ label: `Question ${n} choice ${m} id`, path: `${cpath}.id`, value: c.id, class: 't mono', spellcheck: 'false',
       toEdit: (v) => ({ type: 'setChoiceField', p, t, q: i, c: k, field: 'id', value: v }) });
     idLabel.className = 'fw-sr-only';
-    const radio = h('input', { type: 'radio', name: `${path}-correct`, checked: q.correct === c.id, 'aria-label': `Choice ${m} is correct`,
+    const radio = h('input', { type: 'radio', name: `${path}-correct`, checked: q.correct === c.id, 'aria-label': `Question ${n} choice ${m} is correct`,
       onchange: () => ctx.commitAndRender(set(ctx, i, 'correct', ctx.editor.doc.parts[p].tasks[t].questions[i].choices[k].id)) });
     const move = (to) => ctx.commitAndRender({ type: 'moveChoice', p, t, q: i, c: k, to });
     return h('div', { class: 'choice' }, radio, h('span', {}, idLabel, id),

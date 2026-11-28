@@ -38,6 +38,14 @@ test('the preview shows the existing prompt typeset when the Task opens', async 
   await expect(out.locator('mjx-container').first()).toBeVisible();
 });
 
+test('Task titles in the outline show their math typeset', async ({ page }) => {
+  await openEditor(page);
+  await openActivity(page, 'Sinusoidal Signals');
+  const item = outline(page).getByRole('button', { name: /^1\.1\s/ });
+  await expect(item.locator('mjx-container')).toHaveCount(1);
+  await expect(item).not.toContainText('\\(');
+});
+
 test('the formatting help opens by keyboard and by hover', async ({ page }) => {
   await openTask(page, 'Sinusoidal Signals', '1.1');
   const help = page.getByRole('button', { name: 'Formatting help for Prompt' });

@@ -20,6 +20,7 @@ import { effectiveExposure } from './exposure.js';
 import { slugFromTitle, newActivityProblems, createActivity } from './new-activity.js';
 import { TOOLS } from '../../tool-list.js';
 import { createPreviewLauncher } from './preview-launcher.js';
+import { typeset } from '../../vendor.js';
 
 const { createDirectoryFolder, createFileListFolder, findActivities } = folderModule;
 const $ = (id) => document.getElementById(id);
@@ -425,6 +426,7 @@ function renderOutline(problems) {
   };
   const { doc } = editor;
   const parts = Array.isArray(doc.parts) ? doc.parts : [];
+  window.MathJax?.typesetClear?.([nav]);
   nav.replaceChildren(item('a', 'ol-activity', null, escape(doc.title || '(untitled)'), { kind: 'activity' }),
     ...parts.flatMap((part, p) => [
       item(`p${p}`, 'ol-part', `${p + 1}`, escape(part.title || part.id || '(untitled Part)'), { kind: 'part', p }),
@@ -434,6 +436,8 @@ function renderOutline(problems) {
         'aria-label': `Add a Task to Part ${p + 1}`, onclick: () => addTask(p) }, '+ Task') : null,
     ]),
     h('button', { type: 'button', class: 'ol-add part', 'data-key': 'add-part', onclick: addPart }, '+ Part'));
+  // Task titles hold \( \) math, typeset as the Task card shows it.
+  if (nav.textContent.includes('\\(')) typeset([nav]);
   if (focused) nav.querySelector(`[data-key="${focused}"]`)?.focus();
 }
 

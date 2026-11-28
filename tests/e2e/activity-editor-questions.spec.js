@@ -36,12 +36,12 @@ test('journey: add a numeric Question with an expression answer, apply a preset,
   await q.getByRole('button', { name: 'Question 1 tolerance preset' }).click();
   await q.getByRole('menuitem', { name: /Phase ±2° mod 360/ }).click();
   await expect(page.getByRole('textbox', { name: 'Question 1 tolerance', exact: true })).toHaveValue('2');
-  await expect(card(page, 1).getByRole('textbox', { name: 'modulus' })).toHaveValue('360');
+  await expect(page.getByRole('textbox', { name: 'Question 1 modulus', exact: true })).toHaveValue('360');
   await card(page, 1).getByRole('button', { name: 'Question 1 tolerance preset' }).click();
   await card(page, 1).getByRole('menuitem', { name: /Amplitude 5%/ }).click();
   await expect(page.getByRole('textbox', { name: 'Question 1 tolerance', exact: true })).toHaveValue('5');
   await expect(page.getByRole('group', { name: 'Question 1 tolerance in' }).getByRole('button', { name: '%' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(card(page, 1).getByRole('textbox', { name: 'modulus' })).toHaveValue('');
+  await expect(page.getByRole('textbox', { name: 'Question 1 modulus', exact: true })).toHaveValue('');
 
   // The live value follows the live Tool.
   await va.fill('1.5');
@@ -82,13 +82,13 @@ test('choices are shown decoded, added, reordered, removed and marked; a correct
   const correct = decodeKey(original.correct);
   const q = card(page, 1);
   const k = original.choices.findIndex((c) => c.id === correct);
-  await expect(q.getByRole('radio', { name: `Choice ${k + 1} is correct` })).toBeChecked();
+  await expect(q.getByRole('radio', { name: `Question 1 choice ${k + 1} is correct` })).toBeChecked();
   await expect(q.getByRole('textbox', { name: 'Question 1 choice 1 text' })).toHaveValue(original.choices[0].text);
 
   await q.getByRole('button', { name: '+ Choice' }).click();
   const m = original.choices.length + 1;
   await card(page, 1).getByRole('textbox', { name: `Question 1 choice ${m} text` }).fill('None of these');
-  await card(page, 1).getByRole('radio', { name: `Choice ${m} is correct` }).check();
+  await card(page, 1).getByRole('radio', { name: `Question 1 choice ${m} is correct` }).check();
   await card(page, 1).getByRole('button', { name: `Move choice ${m} up` }).click();
   await save(page);
   const [saved] = JSON.parse(await written(page, PHASORS)).parts[0].tasks[1].questions;
@@ -102,6 +102,17 @@ test('choices are shown decoded, added, reordered, removed and marked; a correct
   await expect(problem).toBeVisible();
   await problem.click();
   await expect(card(page, 1).getByRole('radio').first()).toBeFocused();
+});
+
+test("each Question card's fields are named for their Question", async ({ page }) => {
+  await questionsAt(page, 'Phasors and Impedance', '2.1');
+  const count = JSON.parse(read(PHASORS)).parts[1].tasks[0].questions.length;
+  for (let n = 1; n <= count; n += 1) {
+    await expect(page.getByRole('textbox', { name: `Question ${n} points`, exact: true })).toHaveCount(1);
+    await expect(page.getByRole('textbox', { name: `Question ${n} modulus`, exact: true })).toHaveCount(1);
+  }
+  await task(page, '1.2').click();
+  await expect(page.getByRole('radio', { name: 'Question 1 choice 1 is correct', exact: true })).toHaveCount(1);
 });
 
 test('Questions of every kind open as they are, change kind, reorder and are removed', async ({ page }) => {
