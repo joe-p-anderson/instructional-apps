@@ -106,7 +106,10 @@ textarea.t { width: 100%; resize: vertical; }
 /* Prose field */
 .prose { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .prose-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-.prose-head .flabel { min-width: 0; }
+.prose-head .flabel, .prose-head label { min-width: 0; }
+.prose textarea { width: 100%; box-sizing: border-box; resize: vertical; }
+.prose-out :is(.fw-task-prompt, .fw-task-hint) { margin: 0; }
+.prose-out .fw-task-prompt { margin-bottom: 0; }
 .prose textarea { min-height: 6.5em; font-family: var(--ed-mono); font-size: 13px; line-height: 1.45; }
 .prose-out { border: 1px solid var(--fw-border); background: var(--fw-bg); padding: 6px 9px; font-size: 14px; line-height: 1.5;
   min-height: 6.5em; position: relative; overflow-wrap: anywhere; }
@@ -119,6 +122,9 @@ textarea.t { width: 100%; resize: vertical; }
 .info .tip { display: none; position: absolute; left: 22px; top: -6px; z-index: 30; width: 400px; background: var(--fw-text); color: #fff;
   font: 13px/1.5 system-ui, sans-serif; padding: 9px 11px; border-radius: 4px; box-shadow: 0 4px 16px rgba(0,0,0,.3); cursor: default; }
 .info:hover .tip, .info:focus .tip, .info:focus-within .tip { display: block; }
+.info[data-dismissed] .tip { display: none; }
+.tip table { border-collapse: collapse; margin: 5px 0; }
+.tip td { padding: 1px 8px 1px 0; vertical-align: top; }
 .tip code { font-family: var(--ed-mono); background: rgba(255,255,255,.14); padding: 0 3px; border-radius: 2px; }
 
 /* Tables: the Open screen list, Setup, exposure, State */
@@ -181,7 +187,6 @@ table.grid tr.grp td { font-size: 12px; color: var(--fw-text-dim); font-style: i
 .ol-add:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: -2px; }
 .ol-add.part { padding-left: 12px; margin-top: 10px; }
 .ol-add.task { padding-left: 40px; font-size: 12px; }
-.prose-plain textarea { width: 100%; box-sizing: border-box; }
 
 /* The live Tool (right column). The Tool mounts into .ed-tool; its side-by-side Controls and
    Display are stacked here to fit the column. */
