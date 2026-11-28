@@ -1,6 +1,6 @@
 // Activity runner UI (framework v1): the thin DOM layer over the runner core (runner/).
 //
-// mountActivity(tool, activity, root, { conditionTypes, storage })
+// mountActivity(tool, activity, root, { conditionTypes, storage, [PREVIEW_START] })
 //   Mounts one Tool instance per Part (its Mode and Setup) under Part tabs, adds the Part's
 //   Task cards and a progress indicator to each Part and a progress badge ("1/3") to each Part
 //   tab, and shows a name gate before Part 1. The Tool's panel layout (tool.js) places them.
@@ -20,6 +20,8 @@
 //   per Run (runner.completionShown, saved with the Run); whenever the Run is complete the header's
 //   Download button takes the primary style and reads "Activity complete · Download Report".
 //   In the side layout the Tasks take the Task drawer form when the frame says so (createFrame).
+//   [PREVIEW_START] (runner/preview.js) is the editor preview's start Task, passed to the runner
+//   as is; the Run then opens on that Task's Part. No Activity page passes it.
 //   Returns { tool, runner, instances: { [partId]: ToolInstance }, select(partId), render(), activePart }.
 //
 // Prompts, titles, Question prompts and Hints are trusted HTML from the Activity author and may
@@ -27,13 +29,16 @@
 
 import { browserStorage, nameStore, runStore } from './persistence.js';
 import { createRunner } from './runner/index.js';
+import { PREVIEW_START } from './runner/preview.js';
 import { reportFilename } from './report.js';
 import { createFrame, createTabs, printItem, saveStatus } from './tool-host.js';
 import { defineTool } from './tool.js';
 import { h } from './ui-kit.js';
 import { typeset } from './vendor.js';
 
-export function mountActivity(definition, activity, root, { conditionTypes, storage } = {}) {
+export function mountActivity(definition, activity, root, options = {}) {
+  let { conditionTypes, storage } = options;
+  const previewStart = options[PREVIEW_START];
   const tool = defineTool(definition);
   if (activity.tool !== tool.id) throw new Error(`Activity "${activity.id}" is for Tool "${activity.tool}", not "${tool.id}".`);
   if (!document.title) document.title = activity.title;
@@ -67,7 +72,8 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
     host.instances[host.activePart]?.resize?.();
   });
 
-  host.runner = createRunner(activity, { tools: host.instances, conditionTypes });
+  host.runner = createRunner(activity, { tools: host.instances, conditionTypes,
+    ...(previewStart ? { [PREVIEW_START]: previewStart } : {}) });
   host.select = tabs.select;
 
   // ── Autosave: the whole Run after every Start, Submit and Tool State change ──
@@ -164,7 +170,7 @@ export function mountActivity(definition, activity, root, { conditionTypes, stor
     frame.tablist.hidden = false;
     frame.panels.hidden = false;
     render();
-    tabs.select(activity.parts[0].id);
+    tabs.select(previewStart?.partId ?? activity.parts[0].id);
   }
 
   // ── Task cards and progress for one Part ──
