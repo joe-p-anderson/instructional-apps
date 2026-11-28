@@ -68,10 +68,10 @@ import { OMEGA_MAX, OMEGA_MIN, TIME_STATE_INFO, timeControls } from '../time-con
 
 export const id = 'circuit';
 export const title = 'Circuit';
-export const setupKeys = ['includeR', 'includeL', 'includeC', 'V0', 'R', 'L', 'C', 'omega'];
-
 const ELEMENTS = ['R', 'L', 'C'];
 const DEFAULTS = { includeR: true, includeL: true, includeC: true, V0: 5, R: 100, L: 50, C: 2, omega: 1000 };
+// Every Setup value has a default, and every one is State.
+export const setupKeys = Object.keys(DEFAULTS);
 const RANGES = {
   V0: { min: 0.1, max: 10 },
   R: { min: 1, max: 1e4 },

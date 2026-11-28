@@ -104,6 +104,14 @@ export function defineTool(tool) {
   return { ...tool, layout, minDisplayWidth };
 }
 
+/**
+ * The modes entries for a Tool built from Mode modules (each exporting id, title, setupKeys
+ * and optionally setupOptions, beside its own mount): `modes: modesOf(MODES)`.
+ */
+export function modesOf(modules) {
+  return modules.map(({ id, title, setupKeys, setupOptions }) => ({ id, title, setupKeys, setupOptions }));
+}
+
 /** The minimum Display width a Tool gets when it declares none, in CSS pixels. */
 export const DEFAULT_MIN_DISPLAY_WIDTH = 480;
 

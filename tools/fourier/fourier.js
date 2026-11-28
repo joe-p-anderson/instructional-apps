@@ -5,7 +5,7 @@
 // Shared pieces: engine.js (the pure Fourier maths, no DOM), plot.js (Plotly layout and fit).
 // See each Mode module's header for its Setup, State, Controls and Displays.
 
-import { defineTool } from '../../framework/v1/tool.js';
+import { defineTool, modesOf } from '../../framework/v1/tool.js';
 import * as synthesis from './modes/synthesis.js';
 import * as analysis from './modes/analysis.js';
 
@@ -20,7 +20,7 @@ function mount(container, modeId = MODES[0].id, setup = {}) {
 export default defineTool({
   id: 'fourier',
   title: 'Fourier Series',
-  modes: MODES.map(({ id, title, setupKeys, setupOptions }) => ({ id, title, setupKeys, setupOptions })),
+  modes: modesOf(MODES),
   layout: 'side',
   mount,
 });

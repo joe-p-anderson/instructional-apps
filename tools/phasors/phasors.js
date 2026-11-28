@@ -6,7 +6,7 @@
 // draw.js (canvas planes and plots), number-input.js (a number-box Control), styles.js.
 // See each Mode module's header for its Setup, State, Controls and Displays.
 
-import { defineTool } from '../../framework/v1/tool.js';
+import { defineTool, modesOf } from '../../framework/v1/tool.js';
 import * as circuit from './modes/circuit.js';
 import * as sum from './modes/sum.js';
 
@@ -21,7 +21,7 @@ function mount(container, modeId = MODES[0].id, setup = {}) {
 export default defineTool({
   id: 'phasors',
   title: 'Phasors and Impedance',
-  modes: MODES.map(({ id, title, setupKeys, setupOptions }) => ({ id, title, setupKeys, setupOptions })),
+  modes: modesOf(MODES),
   layout: 'side',
   mount,
 });

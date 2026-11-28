@@ -213,11 +213,11 @@ function builder(ctx) {
   function useCurrent(c, path, slot) {
     const button = h('button', { type: 'button', class: 'btn', title: `Fill the ${slot} from the live Tool`, disabled: true, onclick: () => {
       const s = snapshot();
-      const node0 = nodeAt(current(), path);
-      if (!s || !node0) return;
+      const latest = nodeAt(current(), path);
+      if (!s || !latest) return;
       let v;
       try {
-        v = isExpression(node0.state) ? cachedExpression(node0.state.expr).evaluate(s) : s[node0.state];
+        v = isExpression(latest.state) ? cachedExpression(latest.state.expr).evaluate(s) : s[latest.state];
       } catch { return; }
       if (v === undefined || (typeof v === 'number' && !Number.isFinite(v))) return;
       ctx.commitAndRender(setFields(path, { [slot]: typeof v === 'number' && slot === 'target' ? Number(v.toPrecision(6)) : v }));

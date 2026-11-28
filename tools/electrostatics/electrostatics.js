@@ -7,7 +7,7 @@
 // Controls), plot.js (Plotly layout and traces, theme colours, the Display wrapper).
 // See each Mode module's header for its Setup, State, Controls and Displays.
 
-import { defineTool } from '../../framework/v1/tool.js';
+import { defineTool, modesOf } from '../../framework/v1/tool.js';
 import * as electricField from './modes/electric-field.js';
 import * as potential from './modes/potential.js';
 import * as gauss from './modes/gauss.js';
@@ -23,7 +23,7 @@ function mount(container, modeId = MODES[0].id, setup = {}) {
 export default defineTool({
   id: 'electrostatics',
   title: 'Electrostatics',
-  modes: MODES.map(({ id, title, setupKeys, setupOptions }) => ({ id, title, setupKeys, setupOptions })),
+  modes: modesOf(MODES),
   // The plot is square: on a wider Display the colour bar drifts far from it at the right edge.
   maxDisplayWidth: 1200,
   mount,
