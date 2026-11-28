@@ -115,7 +115,8 @@ test('a Part without a setup object gets one when a value is typed', () => {
 
 // Tool info as the page builds it by mounting each Mode (core.js); only what the checks read.
 const OSC_INFO = { modes: { 'dual-trace': { title: 'Dual-trace scope', setupKeys: ['Va', 'f', 'Dt'], setupOptions: [],
-  controls: ['Va', 'f', 'Dt', 'Va-marker', 'f-marker', 'Dt-marker', 'phi-readout', 'ratio-readout'].map((id) => ({ id, label: id })), state: {} } } };
+  controls: ['Va', 'f', 'Dt', 'Va-marker', 'f-marker', 'Dt-marker', 'phi-readout', 'ratio-readout'].map((id) => ({ id, label: id })),
+  state: Object.fromEntries(['Va', 'f', 'Dt', 'phi', 'T', 'pkpk', 'ratio'].map((name) => [name, { label: name, unit: '' }])) } } };
 const SPACETIME_INFO = { modes: { diagram: { title: 'Diagram', setupKeys: ['v'],
   setupOptions: ['names', 'grid', 'showKp', 'objs', 'tool', 'view'],
   controls: ['tool-select', 'tool-event', 'tool-worldline', 'tool-rod', 'tool-join', 'v', 'gamma', 'flip', 'grid-K', 'grid-Kp',
