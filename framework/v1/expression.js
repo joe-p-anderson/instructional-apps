@@ -9,6 +9,10 @@
 //                             // A non-finite result (1/0, sqrt(-1)) is returned as it is:
 //                             // the caller decides how to judge it.
 //   cachedExpression(source)  // parseExpression, parsed once per source
+//   parseProblem(source)      // null when the source parses, else the ExpressionError message
+//   workOut(source, state)    // { value } (possibly non-finite), or { problem } when it can't
+//                             // be worked out: the ExpressionError reason, lower-cased and
+//                             // without its full stop, to follow "has" ('unknown State "R"')
 //   isExpression(value)     // true for an { expr: string } value, as stored in an Activity
 //   ExpressionError           // .position: index into the source of a parse error (else undefined)
 //
@@ -67,6 +71,25 @@ const parsed = new Map();
 export function cachedExpression(source) {
   if (!parsed.has(source)) parsed.set(source, parseExpression(source));
   return parsed.get(source);
+}
+
+export function parseProblem(source) {
+  try {
+    cachedExpression(source);
+    return null;
+  } catch (err) {
+    if (!(err instanceof ExpressionError)) throw err;
+    return err.message;
+  }
+}
+
+export function workOut(source, state) {
+  try {
+    return { value: cachedExpression(source).evaluate(state) };
+  } catch (err) {
+    if (!(err instanceof ExpressionError)) throw err;
+    return { problem: (err.message.charAt(0).toLowerCase() + err.message.slice(1)).replace(/\.$/, '') };
+  }
 }
 
 export function parseExpression(source) {

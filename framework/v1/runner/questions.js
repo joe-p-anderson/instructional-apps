@@ -20,18 +20,14 @@
 // A judged numeric result records `expected`: the key it was judged against, from a number
 // or an expression (omitted when the key couldn't be worked out).
 
-import { cachedExpression as expressionFor, isExpression, ExpressionError } from '../expression.js';
+import { isExpression, parseProblem, workOut } from '../expression.js';
 
 export const questionKinds = {
   numeric: {
     validate(q, fail) {
       if (isExpression(q.answer)) {
-        try {
-          expressionFor(q.answer.expr);
-        } catch (err) {
-          if (!(err instanceof ExpressionError)) throw err;
-          fail(`answer expression "${q.answer.expr}" doesn't parse: ${err.message}`, 'answer');
-        }
+        const problem = parseProblem(q.answer.expr);
+        if (problem) fail(`answer expression "${q.answer.expr}" doesn't parse: ${problem}`, 'answer');
       } else if (typeof q.answer !== 'number') fail('needs a numeric answer', 'answer');
       if (typeof q.tol !== 'number' && typeof q.relTol !== 'number') fail('needs tol or relTol', 'tol');
       if (q.modulus !== undefined && !(Number.isFinite(q.modulus) && q.modulus > 0)) {
@@ -41,12 +37,9 @@ export const questionKinds = {
     judge(q, given, state) {
       let expected = q.answer;
       if (isExpression(q.answer)) {
-        try {
-          expected = expressionFor(q.answer.expr).evaluate(state);
-        } catch (err) {
-          if (!(err instanceof ExpressionError)) throw err;
-          return { pass: false, feedback: `Can't judge this answer: its answer key has ${lowerFirst(err.message).replace(/\.$/, '')}.` };
-        }
+        const { value, problem } = workOut(q.answer.expr, state);
+        if (problem) return { pass: false, feedback: `Can't judge this answer: its answer key has ${problem}.` };
+        expected = value;
         if (!Number.isFinite(expected)) {
           return { pass: false, feedback: `Can't judge this answer: the answer key works out to ${expected}.` };
         }
@@ -95,8 +88,6 @@ export function evaluateQuestions(questions = [], answers = {}, state = {}) {
     };
   });
 }
-
-const lowerFirst = (s) => s.charAt(0).toLowerCase() + s.slice(1);
 
 function feedbackFor(q, given) {
   if (given === undefined || given === null || given === '') return 'No answer given';
