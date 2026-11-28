@@ -48,6 +48,19 @@ Static ES modules and CSS, served as-is (no build, no install). Breaking changes
 | `preview-page.js` | The preview page's script: mounts the handed-over plan in the real runner. |
 | `editor.css` | The editor's styles. |
 
+### Extending the Activity editor
+
+Each extension point is documented in its module's header comment; this is where to look.
+
+| To add | Where | Then |
+| --- | --- | --- |
+| an edit kind | `EDITS` in `edits.js`: a pure `(doc, edit) -> doc`, built on `withTask` / `withPart` / `withField` / `withItem` | a case in `tests/unit/editor/` |
+| a problem check | `CHECKS` in `problems.js`, run in order after the runner's own validation; each problem carries the `data-path` of its field | the field's input carries that `data-path`, so the problem jumps to it |
+| a Task tab, or more paths for one | `TASK_TABS` in `task-form.js`, one module per tab in `tabs/`; `owns(rest)` decides which tab a problem counts toward | the tab gets the TaskContext listed in `task-form.js`'s header |
+| Tool info a check needs | the shape in `core.js`'s header, gathered by `loadTool` in `tool-info.js` | Node tests pass fixture Tool info, since Tools need a DOM |
+
+E2e journeys use the in-memory folder and helpers in `tests/e2e/helpers/activity-editor.js`, one spec file per area (`activity-editor-<area>.spec.js`). Wait for the `Live Tool ·` heading before typing into the form: the Tool's arrival redraws it.
+
 ### Report Viewer modules (`report-viewer/`)
 
 | Module | What it is |

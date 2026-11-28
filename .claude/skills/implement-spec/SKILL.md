@@ -24,12 +24,17 @@ Communication to and from subagents should be sparse. Communicate primarily thro
 
 3. Create the integration branch. If the issue tracker closes work through PRs, or the user asks for one, open a draft PR after the first merge in step 5 (a branch with no commits ahead of main can't open one), marked as closing the spec and tickets.
 
-4. Use **implementer subagents** to implement each ticket, each in its own worktree on its own branch. Each implementer subagent:
-   - confirms its worktree is based on the integration branch before starting, and resets onto it if not;
+4. Use **implementer subagents** to implement each ticket, each in its own worktree on its own branch. Create the worktree yourself from the integration branch tip (`git worktree add -b <ticket-branch> .claude/worktrees/<ticket-branch> <integration-branch>`) and give the implementer its path; built-in worktree isolation branches from elsewhere. Each implementer subagent:
+   - works only in that worktree, running `npm ci` there first if `node_modules` is missing;
+   - runs e2e with `npx playwright test --workers=2`, since other suites share the machine; a timeout that passes when rerun alone is load, not a bug;
    - calls the Skill tool with `tdd` to build the ticket;
-   - merges the integration branch tip into its own branch before reporting done
+   - merges the integration branch tip into its own branch before reporting done.
 
-5. Once an **implementer subagent** completes, merge its work to the integration branch with a **merger subagent**.
+5. Once an **implementer subagent** completes, merge its work to the integration branch:
+   - **Already current** (its branch contains the integration tip and its tests passed after that merge): merge it yourself with `git merge --no-ff`. The resulting tree is the one that was tested.
+   - **Behind the tip**: use a **merger subagent**. It runs the unit tests and the e2e specs the merged files touch, and runs the full e2e suite only when it resolved a conflict.
+
+   Run the full e2e suite once more on the integration branch before step 7.
 
 6. If this changes the **frontier** of available tickets, kick off more **implementer subagents** to work on the new tickets. This allows for maximum concurrency.
 
@@ -37,4 +42,4 @@ Communication to and from subagents should be sparse. Communicate primarily thro
 
 8. If a draft PR exists, mark it ready for review. Otherwise, resolve each ticket the way the issue tracker closes work, and report the integration branch.
 
-9. Clean up all **implementer subagent** worktrees.
+9. Clean up all **implementer subagent** worktrees and their branches, after checking each branch is merged into the integration branch.
