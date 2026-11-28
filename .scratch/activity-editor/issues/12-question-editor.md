@@ -12,12 +12,22 @@ Keys are stored encoded and shown in plain text.
 
 **Blocked by:** 02, 10
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Every Question kind can be added, edited, reordered and removed, and each existing Activity's Questions open without loss
-- [ ] A numeric answer switches between number and expression, and an expression's live value updates with the live Tool
-- [ ] Presets write plain tol, relTol and modulus; nothing preset-shaped is stored in the file
-- [ ] Choices can be added, reordered and removed, and the correct choice marked; a correct id that matches no choice shows as a problem
-- [ ] Question ids come from the prompt, unique within the Task, and stay frozen once made
-- [ ] Saved keys are encoded; open-and-save round trips stay byte-identical
-- [ ] A Playwright journey: add a numeric Question with an expression answer, apply a preset, see the live value, save, and check the JSON
+- [x] Every Question kind can be added, edited, reordered and removed, and each existing Activity's Questions open without loss
+- [x] A numeric answer switches between number and expression, and an expression's live value updates with the live Tool
+- [x] Presets write plain tol, relTol and modulus; nothing preset-shaped is stored in the file
+- [x] Choices can be added, reordered and removed, and the correct choice marked; a correct id that matches no choice shows as a problem
+- [x] Question ids come from the prompt, unique within the Task, and stay frozen once made
+- [x] Saved keys are encoded; open-and-save round trips stay byte-identical
+- [x] A Playwright journey: add a numeric Question with an expression answer, apply a preset, see the live value, save, and check the JSON
+
+## Comments
+
+Built on branch `ae-12`.
+
+- **Core (`edits.js`):** `addQuestion` (`{ p, t, kind, prompt, at? }`; id = `slug(prompt with tags stripped, …, 'question')`, then frozen; numeric starts with `relTol: 0.02` and no answer, choice with choices `a`, `b` and correct `a`), `setQuestionField` (prompt, points, answer, tol, relTol, modulus, correct; undefined removes), `setQuestionValues` (several fields as one edit: presets and the tolerance field), `setQuestionKind`, `moveQuestion`, `deleteQuestion` (the last one removes the empty list), `addChoice` (first free letter as id), `setChoiceField` (`id` | `text`; renaming the correct choice renames `correct`), `moveChoice`, `deleteChoice`. A key a Question gains goes in the files' key order (`QUESTION_KEYS`), so saved Questions read like the hand-written ones. New answers and corrects take the default encoding.
+- **Tolerances:** the Questions tab uses ticket 11's shared `toleranceField(ctx, { owner, path, unit, toEdit })` (`editor/tolerance-field.js`), with `toEdit` a `setQuestionValues` edit; my own copy was dropped at the merge. `editor/tolerance.js` gains `TOLERANCE_PRESETS` (plain `{ tol, relTol, modulus }` values, editor only) and `presetOf(q)`.
+- **Problems:** `CHECKS` gains `questions`: an expression answer naming State the Mode lacks (path: the answer). A correct id matching no choice is the runner's own problem at `…questions.k.correct`, which jumps to the radio group.
+- **Tab (`tabs/questions.js`):** one card per Question (`group` "Question N") with a kind select, the read-only id, points, Move up/down and remove; the prompt and each choice text go through `proseField`. Numeric: a Number / State expression switch, the answer field and its live value (`[data-live="answer"]`, re-run through `onLive`), the tolerance field, the modulus and the "Preset: … ▾" menu. Flipping an expression to Number keeps a numeric source, else takes its live value. The add row is "New Question prompt" with `+ Numeric` / `+ Choice` / `+ Free text`.
+- **Tests:** `tests/unit/editor/questions.test.js`; e2e `tests/e2e/activity-editor-questions.spec.js` (the journey, the tolerance switch, choices and the correct problem, and existing Questions opening, reordering, changing kind and being removed).

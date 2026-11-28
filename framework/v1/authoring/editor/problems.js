@@ -52,6 +52,22 @@ export const CHECKS = [
           message: `Task "${task.id}" ${k} list names "${id}", which is not a Control of Mode "${part.mode}"` }]))));
     });
   } },
+  // A numeric Question's expression answer names only State the Part's Mode has (an expression
+  // that doesn't parse is the runner's problem). Path: the answer.
+  { source: 'questions', run(doc, toolInfo) {
+    if (!toolInfo) return [];
+    return partsOf(doc).flatMap((part, p) => {
+      const mode = Object.hasOwn(toolInfo.modes, part?.mode) ? toolInfo.modes[part.mode] : null;
+      if (!mode || !Array.isArray(part.tasks)) return [];
+      return part.tasks.flatMap((task, t) => (Array.isArray(task?.questions) ? task.questions : []).flatMap((q, k) => {
+        if (q?.kind !== 'numeric' || !isExpression(q.answer)) return [];
+        let names;
+        try { names = cachedExpression(q.answer.expr).names; } catch { return []; }
+        return names.filter((n) => !Object.hasOwn(mode.state ?? {}, n)).map((n) => ({ path: ['parts', p, 'tasks', t, 'questions', k, 'answer'],
+          message: `Task "${task.id}" Question "${q.id}" answer names "${n}", which is not State of Mode "${part.mode}"` }));
+      }));
+    });
+  } },
   // Conditions (condition-model.js): the shape the runner's validation leaves to Submit (an
   // empty group, a target with no value, a range with no bound), and, with Tool info, State
   // names that are not State of the Part's Mode, whether a slot's State name or a name inside an

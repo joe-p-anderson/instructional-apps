@@ -222,3 +222,17 @@ dialog.ed-preview::backdrop { background: rgba(26,16,8,.35); }
 .ed-preview .pv-head { display: flex; align-items: center; gap: 12px; padding: 6px 12px; border-bottom: 1px solid var(--fw-border); }
 .ed-preview .pv-head h2 { margin: 0; font-size: 16px; flex: 1; }
 .ed-preview .pv-frame { flex: 1; width: 100%; border: 0; }
+
+/* Questions: the head, the add row, choices and the tolerance preset menu */
+.qcard-head .qn { font-weight: bold; }
+.qcard-head .flabel { min-width: 0; }
+.qadd { margin-top: 6px; }
+.choice { grid-template-columns: auto 8em 1fr auto; }
+.choice .prose-plain textarea { min-height: 0; }
+.seg.small button { padding: 2px 7px; font-size: 12px; }
+.menu-wrap { position: relative; display: inline-block; }
+.pop { position: absolute; z-index: 40; top: calc(100% + 4px); left: 0; background: var(--fw-surface); border: 1px solid var(--fw-border-dk);
+  box-shadow: 0 4px 16px rgba(0,0,0,.2); border-radius: 4px; padding: 4px 0; min-width: 15em; }
+.pop button { all: unset; display: block; box-sizing: border-box; width: 100%; padding: 5px 12px; cursor: pointer; font-size: 13px; }
+.pop button:hover, .pop button:focus { background: var(--fw-bg); color: var(--fw-blue); }
+.pop .pop-sub { color: var(--fw-text-muted); font-size: 12px; }
