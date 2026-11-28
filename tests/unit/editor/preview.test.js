@@ -52,6 +52,17 @@ test('an unknown Control or Mode blocks too; an undeclared Setup value does not'
   assert.deepEqual(setupOnly.blockers, []);
 });
 
+test("Condition problems the runner accepts (empty group, unknown State) do not block", () => {
+  const editor = openActivity(OSC);
+  editor.edit({ type: 'setConditionNode', p: 0, t: 0, path: [], node: { type: 'anyOf', conditions: [] } });
+  const info = fullInfo(editor.doc, { setupKeys: [] }); // state: {}, so every State name is unknown
+  const sources = new Set(editor.problems(info).map((pr) => pr.source));
+  assert.ok(sources.has('conditions'));
+  const plan = planPreview(editor, { p: 0, t: 0 }, info);
+  assert.deepEqual(plan.blockers, []);
+  assert.ok(plan.activity);
+});
+
 test('a Part with no Tasks cannot be a start', () => {
   const editor = openActivity(OSC);
   editor.edit({ type: 'addPart', title: 'Empty', mode: editor.doc.parts[0].mode });
