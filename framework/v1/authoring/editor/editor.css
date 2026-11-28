@@ -127,6 +127,8 @@ table.grid th { text-align: left; font-size: 12px; color: var(--fw-text-dim); fo
   padding: 3px 6px; border-bottom: 1px solid var(--fw-border); }
 table.grid td { padding: 4px 6px; border-bottom: 1px solid var(--fw-grid); vertical-align: middle; }
 table.grid tr.bad td { background: #FBEAEA; }
+table.grid th[scope="row"] { font-size: 14px; color: var(--fw-text); font-style: normal; border-bottom: 1px solid var(--fw-grid); padding: 4px 6px; }
+table.grid tr.bad th { background: #FBEAEA; }
 table.grid tr.grp td { font-size: 12px; color: var(--fw-text-dim); font-style: italic; padding-top: 10px; border-bottom: 1px solid var(--fw-border); }
 .cid { font-family: var(--ed-mono); font-size: 12px; color: var(--fw-text-muted); }
 .seg { display: inline-flex; border: 1.5px solid var(--fw-border-dk); border-radius: 4px; overflow: hidden; }
@@ -171,6 +173,8 @@ table.grid tr.grp td { font-size: 12px; color: var(--fw-text-dim); font-style: i
 .ol-add:hover { text-decoration: underline; }
 .ol-add:focus-visible { outline: 2px solid var(--fw-blue); outline-offset: -2px; }
 .ol-add.part { padding-left: 12px; margin-top: 10px; }
+.ol-add.task { padding-left: 40px; font-size: 12px; }
+.prose-plain textarea { width: 100%; box-sizing: border-box; }
 
 /* The live Tool (right column). The Tool mounts into .ed-tool; its side-by-side Controls and
    Display are stacked here to fit the column. */

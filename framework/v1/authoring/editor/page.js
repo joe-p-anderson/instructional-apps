@@ -15,6 +15,8 @@ import { h } from '../../ui-kit.js';
 import { openActivity } from './core.js';
 import * as folderModule from './folder.js';
 import { loadTool, mountLive } from './tool-info.js';
+import { taskForm as drawTaskForm, tabOf, refreshTabCounts } from './task-form.js';
+import { effectiveExposure } from './exposure.js';
 import { slugFromTitle, newActivityProblems, createActivity } from './new-activity.js';
 import { TOOLS } from '../../tool-list.js';
 
@@ -34,6 +36,8 @@ let tool = null;      // the open Activity's Tool: { tool, conditionTypes, info 
 let toolError = null; // why it couldn't be loaded
 let live = null;      // the live Tool: { p, mode, setup, instance, box } (renderRight)
 let liveUpdaters = []; // the form's readouts of the live State, redrawn on every change of it
+let taskTab = 'prompt'; // the Task form's open tab (task-form.js), kept between Tasks
+let studentView = true; // the live Tool's Student / Full toggle; Student applies on a Task
 
 window.activityEditor = {
   get folder() { return folder; },
@@ -388,6 +392,7 @@ function refresh() {
   const problems = editor.problems(tool?.info);
   renderOutline(problems);
   renderProblems(problems);
+  if (sel.kind === 'task') refreshTabCounts($('form'), problems.filter((pr) => sameSel(selOf(pr.path), sel)));
   renderRight();
 }
 
@@ -401,6 +406,7 @@ const selOf = (path) => {
 const sameSel = (a, b) => a.kind === b.kind && a.p === b.p && a.t === b.t;
 
 function select(s) {
+  if (!sameSel(s, sel)) studentView = true; // Student is the default whenever a Task is selected
   sel = s;
   render();
 }
@@ -422,6 +428,8 @@ function renderOutline(problems) {
       item(`p${p}`, 'ol-part', `${p + 1}`, escape(part.title || part.id || '(untitled Part)'), { kind: 'part', p }),
       ...(Array.isArray(part.tasks) ? part.tasks : []).map((task, t) =>
         item(`t${p}-${t}`, 'ol-task', `${p + 1}.${t + 1}`, task.title || escape(task.id ?? ''), { kind: 'task', p, t })),
+      Array.isArray(part.tasks) ? h('button', { type: 'button', class: 'ol-add task', 'data-key': `add-task-${p}`,
+        'aria-label': `Add a Task to Part ${p + 1}`, onclick: () => addTask(p) }, '+ Task') : null,
     ]),
     h('button', { type: 'button', class: 'ol-add part', 'data-key': 'add-part', onclick: addPart }, '+ Part'));
   if (focused) nav.querySelector(`[data-key="${focused}"]`)?.focus();
@@ -436,6 +444,17 @@ function addPart() {
   statusNote = null;
   select({ kind: 'part', p: editor.doc.parts.length - 1 });
   const title = $('form').querySelector(`[data-path="parts.${sel.p}.title"]`);
+  title?.focus();
+  title?.select();
+}
+
+// A new Task at the end of Part p, selected on its Prompt tab with its title ready to type over.
+function addTask(p) {
+  editor.edit({ type: 'addTask', p, title: 'New Task' });
+  statusNote = null;
+  taskTab = 'prompt';
+  select({ kind: 'task', p, t: editor.doc.parts[p].tasks.length - 1 });
+  const title = $('form').querySelector(`[data-path="parts.${sel.p}.tasks.${sel.t}.title"]`);
   title?.focus();
   title?.select();
 }
@@ -465,6 +484,7 @@ function renderProblems(problems) {
 // Select what owns the field at path, then focus the field: the form element whose data-path is
 // the path, or the nearest one above it (form fields carry data-path="parts.0.tasks.1.points").
 function jumpTo(path) {
+  taskTab = tabOf(path) ?? taskTab;
   select(selOf(path));
   const form = $('form');
   for (let k = path.length; k >= 0; k--) {
@@ -647,16 +667,50 @@ function setupSection(p, part, setup, info, note) {
     h('div', { class: 'row', style: 'margin-top:8px' }, resetButton));
 }
 
+// The Task form: a header with the Task's moves, then the tabs (task-form.js, tabs/). ctx is the
+// TaskContext the tabs draw from (documented in task-form.js).
 function taskForm() {
-  const task = editor.doc.parts[sel.p].tasks[sel.t];
-  const base = `parts.${sel.p}.tasks.${sel.t}`;
-  return [h('h2', { html: task.title ?? '' }), h('div', { class: 'ed-crumb' }, `Task ${sel.p + 1}.${sel.t + 1}`),
-    section('Task', null,
-      h('div', { class: 'row' }, h('span', { class: 'flabel' }, 'Id'), h('span', { class: 'idfield', 'data-path': `${base}.id` }, h('code', {}, task.id ?? ''))),
-      h('div', { class: 'row' }, h('span', { class: 'flabel' }, 'Points'), h('span', { 'data-path': `${base}.points` }, String(task.points ?? ''))))];
+  const { doc } = editor;
+  const { p, t } = sel;
+  const part = doc.parts[p];
+  const tasks = part.tasks;
+  const task = tasks[t];
+  const base = `parts.${p}.tasks.${t}`;
+  const mode = tool && Object.hasOwn(tool.info.modes, part.mode) ? tool.info.modes[part.mode] : null;
+  const heading = h('h2', { html: task.title ?? '' });
+  const move = (to) => { editor.edit({ type: 'moveTask', p, t, to }); statusNote = null; select({ kind: 'task', p, t: to }); };
+  const duplicate = () => { editor.edit({ type: 'duplicateTask', p, t }); statusNote = null; select({ kind: 'task', p, t: t + 1 }); };
+  const remove = () => {
+    if (!confirm(`Delete Task ${p + 1}.${t + 1} “${stripTags(task.title ?? task.id)}”? (Undo brings it back.)`)) return;
+    editor.edit({ type: 'deleteTask', p, t });
+    statusNote = null;
+    select(editor.doc.parts[p].tasks.length ? { kind: 'task', p, t: Math.max(0, t - 1) } : { kind: 'part', p });
+  };
+  const head = [heading,
+    h('div', { class: 'ed-crumb' }, `${stripTags(part.title ?? part.id)} › Task ${t + 1} of ${tasks.length}${mode ? ` · ${mode.title}` : ''}`),
+    h('div', { class: 'row' },
+      h('button', { type: 'button', class: 'btn', disabled: t === 0, onclick: () => move(t - 1) }, 'Move up'),
+      h('button', { type: 'button', class: 'btn', disabled: t === tasks.length - 1, onclick: () => move(t + 1) }, 'Move down'),
+      h('button', { type: 'button', class: 'btn', onclick: duplicate }, 'Duplicate Task'),
+      h('button', { type: 'button', class: 'btn', onclick: remove }, 'Delete Task'))];
+  const ctx = {
+    editor, doc, p, t, part, task, base, tool, toolError, mode,
+    commit, commitAndRender, field, section,
+    onLive: (fn) => liveUpdaters.push(fn),
+    liveInstance: () => (live?.p === p ? live.instance : null),
+    exposure: () => effectiveExposure(doc, p, t, tool?.info),
+    rerender: () => { renderForm(); for (const f of liveUpdaters) f(); },
+    setHeading: (html) => { heading.innerHTML = html; },
+  };
+  const problems = editor.problems(tool?.info).filter((pr) => sameSel(selOf(pr.path), sel));
+  return drawTaskForm(ctx, { problems, open: taskTab, head, choose: (id, { focusTab } = {}) => {
+    taskTab = id;
+    ctx.rerender();
+    if (focusTab) $('form').querySelector(`[role="tab"][data-tab="${id}"]`)?.focus();
+  } });
 }
 
-// The form for the selection. Tickets that add Part and Task editing replace partForm and taskForm.
+// The form for the selection.
 const FORMS = { activity: activityForm, part: partForm, task: taskForm };
 
 function renderForm() {
@@ -689,7 +743,37 @@ function renderRight() {
   const same = live && live.session === editor && live.tool === tool && live.p === target?.p
     && live.mode === part?.mode && live.setup === part?.setup && right.contains(live.box);
   if (!same) mountRight(right, target, mode);
+  applyView();
   for (const f of liveUpdaters) f();
+}
+
+// The Student / Full view. On a Task, Student (the default) applies that Task's effective
+// exposure to the live Tool, as the runner would: locked Controls locked, hidden Controls and
+// layers hidden. Full, and any selection but a Task, opens every Control. It is applied in
+// place (no remount), only when the states change, and never touches the Activity or the State.
+function applyView() {
+  if (!live?.instance) return;
+  const onTask = sel.kind === 'task' && sel.p === live.p;
+  const student = onTask && studentView;
+  const states = {};
+  const eff = student ? effectiveExposure(editor.doc, sel.p, sel.t, tool?.info) : {};
+  for (const id of live.instance.controls.ids()) states[id] = eff[id]?.state ?? 'open';
+  const key = JSON.stringify(states);
+  if (key !== live.viewKey) {
+    live.viewKey = key;
+    for (const [id, state] of Object.entries(states)) {
+      const c = live.instance.controls.get(id);
+      if (state === 'hidden') c.hide();
+      else { c.show(); if (state === 'locked') c.lock(); else c.unlock(); }
+    }
+  }
+  for (const button of live.viewButtons) {
+    button.disabled = !onTask;
+    button.setAttribute('aria-pressed', String((button.dataset.view === 'student') === student));
+  }
+  live.viewText.textContent = !onTask ? `Part ${live.p + 1} at its Setup. Full view: every Control open (select a Task to see the student's view).`
+    : student ? `Part ${live.p + 1} at its Setup. Student view at Task ${sel.p + 1}.${sel.t + 1}: locked and hidden as its exposure says.`
+      : `Part ${live.p + 1} at its Setup. Full view: every Control open.`;
 }
 
 function mountRight(right, target, mode) {
@@ -703,15 +787,21 @@ function mountRight(right, target, mode) {
 
   const toolBox = h('div', { class: 'ed-tool' });
   const stateBody = h('tbody');
+  const viewButtons = [['student', 'Student'], ['full', 'Full']].map(([v, label]) => h('button', { type: 'button', 'data-view': v,
+    title: v === 'student' ? 'What the student gets at this Task: locked and hidden as its exposure says'
+      : 'Every Control open, for arranging the Tool (Capture, Use current value)',
+    onclick: () => { studentView = v === 'student'; applyView(); } }, label));
+  const viewText = h('div', { class: 'muted' });
   const box = h('div', { class: 'ed-live' },
-    h('div', { class: 'ed-live-head' }, h('h3', {}, `Live Tool · ${mode.title}`)),
-    h('div', { class: 'muted' }, `Part ${p + 1} at its Setup. Full view: every Control open.`),
+    h('div', { class: 'ed-live-head' }, h('h3', {}, `Live Tool · ${mode.title}`),
+      h('span', { class: 'seg small', role: 'group', 'aria-label': 'Live Tool view' }, ...viewButtons)),
+    viewText,
     toolBox,
     h('div', { class: 'muted' }, 'Operating the Tool never changes the Activity; Capture in the Part form stores its Setup keys.'),
     h('h4', { class: 'right-h' }, 'State now ', h('span', { class: 'muted' }, '(names for Conditions and expressions)')),
     h('div', { class: 'state-tbl' }, h('table', { class: 'grid', 'aria-label': 'State now' }, stateBody)));
   right.replaceChildren(box);
-  live = { session: editor, tool, p, mode: part.mode, setup: part.setup, box, instance: null, unsub: null };
+  live = { session: editor, tool, p, mode: part.mode, setup: part.setup, box, instance: null, unsub: null, viewButtons, viewText, viewKey: null };
   try {
     live.instance = mountLive(toolBox, tool.tool, part.mode, part.setup);
   } catch (err) {
