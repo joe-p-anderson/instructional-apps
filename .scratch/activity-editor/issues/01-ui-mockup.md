@@ -46,3 +46,5 @@ Waiting on: the instructor's review and approval, which variant to take, and any
 
 **2026-11-27, approved.** The instructor approved the mockup with the changes above: the tabbed Task form (variant B), the Student / Full toggle, the Open screen, and the tolerances. The spec now holds all of them. The prototype is a reference only: build the editor from the spec and tickets, and move the prototype file to a throwaway branch before `activity-editor` merges to main.
 
+
+**2026-11-27, prototype moved.** The mockup now lives only on the throwaway branch `activity-editor-prototype` (`git show activity-editor-prototype:framework/v1/authoring/activity-editor.prototype.html`). It is deleted from `activity-editor`, so it won't merge to main.
