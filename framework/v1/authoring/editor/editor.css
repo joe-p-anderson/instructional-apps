@@ -151,6 +151,13 @@ table.grid tr.grp td { font-size: 12px; color: var(--fw-text-dim); font-style: i
 .verdict.pass { background: #E5F1E5; color: var(--fw-green); }
 .verdict.miss { background: #FBEAEA; color: var(--fw-red); }
 .unit { color: var(--fw-text-dim); font-size: 13px; }
+.verdict .lbl { font-weight: bold; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.verdict:empty { display: none; }
+.cond-feedback { display: inline-flex; flex-direction: column; gap: 2px; }
+.cond-verdict { display: flex; margin: 0 0 8px; padding: 6px 10px; font-size: 14px; }
+.cadd { gap: 10px; margin-top: 4px; }
+.slot, .tolfield { display: inline-flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+.cleaf pre { margin: 4px 0; font-size: 12px; white-space: pre-wrap; }
 
 /* Questions */
 .qcard { border: 1px solid var(--fw-border); border-radius: 4px; padding: 8px 10px; margin-bottom: 10px; background: var(--fw-paper); }
