@@ -1,2 +1,4 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+# Activity files keep the editor's saved form (LF) byte for byte in every checkout.
+tools/*/activities/*.json text eol=lf

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phasors and Impedance</title>
+<link rel="stylesheet" href="../../../framework/v1/theme.css">
+</head>
+<body>
+<div id="app"></div>
+<!-- Made from the Activity page template (framework/v1/activity-file.js); the Activity is phasors-impedance.json. -->
+<script type="module">
+  import * as tool from '../phasors.js';
+  import { mountActivity } from '../../../framework/v1/activity-ui.js';
+
+  const app = document.getElementById('app');
+  const response = await fetch('./phasors-impedance.json');
+  if (!response.ok) {
+    app.textContent = `This Activity could not be loaded (${response.status}). Try reloading the page.`;
+    throw new Error(`Activity file: HTTP ${response.status}`);
+  }
+  const activity = await response.json();
+  window.activityHost = mountActivity(tool.default, activity, app, { conditionTypes: tool.conditionTypes });
+</script>
+</body>
+</html>

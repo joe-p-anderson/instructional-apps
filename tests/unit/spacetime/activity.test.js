@@ -8,9 +8,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createRunner, decodeKey, isEncodedKey } from '../../../framework/v1/runner/index.js';
-import activity from '../../../tools/spacetime/activities/lab10.js';
+import { readFileSync } from 'node:fs';
 import { conditionTypes, diagramState } from '../../../tools/spacetime/conditions.js';
 import { stubTool } from '../runner/stub-tool.js';
+
+const ACTIVITY_FILE = new URL('../../../tools/spacetime/activities/lab10.json', import.meta.url);
+const activity = JSON.parse(readFileSync(ACTIVITY_FILE, 'utf8'));
 
 // Every Control the spacetime Tool registers (see tools/spacetime/spacetime.js).
 const CONTROLS = [
@@ -338,8 +341,8 @@ test('every encoded key decodes, and Conditions, keys and answer-revealing Hints
   assert.ok(isEncodedKey(hintOf(part1, 'flash')), 'Task 1.3 Hint gives the answer away, so it is encoded');
   assert.ok(isEncodedKey(hintOf(part2, 'ends-flash')), 'Task 2.1 Hint gives the answer away, so it is encoded');
 
-  const source = await readFile(new URL('../../../tools/spacetime/activities/lab10.js', import.meta.url), 'utf8');
-  for (const leak of ['st-worldline', 'st-event', 'st-rod', "correct: 't", "correct: 'x", "correct: 'B", '1.6', '2.5']) {
+  const source = await readFile(ACTIVITY_FILE, 'utf8');
+  for (const leak of ['st-worldline', 'st-event', 'st-rod', "correct: 't", "correct: 'x", "correct: 'B", '"correct": "t', '"correct": "x', '"correct": "B', '1.6', '2.5']) {
     assert.ok(!source.includes(leak), `source contains "${leak}"`);
   }
 });

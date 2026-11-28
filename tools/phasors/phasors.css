@@ -1,0 +1,36 @@
+/* Phasors Tool: styles on top of the v1 theme, linked inside each Mode's root (styles.js);
+   every rule is scoped to .ph-tool. */
+
+/* The Displays sit side by side, and stack once there is no room for two; they take whatever
+   height is left and never scroll. */
+.ph-tool .ph-displays {
+  flex: 1; min-height: 0; display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); grid-auto-rows: minmax(0, 1fr);
+}
+.ph-tool .ph-displays .fw-display { position: relative; min-width: 0; min-height: 0; }
+.ph-tool .ph-canvas { display: block; width: 100%; height: 100%; }
+
+.ph-tool .ph-formula { font-size: 15px; margin-bottom: 6px; }
+
+/* Number inputs, two to a row (A and φ of one sinusoid). */
+.ph-tool .ph-pair { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.ph-tool .ph-number { display: flex; align-items: center; gap: 6px; font-size: 14px; margin-bottom: 6px; }
+
+/* Each phasor's readouts under its legend row. */
+.ph-tool .ph-phasor { margin-bottom: 8px; }
+.ph-tool .ph-phasor .fw-legend-row { margin-bottom: 0; font-weight: bold; }
+.ph-tool .ph-phasor .fw-metric { line-height: 1.6; }
+.ph-tool .ph-swatch { height: 3px; }
+
+/* Circuit Mode: four Displays two by two (impedance and phasor planes above, time plot and
+   schematic below), never stacked: the Tool's minimum Display width leaves each one ≥ 234 px. */
+.ph-tool .ph-circuit-displays {
+  grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+/* Circuit Mode: the include toggles in a row, and each phasor's trace toggle beside its readout. */
+.ph-tool .ph-includes { display: flex; gap: 18px; margin-bottom: 8px; }
+.ph-tool .ph-trace { margin-bottom: 6px; }
+.ph-tool .ph-trace .fw-toggle { margin-bottom: 0; font-weight: bold; }
+.ph-tool .ph-trace .fw-toggle .ph-swatch { display: inline-block; width: 18px; margin-right: 6px; vertical-align: middle; }
+.ph-tool [hidden] { display: none !important; }

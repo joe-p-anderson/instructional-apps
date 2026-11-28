@@ -183,14 +183,24 @@ function rescoreTaskV1(task) {
   return earnedFromResults({ points, questions }, attempts);
 }
 
+// The expected value recorded on a Question's result, if it is a finite number.
+function expectedFor(results, id) {
+  const r = results.find((x) => x?.kind === 'question' && x.id === id);
+  return typeof r?.expected === 'number' && Number.isFinite(r.expected) ? r.expected : undefined;
+}
+
 function readAttemptV1(attempt, i) {
-  const results = attempt.results ?? [];
+  const results = Array.isArray(attempt.results) ? attempt.results : [];
   return {
     number: i + 1,
     at: attempt.at ?? null,
     passed: attempt.passed === true,
     state: Object.entries(attempt.state ?? {}).map(([name, value]) => ({ name, value })),
-    answers: Object.entries(attempt.answers ?? {}).map(([id, value]) => ({ id, value })),
+    // expected: the value a numeric answer was judged against (framework 1.1.0 on).
+    answers: Object.entries(attempt.answers ?? {}).map(([id, value]) => {
+      const expected = expectedFor(results, id);
+      return expected === undefined ? { id, value } : { id, value, expected };
+    }),
     feedback: results.filter((r) => r.pass === false && r.feedback).map((r) => r.feedback),
     // A Report is an untrusted file: only inline PNGs are shown, never other URLs.
     snapshots: (attempt.snapshots ?? [])

@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { openReport } from '../../../framework/v1/report-viewer/core.js';
-import { sampleReport } from './fixtures.js';
+import { verifyReport } from '../../../framework/v1/report.js';
+import { sampleReport, expressionReport, legacyQuizReport } from './fixtures.js';
 
 test('a Report file opens as a student view of the Run', async () => {
   const view = openReport(JSON.stringify(await sampleReport()));
@@ -66,4 +67,27 @@ test('files that are not Reports, or are in an unknown format version, are refus
   assert.throws(() => openReport('not json'), /not a Report.*JSON/i);
   assert.throws(() => openReport('{"hello": 1}'), /not a Report.*format version/i);
   assert.throws(() => openReport('{"formatVersion": 99}'), /format version 99/);
+});
+
+test('the student view shows the expected value each numeric answer was judged against', async () => {
+  const report = await expressionReport();
+  assert.equal(verifyReport(report), true);
+  const view = openReport(JSON.stringify(report));
+  const [miss, pass] = view.parts[0].tasks[0].attempts;
+  assert.deepEqual(miss.answers, [{ id: 'I', value: 3, expected: 4 }]);
+  assert.deepEqual(pass.answers, [{ id: 'I', value: 2.5, expected: 2.5 }]);
+  assert.deepEqual([view.earned, view.possible], [2, 2]);
+});
+
+test('an older Report without expected values opens and scores as before', async () => {
+  const report = await legacyQuizReport();
+  assert.equal(verifyReport(report), true);
+  const view = openReport(JSON.stringify(report));
+  assert.equal(view.frameworkVersion, '1.0.0');
+  assert.equal(view.checksumOk, true);
+  const [first, second] = view.parts[0].tasks[0].attempts;
+  assert.deepEqual(first.answers, [{ id: 'T', value: 3 }, { id: 'c', value: 'a' }, { id: 'why', value: '  ' }]);
+  assert.deepEqual(second.answers, [{ id: 'T', value: 9 }, { id: 'c', value: 'b' }, { id: 'why', value: 'because' }]);
+  // T right in Attempt 1 (2), c right in Attempt 2 (1), why non-empty in Attempt 2 (1); the Task never passed.
+  assert.deepEqual([view.earned, view.possible], [4, 5]);
 });

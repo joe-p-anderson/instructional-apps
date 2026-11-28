@@ -15,7 +15,7 @@
 <div id="app"></div>
 <script type="module">
   import oscilloscope from '../../../tools/oscilloscope/oscilloscope.js';
-  import activity from '../../../tools/oscilloscope/activities/phase-period-amplitude.js';
+  const activity = await (await fetch('../../../tools/oscilloscope/activities/phase-period-amplitude.json')).json();
   import { mountActivity } from '../../../framework/v1/activity-ui.js';
   import { mountStandalone } from '../../../framework/v1/tool-host.js';
 

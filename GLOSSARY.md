@@ -24,6 +24,10 @@ _Avoid_: preset, config, initial state
 A guided lecture exercise built on a single Tool: an ordered set of Parts that ends in a Report. One Tool can host many Activities.
 _Avoid_: app, lab, assignment
 
+**Activity editor**:
+The instructor's page for building and changing Activities: it opens an Activity from the site's folder, edits its Parts, Tasks, Conditions and Questions against the live Tool, previews it, and saves it back.
+_Avoid_: builder, authoring tool, designer
+
 **Part**:
 One major section of an Activity, shown to the student as a tab: a Mode and Setup of the Tool, with its own State and an ordered list of Tasks.
 _Avoid_: tab, experiment, stage, section
@@ -48,6 +52,10 @@ _Avoid_: theme, skin, template
 The narrow-screen home of a `side` layout's Tasks: a bar above the Display with the current Task's title, Submit and last result, which opens over the Display to show the whole current Task.
 _Avoid_: tasks panel, sidebar
 
+**Revealable layer**:
+A part of a Display that a Task can hide while it asks the student for that quantity and a later Task shows again (e.g. the resultant phasor, or Z_total). It is a Control, so Task hide and show lists act on it; hiding it hides its drawing and its readouts, while State keeps publishing its values.
+_Avoid_: overlay, reveal, mask
+
 **State**:
 The named values a simulation exposes for tasks to read and record.
 _Avoid_: params, sim variables
@@ -59,6 +67,10 @@ _Avoid_: check, goal
 **Question**:
 Something a task asks the student to answer; either graded (numeric with tolerance, multiple choice) or recorded only (free text).
 _Avoid_: prompt, reflection
+
+**State expression**:
+A formula over a Part's State names (such as `1/sqrt(L*C)` or `I * 1000`), worked out from the live State at Submit. It can serve as a graded Question's answer or as a value a Condition tests, so the key follows what the Tool shows instead of being a number written in advance.
+_Avoid_: formula, computed answer, derived key
 
 **Submit**:
 The student's deliberate act of committing the current state of a task for evaluation; values the student merely passes through are never evaluated.

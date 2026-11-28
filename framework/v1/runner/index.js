@@ -31,14 +31,16 @@ import { validateActivity } from './activity.js';
 import { judgeTask, scoreActivity } from './scoring.js';
 import { decodeActivity, decodeHint } from './keys.js';
 import { isGraded } from './questions.js';
+import { PREVIEW_START } from './preview.js';
 
-export { builtinConditionTypes, createConditionRegistry, evaluateCondition } from './conditions.js';
-export { validateActivity } from './activity.js';
+export { builtinConditionTypes, createConditionRegistry, evaluateCondition, validateCondition } from './conditions.js';
+export { validateActivity, activityProblems } from './activity.js';
 export { evaluateQuestions } from './questions.js';
 export { judgeTask, scoreActivity } from './scoring.js';
 export { encodeKey, decodeKey, decodeActivity, isEncodedKey } from './keys.js';
 
-export function createRunner(definition, { tools = {}, clock = () => new Date(), conditionTypes } = {}) {
+export function createRunner(definition, options = {}) {
+  const { tools = {}, clock = () => new Date(), conditionTypes } = options;
   const activity = decodeActivity(definition); // encoded keys stay inside the runner
   validateActivity(activity);
   for (const part of activity.parts) {
@@ -56,6 +58,19 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
       new Map(part.tasks.map((task) => [task.id, { passed: false, attempts: [], draft: null }])),
     ]),
   );
+
+  // Preview only (preview.js): the Tasks before the start count as passed, with no Attempts.
+  const previewStart = options[PREVIEW_START];
+  if (previewStart) {
+    const at = findPart(previewStart.partId);
+    findTask(at, previewStart.taskId);
+    for (const part of activity.parts.slice(0, activity.parts.indexOf(at) + 1)) {
+      for (const task of part.tasks) {
+        if (part === at && task.id === previewStart.taskId) break;
+        progress.get(part.id).get(task.id).passed = true;
+      }
+    }
+  }
 
   function requireRun() {
     if (!run) throw new Error('Enter a name to start the Run first.');
@@ -94,6 +109,17 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
     for (const id of task.hide ?? []) control(id).hide();
   }
 
+  // Apply exposure in Task order up to the first Task not yet passed (only the first Task in a
+  // new Run).
+  function replayExposure() {
+    for (const part of activity.parts) {
+      for (const [i, task] of part.tasks.entries()) {
+        applyExposure(part, task);
+        if (statusOf(part, i) !== 'passed') break;
+      }
+    }
+  }
+
   function score() {
     const attempts = Object.fromEntries(activity.parts.map((part) => [
       part.id,
@@ -130,10 +156,7 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
       const trimmed = String(name ?? '').trim();
       if (!trimmed) throw new Error('A name is required to start the Run.');
       run = Object.freeze({ name: trimmed, fingerprint: createFingerprint(), startedAt: clock().toISOString() });
-      for (const part of activity.parts) {
-        const first = part.tasks.findIndex((_, i) => statusOf(part, i) === 'open');
-        if (first !== -1) applyExposure(part, part.tasks[first]);
-      }
+      replayExposure();
       return run;
     },
 
@@ -249,13 +272,7 @@ export function createRunner(definition, { tools = {}, clock = () => new Date(),
       }
       run = Object.freeze({ name: r.name, fingerprint: r.fingerprint, startedAt: r.startedAt });
       completionShown = saved.completionShown === true;
-      // Replay exposure in Task order up to the first Task not yet passed.
-      for (const part of activity.parts) {
-        for (const [i, task] of part.tasks.entries()) {
-          applyExposure(part, task);
-          if (statusOf(part, i) !== 'passed') break;
-        }
-      }
+      replayExposure();
       return true;
     },
 

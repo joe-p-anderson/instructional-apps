@@ -22,6 +22,8 @@ import { PLOT_CONFIG, Plotly, boundaryTrace, conductorLayout, heatmapTrace, plot
 
 export const id = 'gauss';
 export const title = 'Gauss’s law';
+export const setupKeys = ['lambda', 'E0x', 'E0y', 'xc', 'yc', 'r'];
+export const setupOptions = ['handleAngle']; // a Setup value that is not State
 
 const DEFAULTS = { lambda: 1, E0x: 0, E0y: 0, xc: 0, yc: 0, r: 2, handleAngle: 0 };
 const R_MIN = 0.3;  // smallest surface radius (cm)

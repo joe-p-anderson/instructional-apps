@@ -2,8 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRunner } from '../../../framework/v1/runner/index.js';
 import { decodeActivity, decodeKey, isEncodedKey } from '../../../framework/v1/runner/keys.js';
-import activity from '../../../tools/electrostatics/activities/conductor-properties.js';
+import { readFileSync } from 'node:fs';
 import { stubTool } from '../runner/stub-tool.js';
+
+const ACTIVITY_FILE = new URL('../../../tools/electrostatics/activities/conductor-properties.json', import.meta.url);
+const activity = JSON.parse(readFileSync(ACTIVITY_FILE, 'utf8'));
 
 // Stub electrostatics Mode instances: the real State names and Control ids, with the
 // old app's default Setup as the starting State.

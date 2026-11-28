@@ -2,7 +2,7 @@
 // and its minimum Display width, default 480 px.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { defineTool } from '../../../framework/v1/tool.js';
+import { defineTool, modesOf } from '../../../framework/v1/tool.js';
 
 const tool = (extra = {}) => ({ id: 't', title: 'T', modes: [{ id: 'm' }], mount() {}, ...extra });
 
@@ -63,4 +63,46 @@ test('a maxDisplayWidth smaller than the minDisplayWidth is rejected', () => {
   assert.throws(() => defineTool(tool({ minDisplayWidth: 600, maxDisplayWidth: 599 })), /maxDisplayWidth/);
   // ... including the default minimum of 480 px.
   assert.throws(() => defineTool(tool({ maxDisplayWidth: 400 })), /maxDisplayWidth/);
+});
+
+// Setup keys: each Mode declares the State names its mount accepts as a Setup.
+
+test('a Mode may declare its Setup keys as a list of State names', () => {
+  const defined = defineTool(tool({ modes: [{ id: 'm', setupKeys: ['f', 'amp'] }, { id: 'n', setupKeys: [] }] }));
+  assert.deepEqual(defined.modes.map((m) => m.setupKeys), [['f', 'amp'], []]);
+});
+
+test('Setup keys that are not a list of State names are rejected', () => {
+  for (const setupKeys of ['f', null, {}, [1], ['f', ''], ['f', null], ['f', 'f']]) {
+    assert.throws(() => defineTool(tool({ modes: [{ id: 'm', setupKeys }] })), /modes\[0\]\.setupKeys/);
+  }
+});
+
+// Setup options: Setup values a Mode's mount reads that are not State.
+
+test('a Mode may declare its Setup options as a list of names', () => {
+  const defined = defineTool(tool({ modes: [{ id: 'm', setupKeys: ['f'], setupOptions: ['seed', 'skin'] }] }));
+  assert.deepEqual(defined.modes[0].setupOptions, ['seed', 'skin']);
+});
+
+test('Setup options that are not a list of distinct names are rejected', () => {
+  for (const setupOptions of ['seed', null, {}, [1], ['seed', ''], ['seed', 'seed']]) {
+    assert.throws(() => defineTool(tool({ modes: [{ id: 'm', setupOptions }] })), /modes\[0\]\.setupOptions/);
+  }
+});
+
+test('a name that is both a Setup key and a Setup option is rejected', () => {
+  assert.throws(
+    () => defineTool(tool({ modes: [{ id: 'm', setupKeys: ['f', 'seed'], setupOptions: ['seed'] }] })),
+    /modes\[0\].*seed/,
+  );
+});
+
+test('modesOf turns Mode modules into modes entries, keeping only what the definition declares', () => {
+  const circuit = { id: 'circuit', title: 'Circuit', setupKeys: ['R'], setupOptions: ['seed'], mount() {}, extra: 1 };
+  const sum = { id: 'sum', title: 'Sum', setupKeys: ['A1'], mount() {} };
+  assert.deepEqual(modesOf([circuit, sum]), [
+    { id: 'circuit', title: 'Circuit', setupKeys: ['R'], setupOptions: ['seed'] },
+    { id: 'sum', title: 'Sum', setupKeys: ['A1'], setupOptions: undefined },
+  ]);
 });

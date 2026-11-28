@@ -4,21 +4,49 @@ Static ES modules and CSS, served as-is (no build, no install). Breaking changes
 
 | Module | What it is |
 | --- | --- |
-| `tool.js` | **The Tool contract** (documented in its header comment), `defineTool()` validator, `createEmitter()`. No DOM, so it can be imported from Node. |
+| `tool.js` | **The Tool contract** (documented in its header comment), `defineTool()` validator, `modesOf(modules)` (the `modes` entries for a Tool built from Mode modules), `createEmitter()`. No DOM, so it can be imported from Node. |
+| `tool-list.js` | `TOOLS`: every Tool on the site, `{ id, title }` (the folder `tools/<id>/` and its Standalone page's title). The Activity editor offers these for a new Activity, and the cross-Tool e2e checks run over them; `tests/unit/framework/tool-list.test.js` keeps it in step with `tools/`. No DOM. |
 | `control.js` | `createControl()`: base implementation of the Control interface (lock/unlock, show/hide). Lock disables every input, button, select and textarea in the Control's `el`, and `el` itself when it is one (so a bare `<button>` can be the `el`). Use it for custom Controls such as draggable markers. |
-| `ui-kit.js` | Standard Controls: `slider` (with number box and reset; `log: true` for a logarithmic scale; a `role="group"` named like its inputs, e.g. "Va (V)", so its reset can be found by role), `toggle`, `select`, `button` (optional `title`; a locked button is disabled and neither a click nor `set()` presses it); `toggle` and `button` also take `onLock`/`onHide` for extra work. Plus `menuButton({ items })` (the header's ⋯ menu: a keyboard-operable WAI-ARIA menu button; `add(item, { before })` adds items later), `metric` readout, `section`, the slider's parts for a Tool's own composite Controls (`resetButton({ text, onReset, atDefault, isLocked }) -> { el, sync() }`: the icon-only ↻ named and titled "Reset to <text>", disabled while at the default or locked, so call `sync()` after each change and from the Control's `onLock`; `numberBox({ name, min, max, step, width, onCommit }) -> { el, show(text) }`: commits a typed number on Enter or change, never its own shown rounding, and marks a non-number `aria-invalid`), `h()` element helper, `escapeHtml(s)`, and `themeVars(el, { key: '--fw-var' })`: theme variables as computed at `el` (the v1 palette while `el` is not in a page), the one way to read drawing colours for canvas, SVG rendered to PNG and Plotly. |
+| `ui-kit.js` | Standard Controls: `slider` (with number box and reset; `log: true` for a logarithmic scale; `valueText(v)` names a position a number cannot show, such as `∞`, as the range's `aria-valuetext` and the empty box's placeholder; a `role="group"` named like its inputs, e.g. "Va (V)", so its reset can be found by role), `toggle`, `select`, `button` (optional `title`; a locked button is disabled and neither a click nor `set()` presses it); `toggle` and `button` also take `onLock`/`onHide` for extra work. Plus `menuButton({ items })` (the header's ⋯ menu: a keyboard-operable WAI-ARIA menu button; `add(item, { before })` adds items later), `metric` readout, `section`, the slider's parts for a Tool's own composite Controls (`resetButton({ text, onReset, atDefault, isLocked }) -> { el, sync() }`: the icon-only ↻ named and titled "Reset to <text>", disabled while at the default or locked, so call `sync()` after each change and from the Control's `onLock`; `numberBox({ name, min, max, step, width, onCommit }) -> { el, show(text) }`: commits a typed number on Enter or change, never its own shown rounding, and marks a non-number `aria-invalid`), `h()` element helper, `escapeHtml(s)`, and `themeVars(el, { key: '--fw-var' })`: theme variables as computed at `el` (the v1 palette while `el` is not in a page), the one way to read drawing colours for canvas, SVG rendered to PNG and Plotly. |
 | `handle.js` | Two more kit Controls, re-exported by `ui-kit.js` (full options in its header comment). `handle`: a draggable handle, 1-D (`role="slider"`, `min`/`max`/`step`/`coarse`, `reversed` for a value that grows leftwards or downwards) or 2-D (`x: {...}, y: {...}`, value `{ x, y }`; a focusable group described by both coordinates). Arrow keys nudge it, Shift+arrow moves `coarse`, Home/End go to the bounds (1-D); pointer drags use `touch-action: none`. The Tool supplies the mapping: `toScreen(value) -> { x, y }` client position (the kit then places its `.fw-handle` over that point; call `place()` after a resize) and `fromScreen(clientX, clientY) -> value` for drags; or pass its own `el` (e.g. an SVG shape) and draw it. `update(value)` shows a value without `onChange`. Put kit handles in a `.fw-handle-layer` over the Display. `knob`: bench-scope's rotary pattern (`role="slider"`; arrows turn, Enter/Space push, wheel, vertical drag, click pushes) with `onTurn(detents)`/`onPush()`, on its own `.fw-knob` or a given `el`; `refresh()` redraws its value. Both lock, hide, get and set like any Control. |
 | `theme.css` | The v1 Refined Cream theme (cream and serif, WCAG AA text contrast) and layout classes (`.fw-*`). Self-hosts Libre Baskerville from `vendor/libre-baskerville/` (SIL OFL, `OFL.txt` there). Its `:root` variables (`--fw-blue`, `--fw-surface`, `--fw-paper` for a white drawing ground, ...) are also the drawing colours; keep `themeVars`' fallback palette in `ui-kit.js` in step. Exposes plot tokens `--fw-plot-*` (background, grid, axis, text, ink, muted, trace-1..3, font, font-size), also in that fallback palette. |
 | `plot-theme.js` | `plotTheme(source?)`: the `--fw-plot-*` tokens as computed at `source`, an element (default: the root element) or a computed style (`CSSStyleDeclaration`, as in v1), as `{ background, grid, axis, text, ink, muted, traces, font: { family, size } }`: the plot-shaped view of the theme for a Tool's plots. Built on `themeVars`, so it shares its fallback (the v1 plot palette). Call it at mount. |
 | `plot-map.js` | `plotlyMapping(plotDiv) -> { toScreen(x, y), fromScreen(clientX, clientY) }`: the shared map between a Plotly plot's data coordinates and client pixels (single x/y axis pair), the one place that reads Plotly's laid-out axes. `toScreen` is null until the plot is laid out, while it is hidden, or while its layout is stale after a resize, so it can serve as a Display's `toScreen` and as a kit `handle`'s `toScreen`; `fromScreen` (null until laid out) is the handle's `fromScreen` for drags. Used by electrostatics and oscilloscope. |
 | `tool-host.js` | `mountStandalone(tool, root)`: Standalone mode, one tab per Mode, every Control unlocked, State autosaved per Tool and Mode, `#s=` share link (Copy share link in the ⋯ menu). Also exports `createFrame`/`createTabs` for the Activity runner UI; see "Frame and header" below. |
 | `persistence.js` | Autosave (`standaloneStore(toolId, modeId)`, `runStore(activityId)`, the site-wide student name `nameStore()`, `createStore(key, storage)`, `browserStorage()`; `save()` returns whether the write reached storage) and `#s=` share links (`shareHash`/`readShareHash`). No DOM. |
-| `runner/` | Activity runner core (pure logic, no DOM). `await runner.report()` assembles the sealed Report so far, also in Node (fixtures); `runner.save()`/`restore()` carry the Run, including unsubmitted Question drafts (`runner.draft()`) and whether the completion dialog has been shown (`runner.completionShown`, never in the Report). `runner.complete` is true once every Task has passed. `runner.submit()` refuses a Submit whose State and answers deep-equal the Task's last Attempt when that Attempt missed (canonical form, as the Report checksum): it returns `{ refused: true, reason: 'unchanged', feedback, hint }`, records no Attempt and doesn't bring the Hint closer, so refused Submits never reach the Report; the Task card shows "Nothing changed since your last try". Every Submit result briefly emphasises the Task's feedback line (a polite live region; static under `prefers-reduced-motion`). `runner/questions.js`: `questionKinds`, the one table of Question kinds (validation and judging). `runner/scoring.js`: the scoring rules (`scoreActivity`, `earnedFromResults`). `runner/keys.js`: encoded answer keys (`encodeKey`/`decodeKey`); the runner and scoring decode them, and an encoded Hint text is decoded only when the Hint is revealed. |
-| `report.js` | **The Report format**: schema (header comment), `sealReport`/`verifyReport`/`checksumOf` (keyed SHA-256 over canonical JSON), `readReport(text)`, `reportFilename`, `createFingerprint`, `REPORT_FORMAT_VERSION`, `FRAMEWORK_VERSION`. No DOM. |
+| `runner/` | Activity runner core (pure logic, no DOM). `await runner.report()` assembles the sealed Report so far, also in Node (fixtures); `runner.save()`/`restore()` carry the Run, including unsubmitted Question drafts (`runner.draft()`) and whether the completion dialog has been shown (`runner.completionShown`, never in the Report). `runner.complete` is true once every Task has passed. `runner.submit()` refuses a Submit whose State and answers deep-equal the Task's last Attempt when that Attempt missed (canonical form, as the Report checksum): it returns `{ refused: true, reason: 'unchanged', feedback, hint }`, records no Attempt and doesn't bring the Hint closer, so refused Submits never reach the Report; the Task card shows "Nothing changed since your last try". Every Submit result briefly emphasises the Task's feedback line (a polite live region; static under `prefers-reduced-motion`). `runner/questions.js`: `questionKinds`, the one table of Question kinds (validation and judging). `runner/scoring.js`: the scoring rules (`scoreActivity`, `earnedFromResults`). `runner/keys.js`: encoded answer keys (`encodeKey`/`decodeKey`); the runner and scoring decode them, and an encoded Hint text is decoded only when the Hint is revealed. `runner/preview.js`: `PREVIEW_START`, the preview-only `createRunner` option (`{ [PREVIEW_START]: { partId, taskId } }`) that starts a Run at a Task, with the Tasks before it counted as passed without Attempts; only the Activity editor's preview uses it. |
+| `expression.js` | **State expressions** (ADR 0005): `parseExpression(source) -> { source, names, evaluate(state) }` parses once into a tree (no `eval` or `Function`) and evaluates against any State snapshot; `names` lists the State names it uses. Parse errors, and an unknown or non-numeric State at evaluation, throw `ExpressionError` (`position` is set for parse errors). `isExpression(v)` recognises an `{ expr }` value. `cachedExpression(source)` is `parseExpression` remembered per source (each expression parses once however often it is judged); `parseProblem(source)` (null, or why it doesn't parse) and `workOut(source, state) -> { value } \| { problem }` wrap it for validation and judging. See "State expressions" below. No DOM. |
+| `report.js` | **The Report format**: schema (header comment), `sealReport`/`verifyReport`/`checksumOf` (keyed SHA-256 over canonical JSON), `readReport(text)`, `reportFilename`, `createFingerprint`, `REPORT_FORMAT_VERSION` (1), `FRAMEWORK_VERSION` (1.1.0). Each judged numeric Question result carries an optional `expected`: the value it was judged against (since 1.1.0; Reports without it are still format version 1). No DOM. |
+| `authoring/activity-editor.html` | The Activity editor (Chrome or Edge; elsewhere Save downloads). Its modules, in `authoring/editor/`, are listed below. |
+| `authoring/preview.html` | The Activity editor's preview: the editor's unsaved Activity in the real runner as a throwaway Run, opened in the editor's preview pane or a new tab (`editor/preview-page.js`). Not useful on its own. |
 | `authoring/encode-keys.html` | Authoring helper: paste a Condition, Question key or Hint text (JS expression), copy the `enc1:` string into the Activity in its place. Also exposes `encodeKey()`/`decodeKey()` in the console. Deters casual cheating only (ADR 0001). |
 | `activity-ui.js` | Activity runner UI: `mountActivity(tool, activity, root)`, a thin DOM layer over the core (name gate, Part tabs each with its own Tool instance, Task cards with Submit/feedback/Hint, per-Part progress, Download Report, and Start over, Print and "Not <name>? Sign out" in the ⋯ menu). A reload restores the Run under its sealed name, including Question answers and the last miss feedback. The name entered at the name gate is stored for the whole site: an Activity with no saved Run starts at once under the stored name, Start over begins a new Run under it, and sign-out (confirmed) forgets it and discards only this Activity's Run before showing the name gate. Passing the last Task opens a completion dialog once per Run; a complete Run's Download button reads "Activity complete · Download Report". |
+| `activity-file.js` | The Activity file (ADR 0004): `serializeActivity(activity)`, the saved JSON form (fixed `KEY_ORDER`, two-space indent), and `activityPage({ title, tool, file })`, the one Activity page template. No DOM. See "Opening an Activity". |
 | `report-viewer/` | **The Report Viewer** page, `report-viewer/index.html` (client-side only; no file leaves the browser). The core is DOM-free and tested in Node; every score is recomputed from the Attempts' recorded results with the runner's scoring rules (`earnedFromResults` in `runner/scoring.js`). See the table below. |
 | `vendor.js` | Loaders for the vendored, pinned libraries in `vendor/` (`loadPlotly()`, `loadMathJax()`, `typeset(elements)`). |
+
+### Activity editor modules (`authoring/editor/`)
+
+| Module | What it is |
+| --- | --- |
+| `core.js` | `openActivity(text) -> editor`: one open Activity as a series of frozen documents, with edits, undo/redo, problems, preview and save. No DOM. |
+| `edits.js` | `EDITS`: every edit the core applies, each a pure `(doc, edit) -> doc`. No DOM. |
+| `encoding.js` | Remembers where each `enc1:` field was on open and encodes it again in the same places on save, so an unchanged file comes back byte for byte. No DOM. |
+| `problems.js` | The problems list: `{ path, message, source }` for each field at fault. No DOM. |
+| `exposure.js` | `effectiveExposure(doc, p, t, toolInfo?)`: each Control's state at a Task after carry-over, by the runner's rule. No DOM. |
+| `condition-model.js` | Conditions as the Condition builder sees them: paths into the tree, node kinds, `judgeLive` (what a student would get now). No DOM. |
+| `tolerance.js` | The tolerance field's mapping between one number with a unit / % switch and `tol` / `relTol`. No DOM. |
+| `new-activity.js` | A new Activity from the Open screen: `slugFromTitle`, `newActivityProblems`, and writing its JSON and page. No DOM. |
+| `preview.js` | `planPreview(editor, { p, t }, toolInfo?)`: what the preview page is handed, and what blocks it. No DOM. |
+| `folder.js` | Folder access: File System Access, a file-list fallback (Save downloads), and an in-memory folder for tests. |
+| `tool-info.js` | `loadTool(toolId)`: imports a Tool module, learns its Tool info and mounts it live. |
+| `page.js` | The editor page: the DOM over the core and the folder (grant, Open screen, outline, Task form, problems, live Tool). |
+| `task-form.js` | The Task form and its extension point, `TASK_TABS`; each tab lives in `tabs/` (`prompt.js`, `condition.js` the Condition builder, `questions.js`, `exposure.js`, `hint.js`). |
+| `prose.js` | A prose field (prompts, Hint texts, choice texts), one undo group per visit. |
+| `tolerance-field.js` | `toleranceField(ctx, { owner, path, unit, toEdit, name? })`: the shared tolerance field, for the Condition builder's target and the numeric Question. |
+| `preview-launcher.js` | The Preview popover: pick a Part and Task, then open the preview in the pane or a new tab. |
+| `preview-page.js` | The preview page's script: mounts the handed-over plan in the real runner. |
+| `editor.css` | The editor's styles. |
 
 ### Report Viewer modules (`report-viewer/`)
 
@@ -32,9 +60,14 @@ Static ES modules and CSS, served as-is (no build, no install). Breaking changes
 
 ## Opening an Activity
 
-Each Activity is a pure-data module plus a tiny HTML page beside it, so the URL identifies one Activity:
-`tools/oscilloscope/activities/phase-period-amplitude.html` loads `phase-period-amplitude.js` and calls
-`mountActivity(oscilloscope, activity, root)`. Prompts may use `\( \)` math (MathJax).
+Each Activity is a JSON file plus a tiny HTML page beside it, so the URL identifies one Activity (ADR 0004):
+`tools/oscilloscope/activities/phase-period-amplitude.html` fetches `phase-period-amplitude.json` and calls
+`mountActivity(oscilloscope, activity, root, { conditionTypes })`. Prompts may use `\( \)` math (MathJax).
+
+- **The file** holds the shape `runner/activity.js` validates (id, version, title, course, tool, parts with their tasks, conditions, questions, points and hints), as plain data only: no function Conditions and no Activity-level `conditionTypes` (a Tool still exports Condition types, and the page passes them on). Conditions, answer keys and answer-revealing Hint texts stay `enc1:` encoded, in the same places as before.
+- **`notes`** (optional, on the Activity, each Part and each Task) is plain text for authors, such as design reasoning. The runner ignores it: it is never shown to students and never in the Report. It is stored unencoded and anyone can read the fetched file, so it must not give an answer away.
+- **`activity-file.js`** (no DOM) holds the format's two writers. `serializeActivity(activity)` is the saved form: a fixed key order (`KEY_ORDER`), two-space indent and a final newline, so diffs stay stable; the editor writes exactly this, and a hand edit is fine but the next save puts it back in this form. `activityPage({ title, tool, file })` is the one page template every Activity page is made from: it imports `../<tool>.js` (its default export and any `conditionTypes` export), fetches `./<file>` and mounts the runner. Activity files are checked out with LF endings (`.gitattributes`), and `tests/unit/framework/activity-files.test.js` checks every `tools/*/activities/*.json` is in the saved form beside a page made from the template.
+- **Migration:** `node scripts/migrate-activity.js tools/<tool>/activities/<name>.js` turns a hand-written Activity module into `<name>.json` and `<name>.html` beside it, with constants and spreads expanded, encoded strings copied as they are and the module's header comment in `notes` (check those by hand). The page's file name is unchanged, so the URL and the Run's storage key are too. Every Activity on the site has been migrated; no Activity module is left.
 
 ## Conditions
 
@@ -43,20 +76,52 @@ A Task's `condition` is judged against the State only on Submit (`runner/conditi
 | Condition | Passes when | Miss feedback |
 | --- | --- | --- |
 | `{ state, target, tol, targetLabel? }` | the value is within `tol` of `target` | `T = 2.50 s; need 3.00 ± 0.05 s` |
+| `{ state, target, relTol, targetLabel? }` | the value is within `relTol × \|target\|` of `target` (give exactly one of `tol` and `relTol`) | `\|I\| = 4.1 mA; need 5.00 mA ± 2%` |
 | `{ state, equals, targetLabel? }` | the value is exactly `equals` | `Coupling = DC; need AC` |
 | `{ type: 'range', state, above?, below?, targetLabel? }` | the value is strictly above `above` and/or strictly below `below` (give one or both) | the bound it missed: `\|E₀\| = 0 V/m; need > 0` |
-| `{ type: 'anyOf', conditions: [...] }` | at least one component passes; components may be any Condition, including registered types, functions and lists | each component's feedback: `Any one of: Coupled = false; need true — or — T = 2 s; need < 1` |
-| `{ type, ...options }` | the registered evaluator says so (`conditionTypes` on the Activity, or passed to `createRunner`/`mountActivity`) | the evaluator's `feedback` |
-| `(state, info) => boolean \| { pass, feedback }` | the function says so (escape hatch; can't be encoded) | its `feedback` |
+| `{ type: 'anyOf', conditions: [...] }` | at least one component passes; components may be any Condition, including registered types, functions (from a page or Tool only, see below) and lists | each component's feedback: `Any one of: Coupled = false; need true — or — T = 2 s; need < 1` |
+| `{ type, ...options }` | the registered evaluator says so (`conditionTypes` passed to `createRunner`/`mountActivity`, as a page does with its Tool's export; an in-memory Activity may also carry them, an Activity file never does) | the evaluator's `feedback` |
+| `(state, info) => boolean \| { pass, feedback }` | the function says so (escape hatch; can't be encoded, and can't be stored in an Activity file (ADR 0004): only a page or a Tool can supply one) | its `feedback` |
 | `[condition, ...]` | every component passes; one result is recorded per component | per component |
 
-`targetLabel` replaces the generated "need …" text. A registered evaluator is `(condition, state, info, { evaluate }) => { pass, feedback? }`; `evaluate(inner)` judges a nested Condition.
+`targetLabel` replaces the generated "need …" text.
+
+Any value a built-in Condition tests may be a State expression (see Questions below for the syntax): `state` may be a State name or `{ expr }`, and each of `target`, `equals`, `above` and `below` may be a value or `{ expr }`, worked out against the Part's live State at Submit, at any depth inside `anyOf` and lists. `tol` and `relTol` stay plain numbers.
+
+| Condition | Miss feedback |
+| --- | --- |
+| `{ state: 'w', target: { expr: '1/sqrt(L*C)' }, tol: 0.5 }` | the target's value: `ω = 990.0 rad/s; need 1000.0 ± 0.5 rad/s` |
+| `{ type: 'range', state: { expr: 'abs(V_L - V_C)' }, below: 0.01 }` | the expression and its value (no unit): `abs(V_L - V_C) = 0.5; need < 0.01` |
+| an expression naming unknown State, or a target or bound that isn't finite | `Can't judge this Condition: "1/sqrt(L*R)" has unknown State "R".` |
+
+A State name that the Tool doesn't have is a miss the same way (`Can't judge this Condition: unknown State "R".`). Validation rejects an expression that doesn't parse, and a target Condition with both or neither of `tol` and `relTol`. Encode a Condition, or one of its values, whole like any other key. A registered evaluator is `(condition, state, info, { evaluate }) => { pass, feedback? }`; `evaluate(inner)` judges a nested Condition.
+
+## Questions
+
+A Task's `questions` are judged only on Submit (`runner/questions.js`).
+
+| Question | Passes when |
+| --- | --- |
+| `{ id, kind: 'numeric', prompt, answer, tol, modulus? }` | the given value is within `tol` of `answer` |
+| `{ id, kind: 'numeric', prompt, answer, relTol, modulus? }` | the given value is within `relTol × \|answer\|` of `answer` |
+| `{ id, kind: 'choice', prompt, choices: [{ id, text }], correct }` | the chosen id is `correct` |
+| `{ id, kind: 'text', prompt }` | never judged; the answer is recorded |
+
+`modulus` (a positive number) makes a numeric Question periodic: the difference between the given value and `answer` is wrapped into (−`modulus`/2, `modulus`/2] before `tol` or `relTol` is applied. A phase in degrees with `answer: -90, tol: 2, modulus: 360` accepts −90, 270 and −450. Without `modulus`, the difference is used as is.
+
+A numeric `answer` may also be a State expression, `answer: { expr: 'I * 1000' }`, worked out against the Part's live State at Submit, so the key follows the scenario on the student's screen; `tol`, `relTol` and `modulus` stay plain numbers. Encode it whole like any other key (`encodeKey({ expr: 'I * 1000' })`). An Activity whose expression doesn't parse is rejected by validation. An expression naming unknown State, or working out to a non-finite value, is a miss whose feedback names the problem (unknown State can't be caught before the Tool is mounted).
+
+Every judged numeric result in an Attempt records `expected`, the key it was judged against (from a number or an expression; omitted when the key couldn't be worked out). The Report Viewer's student view shows it beside the student's answer, e.g. `I: 3 (expected 4)`. Scores are recomputed from the recorded results as before.
+
+### State expressions
+
+`framework/v1/expression.js`: numbers (`12`, `1.5`, `.5`, `2e-3`), State names, parentheses, `+ - * /` (`−` also accepted), `^` for powers (right-associative and tighter than unary minus: `-2^2` is −4, `2^-1` is 0.5), the constants `pi` and `e`, and the functions `sqrt abs exp ln log10 sin cos tan asin acos atan atan2(y, x) min(...) max(...) deg rad`. Trig is in radians; `deg()` and `rad()` convert. Constant and function names are reserved and never name State.
 
 ## Tool contract in brief
 
 ```js
 // A Tool module default-exports:
-{ id, title, modes: [{ id, title }], layout?, minDisplayWidth?, maxDisplayWidth?, mount(container, modeId, setup) }   // mount -> instance
+{ id, title, modes: [{ id, title, setupKeys?, setupOptions? }], layout?, minDisplayWidth?, maxDisplayWidth?, mount(container, modeId, setup) }   // mount -> instance
 
 // instance
 {
@@ -73,6 +138,8 @@ A Task's `condition` is judged against the State only on Submit (`runner/conditi
   resize?(), destroy?(),
 }
 ```
+
+`setupKeys` are the Mode's Setup keys: State names its mount accepts as a Setup (the editor's Capture stores only these). `setupOptions` are the other Setup values mount reads that are not State, such as a noise seed; the editor leaves them as they are. Every shipped Mode declares `setupKeys`; `tests/e2e/setup-keys.spec.js` checks each is State and that every Setup value an Activity uses is one or the other. A Tool whose Modes are modules (`id`, `title`, `setupKeys`, `setupOptions?`, `mount`) can write `modes: modesOf(MODES)`. Full contract: `tool.js`'s header comment.
 
 Tools keep no global state; mount the same Tool as many times as needed. Example: `tools/oscilloscope/`.
 
@@ -92,6 +159,17 @@ actions never wrap.
 The frame returns `addAction(el)`, which adds to the actions cluster before the ⋯ menu, and `menu`, whose
 `add({ id, label, onSelect }, { before })` adds a menu item. The ⋯ menu opens with Enter, Space or the arrow
 keys, moves with the arrow keys, Home and End, and closes with Escape, returning focus to its button.
+
+**Collapsed Part tabs.** When an Activity's Part tabs, with their full titles, would wrap onto a second line or
+overflow the header row, they collapse: every inactive tab shows just its Part number ("1", "2", …) with its
+progress badge, and the active tab shows its full title. The fit is measured with the full titles and re-checked
+when the window (the header's width) changes, when the Part changes, and when anything in the tablist changes
+(progress badges, typeset math), so Activities whose tabs fit look exactly as before. A collapsed tab keeps its
+full title in the tab, visually hidden, so its accessible name is unchanged ("Part 2: … (0 of 3 Tasks done)"),
+and shows the title as a tooltip; the tabs stay ordinary buttons in the Tab order. If even the collapsed tabs
+don't fit, they wrap as before. The tablist carries `data-collapsed` while collapsed. It is
+`createTabs(frame, tabs, onSelect, { collapse: true })` in `tool-host.js`, used by the Activity runner only;
+Standalone Mode tabs never collapse. Header text, the badges included, is at least 13 px.
 
 The save status (`saveStatus(frame)` in `tool-host.js`) shows the autosave: "Saved hh:mm" in muted text after
 each successful write, or a warning in the miss colour when the browser refuses it (each store's `save()`
