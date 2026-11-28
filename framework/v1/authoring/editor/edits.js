@@ -8,6 +8,8 @@
 //
 // To add an edit kind, add an entry here and a case to tests/unit/editor/core.test.js.
 
+import { STATES, LIST_OF, exposureState } from './exposure.js';
+
 export const EDITS = {
   // { type: 'setActivityField', field: 'title' | 'course' | 'version' | 'notes', value }
   // An empty course or notes (or an undefined value) removes the field from the file.
@@ -65,7 +67,131 @@ export const EDITS = {
       return withField(part, 'setup', setup);
     });
   },
+
+  // ── Tasks (each edit names its Part p and, but for addTask, its Task t) ──
+
+  // { type: 'addTask', p, title, at? } inserts a Task at index at (the end by default) with an
+  // empty prompt and 1 point. Its id is a slug of the title (tags stripped), unique in the Part.
+  addTask(doc, { p, title, at }) {
+    return withPart(doc, p, (part) => {
+      const tasks = tasksOf(part);
+      const task = { id: slug(stripTags(title), tasks.map((x) => x.id), 'task'), title, prompt: '', points: 1 };
+      const i = Number.isInteger(at) && at >= 0 && at <= tasks.length ? at : tasks.length;
+      return { ...part, tasks: [...tasks.slice(0, i), task, ...tasks.slice(i)] };
+    });
+  },
+
+  // { type: 'setTaskField', p, t, field: 'title' | 'prompt' | 'points' | 'notes', value }. Empty
+  // notes (or an undefined value) remove the field. The id is renamed with setTaskId.
+  setTaskField(doc, { p, t, field, value }) {
+    if (!TASK_FIELDS.includes(field)) throw new Error(`setTaskField can't set a Task's "${field}" field`);
+    const v = field === 'notes' && value === '' ? undefined : value;
+    return withTask(doc, p, t, (task) => withField(task, field, v));
+  },
+
+  // { type: 'setTaskId', p, t, id } renames a Task's id by hand. That drops students' progress on
+  // the Task in Runs already started (the page warns); a duplicate is the runner's problem.
+  setTaskId(doc, { p, t, id }) {
+    return withTask(doc, p, t, (task) => withField(task, 'id', id));
+  },
+
+  // { type: 'moveTask', p, t, to } moves Task t to index to; an index outside the list changes nothing.
+  moveTask(doc, { p, t, to }) {
+    return withPart(doc, p, (part) => {
+      const tasks = tasksOf(part);
+      if (!(t in tasks) || !(to in tasks) || t === to) return part;
+      const out = tasks.filter((_, i) => i !== t);
+      out.splice(to, 0, tasks[t]);
+      return { ...part, tasks: out };
+    });
+  },
+
+  // { type: 'duplicateTask', p, t } inserts a copy after Task t with a new id (a slug of its id,
+  // unique in the Part). The copy keeps the original's encoding records.
+  duplicateTask(doc, { p, t }) {
+    return withPart(doc, p, (part) => {
+      const tasks = tasksOf(part);
+      if (!(t in tasks)) return part;
+      const copy = { ...tasks[t], id: slug(tasks[t].id ?? tasks[t].title, tasks.map((x) => x.id), 'task') };
+      return { ...part, tasks: [...tasks.slice(0, t + 1), copy, ...tasks.slice(t + 1)] };
+    });
+  },
+
+  // { type: 'deleteTask', p, t } removes Task t.
+  deleteTask(doc, { p, t }) {
+    return withPart(doc, p, (part) => {
+      const tasks = tasksOf(part);
+      return t in tasks ? { ...part, tasks: tasks.filter((_, i) => i !== t) } : part;
+    });
+  },
+
+  // { type: 'setHint', p, t, hint } sets the whole Hint ({ after, text }), or removes it (undefined).
+  setHint(doc, { p, t, hint }) {
+    return withTask(doc, p, t, (task) => withField(task, 'hint', hint));
+  },
+
+  // { type: 'setHintField', p, t, field: 'after' | 'text', value } on an existing Hint. The Hint
+  // object keeps its encoding record, so an encoded text is encoded again on save.
+  setHintField(doc, { p, t, field, value }) {
+    if (!HINT_FIELDS.includes(field)) throw new Error(`setHintField can't set a Hint's "${field}" field`);
+    return withTask(doc, p, t, (task) => {
+      if (!task.hint || typeof task.hint !== 'object') throw new Error(`Task ${t} of Part ${p} has no Hint`);
+      return withField(task, 'hint', withField(task.hint, field, value));
+    });
+  },
+
+  // { type: 'setExposure', p, t, control, state: 'open' | 'locked' | 'hidden' } makes control's
+  // effective state at Task t be state, rewriting Task t's show, lock and hide lists minimally:
+  // the id leaves all three, then goes into one only when state differs from what it inherits
+  // from Task t-1. A list left empty is removed. Later Tasks' lists are untouched (their
+  // effective states follow from carry-over).
+  setExposure(doc, { p, t, control, state }) {
+    if (!STATES.includes(state)) throw new Error(`"${state}" is not an exposure state`);
+    const inherited = exposureState(doc, p, t - 1, control);
+    return withTask(doc, p, t, (task) => {
+      const named = EXPOSURE_LISTS.filter((k) => Array.isArray(task[k]) && task[k].includes(control));
+      const want = state === inherited ? [] : [LIST_OF[state]];
+      if (named.join() === want.join() && (!want.length || task[want[0]].filter((x) => x === control).length === 1)) return task;
+      let out = withoutControl(task, control);
+      if (want.length) out = withField(out, want[0], [...(Array.isArray(out[want[0]]) ? out[want[0]] : []), control]);
+      return out;
+    });
+  },
+
+  // { type: 'clearExposure', p, t, control } takes control out of Task t's lists (an unknown
+  // Control's Remove), so it inherits again.
+  clearExposure(doc, { p, t, control }) {
+    return withTask(doc, p, t, (task) => withoutControl(task, control));
+  },
 };
+
+const TASK_FIELDS = ['title', 'prompt', 'points', 'notes'];
+const HINT_FIELDS = ['after', 'text'];
+const EXPOSURE_LISTS = ['show', 'lock', 'hide'];
+const tasksOf = (part) => (Array.isArray(part.tasks) ? part.tasks : []);
+const stripTags = (s) => String(s ?? '').replace(/<[^>]*>/g, '');
+
+// doc with Task t of Part p replaced by change(task).
+function withTask(doc, p, t, change) {
+  return withPart(doc, p, (part) => {
+    const tasks = tasksOf(part);
+    if (!tasks[t]) throw new Error(`There is no Task ${t} in Part ${p}`);
+    const next = withItem(tasks, t, change(tasks[t]));
+    return next === tasks ? part : { ...part, tasks: next };
+  });
+}
+
+// task without control in any exposure list; a list left empty is removed.
+function withoutControl(task, control) {
+  let out = task;
+  for (const k of EXPOSURE_LISTS) {
+    if (!Array.isArray(out[k]) || !out[k].includes(control)) continue;
+    const rest = out[k].filter((x) => x !== control);
+    out = withField(out, k, rest.length ? rest : undefined);
+  }
+  return out;
+}
+
 
 const setupOf = (part) => (part.setup && typeof part.setup === 'object' && !Array.isArray(part.setup) ? part.setup : {});
 

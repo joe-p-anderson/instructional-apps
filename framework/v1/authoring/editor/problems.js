@@ -37,6 +37,19 @@ export const CHECKS = [
         message: `Part "${part.id}" Setup "${k}" is not a Setup key or Setup option of Mode "${part.mode}"` }));
     });
   } },
+  // Every id in a Task's show, lock and hide lists is a Control of the Part's Mode (the runner
+  // throws on one that isn't when it applies the Task). Path: the list entry.
+  { source: 'controls', run(doc, toolInfo) {
+    if (!toolInfo) return [];
+    return partsOf(doc).flatMap((part, p) => {
+      const mode = Object.hasOwn(toolInfo.modes, part?.mode) ? toolInfo.modes[part.mode] : null;
+      if (!mode || !Array.isArray(part.tasks)) return [];
+      const known = new Set(mode.controls.map((c) => c.id));
+      return part.tasks.flatMap((task, t) => ['show', 'lock', 'hide'].flatMap((k) => (Array.isArray(task?.[k]) ? task[k] : [])
+        .flatMap((id, i) => (known.has(id) ? [] : [{ path: ['parts', p, 'tasks', t, k, i],
+          message: `Task "${task.id}" ${k} list names "${id}", which is not a Control of Mode "${part.mode}"` }]))));
+    });
+  } },
 ];
 
 export function findProblems(doc, toolInfo) {

@@ -379,7 +379,7 @@ test('a Setup value the Mode does not know, or an unknown Mode, is a problem tha
   await page.getByRole('button', { name: 'Remove seed' }).click();
   await expect(problems.getByRole('button', { name: /Setup "seed"/ })).toHaveCount(0);
   await page.getByRole('combobox', { name: 'Mode' }).selectOption({ label: 'Dual-trace scope' });
-  await outline(page).getByRole('button', { name: /Part 2/ }).click();
+  await outline(page).getByRole('button', { name: /^2\s/ }).click();
   await page.getByRole('combobox', { name: 'Mode' }).selectOption({ label: 'Dual-trace scope' });
   await expect(problems.getByRole('heading')).toContainText('Problems (0)');
 });
