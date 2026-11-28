@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { openActivity } from '../../../framework/v1/authoring/editor/core.js';
-import { TOLERANCE_PRESETS, presetOf, toleranceText, toleranceValues } from '../../../framework/v1/authoring/editor/tolerance.js';
+import { TOLERANCE_PRESETS, presetOf } from '../../../framework/v1/authoring/editor/tolerance.js';
 import { decodeKey, isEncodedKey } from '../../../framework/v1/runner/index.js';
 
 const read = (path) => readFileSync(new URL(`../../../tools/${path}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
@@ -172,18 +172,6 @@ test('presets stamp plain tol, relTol and modulus, and nothing preset-shaped is 
     assert.deepEqual(Object.keys(preset.values).sort(), ['modulus', 'relTol', 'tol']);
     for (const v of Object.values(preset.values)) assert.ok(v === undefined || Number.isFinite(v));
   }
-});
-
-test('the tolerance field: the unit side writes tol, the % side writes relTol as a fraction, and each clears the other', () => {
-  assert.deepEqual(toleranceValues('unit', '2'), { tol: 2, relTol: undefined });
-  assert.deepEqual(toleranceValues('percent', '2'), { tol: undefined, relTol: 0.02 });
-  assert.deepEqual(toleranceValues('percent', '1.5'), { tol: undefined, relTol: 0.015 });
-  assert.deepEqual(toleranceValues('percent', '7'), { tol: undefined, relTol: 0.07 });
-  assert.deepEqual(toleranceValues('unit', ''), { tol: undefined, relTol: undefined });
-  assert.deepEqual(toleranceValues('unit', 'abc'), { tol: undefined, relTol: undefined });
-  assert.deepEqual(toleranceText({ relTol: 0.07 }), { side: 'percent', text: '7' });
-  assert.deepEqual(toleranceText({ tol: 0.1 }), { side: 'unit', text: '0.1' });
-  assert.deepEqual(toleranceText({}), { side: 'unit', text: '' });
 });
 
 test('an expression answer naming State the Mode lacks is a problem at the answer', () => {

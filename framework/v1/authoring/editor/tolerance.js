@@ -1,35 +1,33 @@
-// Tolerances in the editor (spec, "Tolerances"). No DOM.
+// The tolerance field's mapping (spec, "Tolerances"): one number with a unit / % switch, for a
+// target Condition (condition builder) and a numeric Question (ticket 12). No DOM; the field
+// itself is tolerance-field.js.
 //
-// The tolerance field is one number with a unit / % switch: the unit side writes tol, the % side
-// writes relTol as the percentage / 100, and each side clears the other key. The file keeps the
-// plain fraction. toleranceText reads a { tol, relTol } owner (a numeric Question or a target
-// Condition) into the field; toleranceValues turns what is typed back into { tol, relTol }, for
-// an edit that sets both keys (undefined removes one).
-//
-// TOLERANCE_PRESETS live in the editor only. Applying one stamps plain tol, relTol and modulus
-// values onto a Question (undefined removes the key); nothing names the preset in the file.
+//   toleranceOf(owner)          -> { side: 'unit' | 'percent', text }: what the field shows for an
+//                                  object holding tol or relTol (relTol 0.02 shows as 2 %)
+//   toleranceFields(side, text) -> { tol, relTol }: the fields to write. The unit side writes tol,
+//                                  the % side writes relTol = percentage / 100; the other key is
+//                                  always undefined, so writing clears it. Empty text writes
+//                                  neither; text that isn't a number is kept as typed, so the
+//                                  runner's validation lists it.
 
-// A number with float noise (0.07 * 100 = 7.000000000000001) rounded away.
 const clean = (x) => Number(x.toPrecision(12));
 
-export const SIDES = ['unit', 'percent'];
-
-// { side, text } for an owner's tolerance; the % side when it has relTol.
-export function toleranceText(owner) {
-  if (typeof owner?.relTol === 'number') return { side: 'percent', text: String(clean(owner.relTol * 100)) };
-  if (typeof owner?.relTol === 'string') return { side: 'percent', text: owner.relTol };
+export function toleranceOf(owner) {
+  if (owner?.relTol !== undefined) return { side: 'percent', text: typeof owner.relTol === 'number' ? String(clean(owner.relTol * 100)) : String(owner.relTol) };
   return { side: 'unit', text: owner?.tol === undefined ? '' : String(owner.tol) };
 }
 
-// What text typed on side writes: { tol, relTol }, the other key cleared. Anything but a number
-// clears both, so the runner's validation lists the missing tolerance.
-export function toleranceValues(side, text) {
+export function toleranceFields(side, text) {
   const s = String(text ?? '').trim();
-  const n = s === '' ? NaN : Number(s);
-  if (!Number.isFinite(n)) return { tol: undefined, relTol: undefined };
-  return side === 'percent' ? { tol: undefined, relTol: clean(n / 100) } : { tol: n, relTol: undefined };
+  let value;
+  if (s !== '') value = Number.isFinite(Number(s)) ? Number(s) : s;
+  if (side === 'percent') return { tol: undefined, relTol: typeof value === 'number' ? clean(value / 100) : value };
+  return { tol: value, relTol: undefined };
 }
 
+// Tolerance presets for numeric Questions (spec, "Editor page"). They live in the editor only:
+// applying one stamps its plain tol, relTol and modulus values onto the Question (undefined
+// removes the key), and nothing names the preset in the file.
 export const TOLERANCE_PRESETS = [
   { name: 'Amplitude 2%', sub: 'relTol 0.02', values: { tol: undefined, relTol: 0.02, modulus: undefined } },
   { name: 'Amplitude 5%', sub: 'relTol 0.05', values: { tol: undefined, relTol: 0.05, modulus: undefined } },

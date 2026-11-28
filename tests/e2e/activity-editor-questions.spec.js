@@ -35,12 +35,12 @@ test('journey: add a numeric Question with an expression answer, apply a preset,
   // A preset stamps its plain values; the % switch follows.
   await q.getByRole('button', { name: 'Question 1 tolerance preset' }).click();
   await q.getByRole('menuitem', { name: /Phase ±2° mod 360/ }).click();
-  await expect(card(page, 1).getByRole('textbox', { name: 'Question 1 tolerance' })).toHaveValue('2');
+  await expect(card(page, 1).getByRole('textbox', { name: 'Tolerance', exact: true })).toHaveValue('2');
   await expect(card(page, 1).getByRole('textbox', { name: 'modulus' })).toHaveValue('360');
   await card(page, 1).getByRole('button', { name: 'Question 1 tolerance preset' }).click();
   await card(page, 1).getByRole('menuitem', { name: /Amplitude 5%/ }).click();
-  await expect(card(page, 1).getByRole('textbox', { name: 'Question 1 tolerance' })).toHaveValue('5');
-  await expect(card(page, 1).getByRole('group', { name: 'Question 1 tolerance in' }).getByRole('button', { name: '%' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(card(page, 1).getByRole('textbox', { name: 'Tolerance', exact: true })).toHaveValue('5');
+  await expect(card(page, 1).getByRole('group', { name: 'Tolerance in' }).getByRole('button', { name: '%' })).toHaveAttribute('aria-pressed', 'true');
   await expect(card(page, 1).getByRole('textbox', { name: 'modulus' })).toHaveValue('');
 
   // The live value follows the live Tool.
@@ -59,17 +59,17 @@ test('journey: add a numeric Question with an expression answer, apply a preset,
 test('the tolerance field writes tol on the unit side and relTol on the % side, clearing the other', async ({ page }) => {
   await questionsAt(page, 'Phasors and Impedance', '1.1');
   const q = card(page, 1);
-  const tol = q.getByRole('textbox', { name: 'Question 1 tolerance' });
+  const tol = q.getByRole('textbox', { name: 'Tolerance', exact: true });
   await expect(tol).toHaveValue('2');
   await expect(q.getByRole('button', { name: 'Question 1 tolerance preset' })).toContainText('Amplitude 2%');
   await tol.fill('3');
   await expect(q.getByRole('button', { name: 'Question 1 tolerance preset' })).toContainText('Custom');
-  await q.getByRole('group', { name: 'Question 1 tolerance in' }).getByRole('button', { name: 'units' }).click();
+  await q.getByRole('group', { name: 'Tolerance in' }).getByRole('button', { name: 'unit', exact: true }).click();
   await save(page);
   let [saved] = JSON.parse(await written(page, PHASORS)).parts[0].tasks[0].questions;
   expect(saved.tol).toBe(3);
   expect('relTol' in saved).toBe(false);
-  await q.getByRole('group', { name: 'Question 1 tolerance in' }).getByRole('button', { name: '%' }).click();
+  await q.getByRole('group', { name: 'Tolerance in' }).getByRole('button', { name: '%' }).click();
   await save(page);
   [saved] = JSON.parse(await written(page, PHASORS)).parts[0].tasks[0].questions;
   expect(saved.relTol).toBe(0.03);

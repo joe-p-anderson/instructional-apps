@@ -10,6 +10,7 @@
 
 import { STATES, LIST_OF, exposureState } from './exposure.js';
 import { ENCODING } from './encoding.js';
+import { nodeAt, replaceAt, withFields } from './condition-model.js';
 
 export const EDITS = {
   // { type: 'setActivityField', field: 'title' | 'course' | 'version' | 'notes', value }
@@ -259,6 +260,25 @@ export const EDITS = {
     return withQuestion(doc, p, t, q, (question) => {
       const list = choicesOf(question);
       return c in list ? withField(question, 'choices', list.filter((_, i) => i !== c)) : question;
+    });
+  },
+
+  // ── Conditions (paths as in condition-model.js: [] is the Task's whole Condition) ──
+
+  // { type: 'setConditionNode', p, t, path, node } replaces the Condition node at path; node
+  // undefined removes it (from its group, or the Task's Condition at []). A new Condition takes
+  // the default encoding (the whole Condition encoded), an existing one keeps its record.
+  setConditionNode(doc, { p, t, path, node }) {
+    return withTask(doc, p, t, (task) => withField(task, 'condition', replaceAt(task.condition, path, node)));
+  },
+
+  // { type: 'setConditionFields', p, t, path, fields } sets fields of the node at path
+  // (undefined removes one). A key replacing a removed one keeps its place (tol -> relTol).
+  setConditionFields(doc, { p, t, path, fields }) {
+    return withTask(doc, p, t, (task) => {
+      const node = nodeAt(task.condition, path);
+      if (!node || typeof node !== 'object' || Array.isArray(node)) throw new Error(`No Condition at ${path.join('.')}`);
+      return withField(task, 'condition', replaceAt(task.condition, path, withFields(node, fields)));
     });
   },
 };
