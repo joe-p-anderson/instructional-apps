@@ -2,7 +2,7 @@
 // and the folder interface (folder.js).
 //
 // Screens: the folder grant (#grant), the Open screen (#open), and the editor (#main: outline,
-// form and problems, live Tool). One editor session (openActivity) is open at a time, for the
+// form and problems, live Tool). One Activity is open at a time (its editor, from openActivity), for the
 // file at `current`. Every change goes through commit(edit), and the page redraws from
 // editor.doc; nothing on the page holds Activity data of its own.
 //
@@ -26,7 +26,7 @@ const $ = (id) => document.getElementById(id);
 const RECENTS = 8;
 
 let folder = null;
-let editor = null;    // the open Activity's editor session
+let editor = null;    // the open Activity's editor
 let current = null;   // its path in the folder
 let sel = { kind: 'activity' };
 let statusNote = null;
@@ -311,18 +311,18 @@ async function openPath(path, { discard = false } = {}) {
 
 // Load the open Activity's Tool and its Tool info; the page redraws when it arrives (the
 // problems list gains the checks against it, the live Tool mounts).
-function useTool(session) {
-  const id = session.doc.tool;
+function useTool(forEditor) {
+  const id = forEditor.doc.tool;
   if (tool?.tool.id === id) return;
   destroyLive();
   tool = null;
   toolError = null;
   loadTool(id).then((loaded) => {
-    if (editor !== session) return;
+    if (editor !== forEditor) return;
     tool = loaded;
     render();
   }, (err) => {
-    if (editor !== session) return;
+    if (editor !== forEditor) return;
     toolError = `The Tool “${id}” couldn't be loaded: ${err.message}`;
     refresh();
   });
@@ -742,7 +742,7 @@ function renderRight() {
   const target = livePart();
   const part = target?.part;
   const mode = part && tool && Object.hasOwn(tool.info.modes, part.mode) ? tool.info.modes[part.mode] : null;
-  const same = live && live.session === editor && live.tool === tool && live.p === target?.p
+  const same = live && live.editor === editor && live.tool === tool && live.p === target?.p
     && live.mode === part?.mode && live.setup === part?.setup && right.contains(live.box);
   if (!same) mountRight(right, target, mode);
   applyView();
@@ -803,7 +803,7 @@ function mountRight(right, target, mode) {
     h('h4', { class: 'right-h' }, 'State now ', h('span', { class: 'muted' }, '(names for Conditions and expressions)')),
     h('div', { class: 'state-tbl' }, h('table', { class: 'grid', 'aria-label': 'State now' }, stateBody)));
   right.replaceChildren(box);
-  live = { session: editor, tool, p, mode: part.mode, setup: part.setup, box, instance: null, unsub: null, viewButtons, viewText, viewKey: null };
+  live = { editor, tool, p, mode: part.mode, setup: part.setup, box, instance: null, unsub: null, viewButtons, viewText, viewKey: null };
   try {
     live.instance = mountLive(toolBox, tool.tool, part.mode, part.setup);
   } catch (err) {
