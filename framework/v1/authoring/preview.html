@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<!--
+  The Activity editor's preview (.scratch/activity-editor/spec.md, "Editor page" → Preview): the
+  editor's unsaved Activity in the real runner, as a throwaway Run. The editor opens it in its
+  preview pane (an iframe) or a new tab; it is not useful on its own. See editor/preview-page.js.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title></title>
+<link rel="stylesheet" href="../theme.css">
+<style>
+  .pv-banner { margin: 0; padding: 6px 16px; background: var(--fw-hint-bg); color: var(--fw-text); font: 14px/1.4 var(--fw-font); border-bottom: 1px solid var(--fw-border); }
+  .pv-message { padding: 24px 16px; font: 16px/1.5 var(--fw-font); color: var(--fw-text); }
+  /* The Run lives in memory only, so there is no save status to show. */
+  .fw-save-status { display: none; }
+</style>
+</head>
+<body>
+<p class="pv-banner" role="note" aria-label="Preview">Preview of the unsaved Activity: a throwaway Run. Nothing is saved, and no student's Run is touched.</p>
+<div id="app"></div>
+<script type="module" src="editor/preview-page.js"></script>
+</body>
+</html>

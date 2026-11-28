@@ -19,6 +19,7 @@ import { taskForm as drawTaskForm, tabOf, refreshTabCounts } from './task-form.j
 import { effectiveExposure } from './exposure.js';
 import { slugFromTitle, newActivityProblems, createActivity } from './new-activity.js';
 import { TOOLS } from '../../tool-list.js';
+import { createPreviewLauncher } from './preview-launcher.js';
 
 const { createDirectoryFolder, createFileListFolder, findActivities } = folderModule;
 const $ = (id) => document.getElementById(id);
@@ -394,6 +395,7 @@ function refresh() {
   renderProblems(problems);
   if (sel.kind === 'task') refreshTabCounts($('form'), problems.filter((pr) => sameSel(selOf(pr.path), sel)));
   renderRight();
+  previewLauncher.refresh();
 }
 
 // ───────────────────────── Outline ──
@@ -828,6 +830,13 @@ function destroyLive() {
 }
 
 // ───────────────────────── Keys and buttons ──
+
+// The Preview ▾ launcher (preview-launcher.js): the unsaved Activity in the real runner.
+const previewLauncher = createPreviewLauncher({
+  button: $('preview-btn'),
+  pop: $('preview-pop'),
+  context: () => ({ editor, sel, toolInfo: tool?.info, toolError, where }),
+});
 
 $('save').addEventListener('click', save);
 $('undo').addEventListener('click', undo);

@@ -192,3 +192,21 @@ table.grid tr.grp td { font-size: 12px; color: var(--fw-text-dim); font-style: i
 .ed-open-head { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
 .ed-new { max-width: 46em; margin: 8px 0 16px; }
 .ed-new .row .sev { font-size: 13px; }
+
+/* Preview launcher (preview-launcher.js) and the preview pane */
+.ed-preview-launch { position: relative; }
+.ed-preview-pop { position: absolute; z-index: 40; top: calc(100% + 4px); right: 0; min-width: 21em; padding: 10px 12px;
+  background: var(--fw-surface); border: 1px solid var(--fw-border-dk); border-radius: 4px; box-shadow: 0 4px 14px rgba(26,16,8,.18); }
+.ed-preview-pop[hidden] { display: none; }
+.ed-preview-pop h3 { margin: 0 0 8px; font-size: 14px; }
+.ed-preview-pop select { font: inherit; font-size: 13px; max-width: 16em; }
+.ed-preview-pop .muted { margin: 0 0 8px; }
+.ed-preview-pop .pv-why { margin: 0 0 8px; font-size: 13px; }
+.ed-preview-pop .row:last-child { margin: 0; }
+dialog.ed-preview { width: min(96vw, 1400px); height: 92vh; padding: 0; border: 1px solid var(--fw-border-dk); border-radius: 6px;
+  background: var(--fw-surface); color: var(--fw-text); font-family: var(--fw-font); }
+dialog.ed-preview[open] { display: flex; flex-direction: column; }
+dialog.ed-preview::backdrop { background: rgba(26,16,8,.35); }
+.ed-preview .pv-head { display: flex; align-items: center; gap: 12px; padding: 6px 12px; border-bottom: 1px solid var(--fw-border); }
+.ed-preview .pv-head h2 { margin: 0; font-size: 16px; flex: 1; }
+.ed-preview .pv-frame { flex: 1; width: 100%; border: 0; }
