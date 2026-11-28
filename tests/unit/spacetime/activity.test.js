@@ -342,7 +342,7 @@ test('every encoded key decodes, and Conditions, keys and answer-revealing Hints
   assert.ok(isEncodedKey(hintOf(part2, 'ends-flash')), 'Task 2.1 Hint gives the answer away, so it is encoded');
 
   const source = await readFile(ACTIVITY_FILE, 'utf8');
-  for (const leak of ['st-worldline', 'st-event', 'st-rod', "correct: 't", "correct: 'x", "correct: 'B", '1.6', '2.5']) {
+  for (const leak of ['st-worldline', 'st-event', 'st-rod', "correct: 't", "correct: 'x", "correct: 'B", '"correct": "t', '"correct": "x', '"correct": "B', '1.6', '2.5']) {
     assert.ok(!source.includes(leak), `source contains "${leak}"`);
   }
 });

@@ -526,7 +526,7 @@ test('Conditions, numeric answers and choice keys are encoded answer keys', asyn
     if (q.kind === 'choice') assert.ok(isEncodedKey(q.correct), q.id);
   }
   const source = await readFile(ACTIVITY_FILE, 'utf8');
-  for (const leak of ['53.1', '3.60', '3.61', '73.9', '√13', 'target:', 'below:', 'above:',
+  for (const leak of ['53.1', '3.60', '3.61', '73.9', '√13', 'target:', 'below:', 'above:', '"target":', '"below":', '"above":',
     '36.8', '67.3', '22.6', '157.3', '632.', '1333.']) {
     assert.ok(!source.includes(leak), `source contains "${leak}"`);
   }
